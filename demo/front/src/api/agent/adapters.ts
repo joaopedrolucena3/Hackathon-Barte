@@ -95,6 +95,12 @@ export function adaptRun(value: unknown): Run {
     exports: array(raw.exports).map(file => adaptExport(file, string(raw.id ?? raw.run_id))),
   };
   if (run.approval) run.steps = run.steps.map(step => step.kind === 'gate' ? { ...step, status: run.approval!.status } : step);
+  // The gate's own metrics only count its step; the run carries what waits for a human, the same figures the
+  // awaiting_approval event sends. Without this a refetch after the event put the gate back to 0 exceptions.
+  if (raw.exceptions_total !== undefined || raw.exceptions_open !== undefined) {
+    const exceptions = numeric(raw.exceptions_total ?? raw.exceptions_open), blocking = optionalNumber(raw.blocking_open);
+    run.steps = run.steps.map(step => step.kind === 'gate' ? { ...step, metrics: { ...step.metrics, exceptions, blocking } } : step);
+  }
   const failure = object(raw.error);
   if (failure.message) run.steps = run.steps.map(step => step.id === failure.step_id ? { ...step, error: string(failure.message) } : step);
   return run;
