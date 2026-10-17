@@ -1,0 +1,549 @@
+{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 14,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "timeline_track_too_dense",
+        "severity": "warning",
+        "message": "Track 1 has 13 timed elements in this HTML file. Smaller sub-compositions keep timelines easier to read, iterate on, and diff.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move coherent scene groups into separate .html files under compositions/ and mount them from the parent with data-composition-src so the timeline stays easier to inspect, revise, and validate."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s01\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s01",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s01\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s02\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s02",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s02\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s03\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s03",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s03\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s04\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s04",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s04\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s05\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s05",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s05\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s06\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s06",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s06\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s07\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s07",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s07\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s08\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s08",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s08\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s09\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s09",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s09\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s10\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s10",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s10\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s11\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s11",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s11\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s12\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s12",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s12\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"sc-s13\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#sc-s13",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"sc-s13\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      }
+    ],
+    "filesScanned": 1
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 3,
+    "infoCount": 2,
+    "findings": [
+      {
+        "code": "container_overflow",
+        "severity": "warning",
+        "time": 6.822,
+        "selector": "#sc-s04-vcam",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 1080,
+          "width": 1920,
+          "height": 1080
+        },
+        "containerSelector": "#root > div:nth-of-type(2)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 900,
+          "width": 1920,
+          "height": 900
+        },
+        "overflow": {
+          "bottom": 180
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "firstSeen": 6.822,
+        "lastSeen": 115.978,
+        "occurrences": 9,
+        "heldMs": 0,
+        "times": [
+          6.822,
+          20.467,
+          34.111,
+          47.756,
+          61.4,
+          75.044,
+          88.689,
+          102.333,
+          115.978
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "warning",
+        "time": 6.822,
+        "selector": "#sc-s07-vcam",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 1080,
+          "width": 1920,
+          "height": 1080
+        },
+        "containerSelector": "#root > div:nth-of-type(3)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 900,
+          "width": 1920,
+          "height": 900
+        },
+        "overflow": {
+          "bottom": 180
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "firstSeen": 6.822,
+        "lastSeen": 115.978,
+        "occurrences": 9,
+        "heldMs": 0,
+        "times": [
+          6.822,
+          20.467,
+          34.111,
+          47.756,
+          61.4,
+          75.044,
+          88.689,
+          102.333,
+          115.978
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "warning",
+        "time": 6.822,
+        "selector": "#sc-s09-vcam",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 1080,
+          "width": 1920,
+          "height": 1080
+        },
+        "containerSelector": "#root > div:nth-of-type(4)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 900,
+          "width": 1920,
+          "height": 900
+        },
+        "overflow": {
+          "bottom": 180
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "firstSeen": 6.822,
+        "lastSeen": 115.978,
+        "occurrences": 9,
+        "heldMs": 0,
+        "times": [
+          6.822,
+          20.467,
+          34.111,
+          47.756,
+          61.4,
+          75.044,
+          88.689,
+          102.333,
+          115.978
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 88.689,
+        "selector": "#sc-s11-cam",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": -487.65,
+          "top": -454.3,
+          "right": 1920.03,
+          "bottom": 900.02,
+          "width": 2407.68,
+          "height": 1354.32
+        },
+        "containerSelector": "#sc-s11 > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 900,
+          "width": 1920,
+          "height": 900
+        },
+        "overflow": {
+          "left": 487.65,
+          "top": 454.3
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": -487.65,
+          "y": -454.3,
+          "width": 2407.68,
+          "height": 1354.32
+        },
+        "firstSeen": 88.689,
+        "lastSeen": 88.689,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          88.689
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 102.333,
+        "selector": "#sc-s12-cam",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": -498,
+          "top": -495,
+          "right": 2094,
+          "bottom": 963,
+          "width": 2592,
+          "height": 1458
+        },
+        "containerSelector": "#sc-s12 > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1920,
+          "bottom": 900,
+          "width": 1920,
+          "height": 900
+        },
+        "overflow": {
+          "left": 498,
+          "right": 174,
+          "top": 495,
+          "bottom": 63
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": -498,
+          "y": -495,
+          "width": 2592,
+          "height": 1458
+        },
+        "firstSeen": 102.333,
+        "lastSeen": 102.333,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          102.333
+        ]
+      }
+    ],
+    "duration": 122.8,
+    "samples": [
+      6.822,
+      20.467,
+      34.111,
+      47.756,
+      61.4,
+      75.044,
+      88.689,
+      102.333,
+      115.978
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 5,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      6.822,
+      34.111,
+      61.4,
+      88.689,
+      115.978
+    ],
+    "checked": 27,
+    "passed": 27
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}

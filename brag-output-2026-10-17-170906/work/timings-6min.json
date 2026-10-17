@@ -1,0 +1,460 @@
+{
+ "total": 343.296,
+ "scenes": [
+  {
+   "id": "s01",
+   "chapter": "Um acordo que não chegou à cobrança",
+   "start": 0.0,
+   "duration": 15.347,
+   "lines": [
+    {
+     "start": 0.6,
+     "end": 3.672,
+     "text": "R$ 15.397,42."
+    },
+    {
+     "start": 4.022,
+     "end": 9.611,
+     "text": "É o valor das divergências da Casa do Estudante em setembro, em 118 operações."
+    },
+    {
+     "start": 9.961,
+     "end": 14.847,
+     "text": "A Casa tinha isenção de MDR e de antecipação. A Orbe continuou cobrando."
+    }
+   ]
+  },
+  {
+   "id": "s02",
+   "chapter": null,
+   "start": 15.347,
+   "duration": 15.537,
+   "lines": [
+    {
+     "start": 15.647,
+     "end": 20.127,
+     "text": "Veja uma venda só, de R$ 608,88."
+    },
+    {
+     "start": 20.477,
+     "end": 25.597,
+     "text": "A Orbe aplicou 2,69%. O contrato vigente diz 0%."
+    },
+    {
+     "start": 25.947,
+     "end": 30.384,
+     "text": "A diferença calculada é de R$ 16,38."
+    }
+   ]
+  },
+  {
+   "id": "s03",
+   "chapter": null,
+   "start": 30.884,
+   "duration": 12.358,
+   "lines": [
+    {
+     "start": 31.184,
+     "end": 37.456,
+     "text": "O erro não estava na conta. O acordo existia na planilha de taxas, mas não chegou à cobrança da adquirente."
+    },
+    {
+     "start": 37.806,
+     "end": 42.542,
+     "text": "Para perceber, alguém precisa ligar contrato, vigência e operação, linha por linha."
+    }
+   ]
+  },
+  {
+   "id": "s04",
+   "chapter": "O que a analista ganha",
+   "start": 43.242,
+   "duration": 17.079,
+   "lines": [
+    {
+     "start": 43.642,
+     "end": 51.685,
+     "text": "Hoje essa ligação depende de fontes separadas: Orbe, planilha de taxas, Ponte Câmbio por e-mail, extratos e o plano de contas do Fênix."
+    },
+    {
+     "start": 52.035,
+     "end": 59.821,
+     "text": "E há estornos, duplicidades, operações liquidadas no mês seguinte, cadastros sem contrato e entradas no banco que não são receita."
+    }
+   ]
+  },
+  {
+   "id": "s05",
+   "chapter": null,
+   "start": 60.321,
+   "duration": 11.561,
+   "lines": [
+    {
+     "start": 60.621,
+     "end": 67.171,
+     "text": "A plataforma lê esses arquivos nos formatos conhecidos e organiza o fechamento em passos que a analista acompanha."
+    },
+    {
+     "start": 67.521,
+     "end": 71.382,
+     "text": "No fim, ela para antes do ERP e espera uma pessoa."
+    }
+   ]
+  },
+  {
+   "id": "s06",
+   "chapter": null,
+   "start": 71.882,
+   "duration": 21.675,
+   "lines": [
+    {
+     "start": 72.182,
+     "end": 75.787,
+     "text": "Em setembro, são duas medidas diferentes, que não se somam."
+    },
+    {
+     "start": 76.137,
+     "end": 83.22,
+     "text": "R$ 246.588,68 de faturamento proposto, em 21 notas a preparar."
+    },
+    {
+     "start": 83.57,
+     "end": 92.957,
+     "text": "E R$ 22.173,57 em 237 divergências de taxa, em valor absoluto. Não é perda: é o que merece conferência."
+    }
+   ]
+  },
+  {
+   "id": "s07",
+   "chapter": null,
+   "start": 93.557,
+   "duration": 8.757,
+   "lines": [
+    {
+     "start": 93.857,
+     "end": 101.814,
+     "text": "Para cada valor, a analista vê a origem, a regra e quem decide. Aqui, a sugestão é contestar a diferença. Quem contesta é o financeiro."
+    }
+   ]
+  },
+  {
+   "id": "s08",
+   "chapter": null,
+   "start": 102.314,
+   "duration": 11.618,
+   "lines": [
+    {
+     "start": 102.614,
+     "end": 107.606,
+     "text": "No banco, uma devolução de repasse de R$ 12.400,00 voltou para a conta."
+    },
+    {
+     "start": 107.956,
+     "end": 113.332,
+     "text": "O motivo ainda depende de confirmação, e a pendência fica com operações e tesouraria."
+    }
+   ]
+  },
+  {
+   "id": "s09",
+   "chapter": "Receita na competência correta",
+   "start": 113.932,
+   "duration": 11.767,
+   "lines": [
+    {
+     "start": 114.332,
+     "end": 117.745,
+     "text": "Agora, um erro que uma leitura rápida dos relatórios provoca."
+    },
+    {
+     "start": 118.095,
+     "end": 125.199,
+     "text": "Seis remessas foram contratadas em 30/09 e liquidadas em 01/10. Elas pertencem a setembro."
+    }
+   ]
+  },
+  {
+   "id": "s10",
+   "chapter": null,
+   "start": 125.699,
+   "duration": 15.551,
+   "lines": [
+    {
+     "start": 125.999,
+     "end": 134.341,
+     "text": "Se usássemos a data de liquidação, R$ 1.039,37 de comissão ficariam fora do faturamento de setembro."
+    },
+    {
+     "start": 134.691,
+     "end": 140.451,
+     "text": "A plataforma usa a data de contratação, e o filtro mostra exatamente essas seis operações."
+    }
+   ]
+  },
+  {
+   "id": "s11",
+   "chapter": "Cenário de teste — outubro/2026",
+   "start": 141.251,
+   "duration": 12.543,
+   "lines": [
+    {
+     "start": 141.751,
+     "end": 148.705,
+     "text": "Agora, outubro. Este é um cenário de teste, um pacote sintético criado para ver se a solução funciona num mês novo."
+    },
+    {
+     "start": 149.055,
+     "end": 153.194,
+     "text": "Nele, a Orbe já aplica a isenção da Casa. Os problemas são outros."
+    }
+   ]
+  },
+  {
+   "id": "s12",
+   "chapter": null,
+   "start": 153.794,
+   "duration": 8.958,
+   "lines": [
+    {
+     "start": 154.094,
+     "end": 158.147,
+     "text": "A analista escolhe outubro, usa o pacote do mês e roda o fechamento."
+    },
+    {
+     "start": 158.497,
+     "end": 162.252,
+     "text": "Os passos acendem um a um, e a execução para na aprovação humana."
+    }
+   ]
+  },
+  {
+   "id": "s13",
+   "chapter": null,
+   "start": 162.752,
+   "duration": 13.417,
+   "lines": [
+    {
+     "start": 163.052,
+     "end": 168.151,
+     "text": "Primeiro, ela confere as entradas: o que foi recebido, o que é válido e o que tem problema."
+    },
+    {
+     "start": 168.501,
+     "end": 175.669,
+     "text": "Uma linha do extrato tem um número ilegível, e a Orbe tem operações duplicadas e conflitantes. Nada some em silêncio."
+    }
+   ]
+  },
+  {
+   "id": "s14",
+   "chapter": null,
+   "start": 176.169,
+   "duration": 19.228,
+   "lines": [
+    {
+     "start": 176.469,
+     "end": 182.335,
+     "text": "A Vela ganhou uma taxa nova sem encerrar a anterior: dois contratos para a mesma modalidade e data."
+    },
+    {
+     "start": 182.685,
+     "end": 189.619,
+     "text": "A plataforma não escolhe um deles. As 22 operações ficam sem faturamento, e a decisão vai para o Comercial."
+    },
+    {
+     "start": 189.969,
+     "end": 194.897,
+     "text": "O pacote também traz uma mudança de taxa da EduAbroad em 16/10."
+    }
+   ]
+  },
+  {
+   "id": "s15",
+   "chapter": null,
+   "start": 195.397,
+   "duration": 4.683,
+   "lines": [
+    {
+     "start": 195.697,
+     "end": 199.579,
+     "text": "A analista registra a decisão, com justificativa e com o seu nome."
+    }
+   ]
+  },
+  {
+   "id": "s16",
+   "chapter": null,
+   "start": 200.079,
+   "duration": 11.283,
+   "lines": [
+    {
+     "start": 200.379,
+     "end": 205.798,
+     "text": "Mesmo assim, ainda há 63 pendências bloqueantes, e a aprovação continua travada."
+    },
+    {
+     "start": 206.148,
+     "end": 210.863,
+     "text": "O próximo passo é resolver ou encaminhar os bloqueios, não forçar a exportação."
+    }
+   ]
+  },
+  {
+   "id": "s17",
+   "chapter": null,
+   "start": 211.363,
+   "duration": 14.654,
+   "lines": [
+    {
+     "start": 211.663,
+     "end": 217.956,
+     "text": "Para contestar com a Orbe ou a Ponte, a execução prepara uma mensagem com as ocorrências e as evidências."
+    },
+    {
+     "start": 218.306,
+     "end": 225.517,
+     "text": "Nada sai sozinho: o responsável revisa e dá permissão. Nesta gravação, o e-mail não estava conectado, e nada foi enviado."
+    }
+   ]
+  },
+  {
+   "id": "s18",
+   "chapter": null,
+   "start": 226.017,
+   "duration": 5.672,
+   "lines": [
+    {
+     "start": 226.317,
+     "end": 230.989,
+     "text": "Se chegar um complemento, ele gera uma nova execução, e a anterior fica preservada."
+    }
+   ]
+  },
+  {
+   "id": "s19",
+   "chapter": "O papel da IA",
+   "start": 231.689,
+   "duration": 21.461,
+   "lines": [
+    {
+     "start": 232.089,
+     "end": 241.091,
+     "text": "E a inteligência artificial? Ela está num chat de consulta. A analista pergunta, por exemplo: quais lojistas concentram as divergências desta execução?"
+    },
+    {
+     "start": 241.441,
+     "end": 247.223,
+     "text": "O chat só lê os dados, e cada número da resposta vem de uma consulta conferida pelo servidor."
+    },
+    {
+     "start": 247.573,
+     "end": 252.65,
+     "text": "Nesta gravação, o chat não estava configurado, então não mostramos nenhuma resposta."
+    }
+   ]
+  },
+  {
+   "id": "s20",
+   "chapter": null,
+   "start": 253.15,
+   "duration": 15.771,
+   "lines": [
+    {
+     "start": 253.45,
+     "end": 259.722,
+     "text": "A divisão é deliberada. A IA ajuda a consultar. As regras calculam. O financeiro decide e aprova."
+    },
+    {
+     "start": 260.072,
+     "end": 268.221,
+     "text": "A IA não inventa contrato, não escolhe taxa, não altera dados e não aprova nada. E, sem o chat, cálculo e revisão continuam funcionando."
+    }
+   ]
+  },
+  {
+   "id": "s21",
+   "chapter": "Onde a solução para",
+   "start": 268.921,
+   "duration": 14.882,
+   "lines": [
+    {
+     "start": 269.321,
+     "end": 278.367,
+     "text": "E quando falta informação? A Atlas tem 57 registros, R$ 7.876,05, sem contrato vigente confirmado."
+    },
+    {
+     "start": 278.717,
+     "end": 283.303,
+     "text": "Esse valor não comprova receita. Fica fora do faturamento até a confirmação."
+    }
+   ]
+  },
+  {
+   "id": "s22",
+   "chapter": null,
+   "start": 283.803,
+   "duration": 10.549,
+   "lines": [
+    {
+     "start": 284.103,
+     "end": 293.853,
+     "text": "Uma descrição bancária nova fica pendente para a Contabilidade. Uma bloqueante impede aprovar. E um e-mail com resultado incerto não é reenviado automaticamente."
+    }
+   ]
+  },
+  {
+   "id": "s23",
+   "chapter": null,
+   "start": 294.353,
+   "duration": 18.459,
+   "lines": [
+    {
+     "start": 294.653,
+     "end": 305.938,
+     "text": "Há também limites atuais: só formatos conhecidos, saída do Fênix ainda sem homologação, sem emissão de nota fiscal, sem pagamentos e sem conciliação de parcelas com repasses agregados."
+    },
+    {
+     "start": 306.288,
+     "end": 312.112,
+     "text": "O envio real de e-mail depende de conta conectada e ainda não tem entrega externa comprovada."
+    }
+   ]
+  },
+  {
+   "id": "s24",
+   "chapter": "Com mais um mês",
+   "start": 312.812,
+   "duration": 13.602,
+   "lines": [
+    {
+     "start": 313.212,
+     "end": 320.103,
+     "text": "Com mais um mês: um piloto acompanhado pelo financeiro, medindo tempo de revisão, retrabalho e exceções bem tratadas."
+    },
+    {
+     "start": 320.453,
+     "end": 325.914,
+     "text": "A homologação da saída com o Fênix. E o uso em equipe, separando quem prepara de quem aprova."
+    }
+   ]
+  },
+  {
+   "id": "s25",
+   "chapter": null,
+   "start": 326.414,
+   "duration": 16.882,
+   "lines": [
+    {
+     "start": 326.814,
+     "end": 334.835,
+     "text": "Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar, item por item, notas, divergências e pendências."
+    },
+    {
+     "start": 335.185,
+     "end": 340.796,
+     "text": "Cada valor ligado ao contrato certo, à competência certa e à evidência que permite aprová-lo."
+    }
+   ]
+  }
+ ]
+}
