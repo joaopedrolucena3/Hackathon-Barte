@@ -3,7 +3,6 @@ import { motion, useReducedMotion } from 'motion/react';
 import type { Status, StepRun } from '../api/agent';
 import { count, duration, plural } from '../lib/format';
 import { Icon } from './Icon';
-import { TextShimmer } from './motion';
 import { STATUS } from './ui';
 
 export function StepIcon({ status }: { status: Status }) {
@@ -67,7 +66,7 @@ export function StepList({ steps, selected, onSelect, onDetails }: {
               <StepIcon status={step.status} />
               <span className="grow" style={{ minWidth: 0 }}>
                 <span className="step-head">
-                  {step.status === 'running' ? <TextShimmer className="step-title">{step.title}</TextShimmer> : <span className="step-title" title={step.title}>{step.title}</span>}
+                  <span className="step-title" title={step.title}>{step.title}</span>
                   {step.duration_ms !== undefined && step.kind !== 'gate' && step.status !== 'running' && <span className="step-time">{duration(step.duration_ms)}</span>}
                   {step.kind === 'gate' && <Icon name="lock" className="muted" size={13} />}
                 </span>

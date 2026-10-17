@@ -130,8 +130,7 @@ export default function PipelinePage() {
   return (
     <>
       <PageHead
-        eyebrow="Construtor do agente"
-        title={<span className="row" style={{ gap: 12 }}>Pipeline {base.name} <Badge tone={readOnly ? 'neutral' : 'accent'}>v{base.version}{readOnly ? ' · só leitura' : ''}</Badge>{dirty && <Badge tone="warning" dot>Alterações não salvas</Badge>}</span>}
+        title={<span className="row" style={{ gap: 12 }}>Fluxo do agente <Badge tone={readOnly ? 'neutral' : 'outline'}>v{base.version}{readOnly ? ' · só leitura' : ''}</Badge>{dirty && <Badge tone="warning" dot>Alterações não salvas</Badge>}</span>}
         sub={`Monte e ajuste o agente com passos prontos. Salvar cria uma nova versão; runs antigos continuam apontando para a versão que usaram. Última: v${latest.version} por ${latest.author} em ${dateTimeBR(latest.updated_at)}.`}
         actions={<>
           <button className="btn" onClick={() => setModal('versions')}><Icon name="clock" />Versões</button>

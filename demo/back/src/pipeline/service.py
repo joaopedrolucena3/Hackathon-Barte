@@ -889,7 +889,7 @@ class PipelineService:
         period = self._period(competencia)
         with self.lock, self.db:
             template_path = ROOT / 'src' / 'config' / 'checklist.json'
-            template = json.loads(template_path.read_text()) if template_path.exists() else DEFAULT_CHECKLIST
+            template = json.loads(template_path.read_text(encoding="utf-8")) if template_path.exists() else DEFAULT_CHECKLIST
             if isinstance(template, dict): template = template.get('tasks', template.get('tarefas', DEFAULT_CHECKLIST))
             for index, task in enumerate(template):
                 suffix = str(task.get('id', index))

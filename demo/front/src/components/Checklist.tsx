@@ -1,4 +1,4 @@
-// A2: closing checklist grouped by area. Agent tasks follow the run; manual tasks are edited inline.
+// A2: closing checklist as one table grouped by area (FloQast folders). Agent tasks follow the run; manual tasks are edited inline.
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { dateTimeBR, plural } from '../lib/format';
 import { keys } from '../state/queries';
 import { Icon } from './Icon';
 import { useToast } from './Toast';
-import { Badge, StatusBadge } from './ui';
+import { StatusBadge } from './ui';
 
 const AREAS: Area[] = ['Adquirência', 'Bancos', 'Câmbio', 'Comercial', 'Contabilidade'];
 export const isDone = (status: Status) => status === 'done' || status === 'approved';
@@ -15,13 +15,10 @@ const MANUAL: { value: Status; label: string }[] = [
   { value: 'pending', label: 'Pendente' }, { value: 'running', label: 'Em andamento' }, { value: 'done', label: 'Concluído' },
 ];
 
-function ManualControls({ task, comp }: { task: ChecklistTask; comp: string }) {
+function useTaskMutation(task: ChecklistTask, comp: string) {
   const client = useQueryClient();
   const toast = useToast();
-  const [comment, setComment] = useState(task.comment || '');
-  const [owner, setOwner] = useState(task.owner || '');
-  const [editing, setEditing] = useState(false);
-  const mutation = useMutation({
+  return useMutation({
     mutationFn: (patch: Partial<ChecklistTask>) => agent.updateChecklistTask(task.id, patch),
     onMutate: async patch => {
       await client.cancelQueries({ queryKey: keys.checklist(comp) });
@@ -32,57 +29,53 @@ function ManualControls({ task, comp }: { task: ChecklistTask; comp: string }) {
     onError: (error, _patch, context) => { client.setQueryData(keys.checklist(comp), context?.previous); toast.error(error); },
     onSettled: () => client.invalidateQueries({ queryKey: keys.checklist(comp) }),
   });
-  return (
-    <div className="row wrap" style={{ gap: 6 }}>
-      <select className="select sm" style={{ width: 150 }} value={task.status} aria-label={`Situação de ${task.title}`}
-        onChange={event => mutation.mutate({ status: event.target.value as Status })}>
-        {MANUAL.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-      <input className="input sm" style={{ width: 160 }} value={owner} onChange={event => setOwner(event.target.value)}
-        aria-label={`Responsável por ${task.title}`} placeholder="Responsável" maxLength={160}
-        onBlur={() => { if (owner !== task.owner) mutation.mutate({ owner }); }} />
-      {editing ? (
-        <form className="row" style={{ gap: 6 }} onSubmit={event => { event.preventDefault(); mutation.mutate({ comment }); setEditing(false); }}>
-          <input className="input sm" autoFocus value={comment} onChange={event => setComment(event.target.value)} placeholder="Comentário" style={{ width: 220 }} />
-          <button className="btn xs primary" type="submit">Salvar</button>
-        </form>
-      ) : (
-        <button type="button" className="btn xs ghost" onClick={() => setEditing(true)}><Icon name="edit" />{task.comment ? 'Editar comentário' : 'Comentar'}</button>
-      )}
-    </div>
-  );
 }
 
 function TaskRow({ task, comp }: { task: ChecklistTask; comp: string }) {
+  const mutation = useTaskMutation(task, comp);
+  const [owner, setOwner] = useState(task.owner || '');
+  const [comment, setComment] = useState(task.comment || '');
+  const [editing, setEditing] = useState(false);
+  const manual = task.kind === 'manual';
   const runLink = task.run_id ? `/runs/${task.run_id}${task.step_id ? `?step=${task.step_id}` : ''}` : null;
   return (
-    <div className="task-row">
-      <div className="task-status">
-        <StatusBadge status={task.status} label={task.kind === 'manual' && task.status === 'running' ? 'Em andamento' : undefined} />
-      </div>
-      <div className="grow">
-        <div className="row wrap" style={{ gap: 8 }}>
+    <div className="task-row" role="row">
+      <div className="task-cell task-main" role="cell">
+        <span className="row" style={{ gap: 8 }}>
           {runLink ? <Link to={runLink} className="task-title link-plain">{task.title}</Link> : <span className="task-title">{task.title}</span>}
-          <Badge tone={task.kind === 'agent' ? 'info' : 'outline'}>{task.kind === 'agent' ? 'Agente' : 'Manual'}</Badge>
-        </div>
-        <p className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-          {task.kind === 'agent' ? `Revisor: ${task.reviewer || 'a definir'}` : `Responsável: ${task.owner || 'a definir'}`}
-          {task.updated_at && ` · atualizado ${dateTimeBR(task.updated_at)}`}
-          {task.updated_by && ` por ${task.updated_by}`}
-          {task.comment && <> · <span className="text-2">“{task.comment}”</span></>}
-        </p>
+          <span className={`task-kind ${task.kind}`} title={manual ? 'Tarefa manual' : 'Executada pelo agente'}>{manual ? 'Manual' : 'Agente'}</span>
+        </span>
+        {editing ? (
+          <form className="row" style={{ gap: 6, marginTop: 4 }} onSubmit={event => { event.preventDefault(); mutation.mutate({ comment }); setEditing(false); }}>
+            <input className="input sm" autoFocus value={comment} onChange={event => setComment(event.target.value)} placeholder="Comentário" style={{ maxWidth: 320 }} />
+            <button className="btn xs primary" type="submit">Salvar</button>
+            <button className="btn xs ghost" type="button" onClick={() => setEditing(false)}>Cancelar</button>
+          </form>
+        ) : task.comment && <span className="task-note">“{task.comment}”</span>}
       </div>
-      <div className="row" style={{ gap: 8 }}>
-        {task.kind === 'manual' ? <ManualControls task={task} comp={comp} /> : (
-          <>
-            {!!task.exceptions && task.run_id && (
-              <Link className="btn xs" to={`/runs/${task.run_id}/revisao?passo=${task.step_types?.join(',')}`}>
-                <Icon name="alert" />{plural(task.exceptions, 'exceção', 'exceções')}
-              </Link>
-            )}
-            {runLink && <Link className="icon-btn" to={runLink} aria-label={`Abrir ${task.title} no run`}><Icon name="chevronRight" /></Link>}
-          </>
+      <div className="task-cell" role="cell">
+        {manual ? (
+          <input className="inline-input" value={owner} onChange={event => setOwner(event.target.value)} aria-label={`Responsável por ${task.title}`}
+            placeholder="A definir" maxLength={160} onBlur={() => { if (owner !== task.owner) mutation.mutate({ owner }); }} />
+        ) : <span className="text-2">{task.owner || 'Agente'}</span>}
+      </div>
+      <div className="task-cell text-2" role="cell">{task.reviewer || <span className="muted">—</span>}</div>
+      <div className="task-cell muted num" role="cell" title={task.updated_by ? `por ${task.updated_by}` : undefined}>{task.updated_at ? dateTimeBR(task.updated_at) : '—'}</div>
+      <div className="task-cell" role="cell">
+        {manual ? (
+          <select className="select sm" value={task.status} aria-label={`Situação de ${task.title}`} onChange={event => mutation.mutate({ status: event.target.value as Status })}>
+            {MANUAL.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        ) : <StatusBadge status={task.status} />}
+      </div>
+      <div className="task-cell task-actions" role="cell">
+        {manual && !editing && (
+          <button type="button" className="icon-btn" onClick={() => setEditing(true)} aria-label={task.comment ? 'Editar comentário' : 'Comentar'} title={task.comment ? 'Editar comentário' : 'Comentar'}><Icon name="edit" /></button>
         )}
+        {!!task.exceptions && task.run_id && (
+          <Link className="btn xs" to={`/runs/${task.run_id}/revisao?passo=${task.step_types?.join(',')}`}>{plural(task.exceptions, 'exceção', 'exceções')}</Link>
+        )}
+        {runLink && <Link className="icon-btn" to={runLink} aria-label={`Abrir ${task.title} no run`}><Icon name="chevronRight" /></Link>}
       </div>
     </div>
   );
@@ -91,21 +84,30 @@ function TaskRow({ task, comp }: { task: ChecklistTask; comp: string }) {
 export function Checklist({ tasks, comp }: { tasks: ChecklistTask[]; comp: string }) {
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   return (
-    <div className="stack" style={{ gap: 10 }}>
+    <div className="card checklist" role="table" aria-label="Checklist do fechamento">
+      <div className="task-row task-header" role="row">
+        <span role="columnheader">Tarefa</span>
+        <span role="columnheader">Responsável</span>
+        <span role="columnheader">Revisor</span>
+        <span role="columnheader">Atualizado</span>
+        <span role="columnheader">Status</span>
+        <span role="columnheader" className="sr-only">Ações</span>
+      </div>
       {AREAS.map(area => {
         const list = tasks.filter(task => task.area === area);
         if (!list.length) return null;
         const done = list.filter(task => isDone(task.status)).length;
         const open = !closed[area];
         return (
-          <section key={area} className="card">
+          <div key={area} role="rowgroup">
             <button type="button" className="checklist-head" aria-expanded={open} onClick={() => setClosed(state => ({ ...state, [area]: open }))}>
               <Icon name="chevronDown" className={open ? '' : 'rot'} />
-              <span className="grow" style={{ textAlign: 'left' }}>{area}</span>
-              <span className="count num">{done}/{list.length}</span>
+              <span>{area}</span>
+              <span className="muted num">{done} de {list.length}</span>
+              {done === list.length && <Icon name="check" className="checklist-done" />}
             </button>
-            {open && <div>{list.map(task => <TaskRow key={task.id} task={task} comp={comp} />)}</div>}
-          </section>
+            {open && list.map(task => <TaskRow key={task.id} task={task} comp={comp} />)}
+          </div>
         );
       })}
     </div>

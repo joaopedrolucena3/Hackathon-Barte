@@ -107,14 +107,16 @@ export const httpAgent: AgentApi = {
 
   subscribeRun(id, onEvent, onReconnect) {
     let source: EventSource | null = null, closed = false, dropped = false, retry = 1000, cursor = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined, reloadTimer: ReturnType<typeof setTimeout> | undefined;
+    // A replay can carry hundreds of events the adapter does not map (e.g. exception_decided); reload the state once per burst.
+    const reload = () => { clearTimeout(reloadTimer); reloadTimer = setTimeout(() => { if (!closed) onReconnect?.(); }, 300); };
     const types = ['step_started', 'step_progress', 'step_finished', 'awaiting_approval', 'run_finished', 'run_started', 'export_started', 'exception_decided', 'approval_decided'];
     const connect = () => {
       if (closed) return;
       source = new EventSource(`${runPath(id)}/events?after=${cursor}`);
       source.onopen = () => {
         retry = 1000;
-        if (dropped) { dropped = false; onReconnect?.(); }
+        if (dropped) { dropped = false; clearTimeout(reloadTimer); onReconnect?.(); }
       };
       for (const type of types) {
         source.addEventListener(type, message => {
@@ -125,7 +127,7 @@ export const httpAgent: AgentApi = {
             cursor = Math.max(cursor, sequence);
             const event = adaptRunEvent({ ...raw, type });
             if (event) onEvent(event);
-            else onReconnect?.();
+            else reload();
             if (event?.type === 'run_finished') {
               closed = true;
               clearTimeout(timer);
@@ -133,7 +135,7 @@ export const httpAgent: AgentApi = {
             }
           } catch {
             // Reload the consolidated state if an event cannot be decoded.
-            onReconnect?.();
+            reload();
           }
         });
       }
@@ -146,7 +148,7 @@ export const httpAgent: AgentApi = {
       };
     };
     connect();
-    return () => { closed = true; clearTimeout(timer); source?.close(); };
+    return () => { closed = true; clearTimeout(timer); clearTimeout(reloadTimer); source?.close(); };
   },
   async getPreview(runId, stepId, query) {
     const run = await getRun(runId);

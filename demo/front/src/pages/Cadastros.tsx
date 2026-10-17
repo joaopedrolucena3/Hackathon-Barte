@@ -222,7 +222,7 @@ function Lojistas({ state }: { state: AppState }) {
         <div className="master-head">
           <label className="search"><Icon name="search" /><input className="input sm" type="search" placeholder="Buscar lojista, CNPJ ou EC" value={term} onChange={event => setTerm(event.target.value)} /></label>
           <Segmented value={filter} onChange={setFilter} label="Filtro" options={[{ value: 'all', label: 'Todos' }, { value: 'candidate', label: 'A confirmar' }, { value: 'inactive', label: 'Inativos' }]} />
-          <button className="btn sm primary" onClick={() => setParams({ novo: '1' })}><Icon name="plus" />Novo lojista</button>
+          <button className="btn sm" onClick={() => setParams({ novo: '1' })}><Icon name="plus" />Novo lojista</button>
         </div>
         <div className="master-list" role="listbox" aria-label="Lojistas">
           {visible.map(item => {
@@ -314,7 +314,7 @@ export default function Cadastros() {
   const candidates = state.merchants.filter(item => item.candidate).length;
   return (
     <>
-      <PageHead eyebrow="Base de referência" title="Cadastros" sub="Lojistas, taxas com vigência, contatos e prazos. Toda alteração pede uma justificativa curta e fica na auditoria." />
+      <PageHead title="Cadastros" sub="Lojistas, taxas com vigência, contatos e prazos. Toda alteração pede uma justificativa curta e fica na auditoria." />
       <Tabs<Tab> value={tab} onChange={value => setParams({ aba: value })} items={[
         { value: 'lojistas', label: 'Lojistas e taxas', count: state.merchants.length, icon: 'building' },
         { value: 'contatos', label: 'Contatos', count: state.contacts.length, icon: 'user' },

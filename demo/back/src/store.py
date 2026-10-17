@@ -213,7 +213,7 @@ class Store:
             summary=result.get('summary',{})
             summary.update(open_issues=sum(p['status']!='resolved' for p in result['pendencias']),resolved_issues=sum(p['status']=='resolved' for p in result['pendencias']),blocking_issues=sum(p['status']!='resolved' and p.get('severity')=='bloqueante' for p in result['pendencias']))
             assumptions_path=ROOT/'docs'/'assumptions.json'
-            assumptions=json.loads(assumptions_path.read_text()) if assumptions_path.exists() else []
+            assumptions=json.loads(assumptions_path.read_text(encoding="utf-8")) if assumptions_path.exists() else []
             audit=[{**dict(r),'detail':json.loads(r['detail'])} for r in self.db.execute('SELECT * FROM audit ORDER BY id DESC LIMIT 1000')]
             return {'period':self.get('period'),'closing':self.get('closing'),'summary':summary,'results':result,'merchants':self.records('merchants'),'rates':self.records('rates'),'accounts':self.get('source_data',{}).get('accounts',[]),'parameters':self.get('parameters'),'contacts':self.records('contacts'),'notifications':self.records('notifications'),'emails':self.records('emails'),'audit':audit,'sources':self.get('source_data',{}).get('sources',[]),'source_dir':self.get('source_dir'),'assumptions':assumptions,'validation':self._validation(result)}
 

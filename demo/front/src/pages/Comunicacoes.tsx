@@ -34,7 +34,6 @@ export default function Comunicacoes() {
   return (
     <>
       <PageHead
-        eyebrow="Comunicação com controle"
         title="Comunicações"
         sub="Mensagens de pendências pelo Gmail, cobranças simuladas e avisos internos, com revisão e histórico."
         actions={<>

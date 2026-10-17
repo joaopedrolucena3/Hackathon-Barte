@@ -10,7 +10,7 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Overlay';
 import { TopbarSlot } from '../components/TopbarSlot';
 import { TraceView } from '../components/TraceView';
-import { Badge, Callout, DateBR, Empty, Loading, Money, OriginButton, PageHead, ReasonInput, Segmented } from '../components/ui';
+import { Badge, Callout, DateBR, Empty, Loading, Money, OriginButton, PageHead, ReasonInput, Segmented, Tabs } from '../components/ui';
 import { cnpj, count, moneyShort, periodShort, plural, readable } from '../lib/format';
 import { keys, lastComp, useAppState, useInsights, useRuns } from '../state/queries';
 import { useAction } from '../state/useAction';
@@ -34,36 +34,29 @@ function Stepper({ step, label, tone }: { step: number; label: string; tone: str
   );
 }
 
-function InvoiceCard({ nota, email, onOpen, onDraft, onTrace, busy }: {
+/** One invoice per row: who, how much, what for, where the charge stands and its one next action. */
+function InvoiceRow({ nota, email, onOpen, onDraft, onTrace, busy }: {
   nota: Nota; email?: Email; onOpen: (id: string) => void; onDraft: () => void; onTrace: () => void; busy: boolean;
 }) {
   const stage = emailStage(email);
   const remessa = nota.linha_negocio === 'REMESSA';
   let action;
-  if (!email || email.stale) action = <button className="btn sm primary" disabled={busy} onClick={onDraft}><Icon name="mail" />{email?.stale ? 'Gerar novo rascunho' : 'Preparar cobrança'}</button>;
-  else if (stage.step === 3) action = <button className="btn sm" onClick={() => onOpen(email.id)}><Icon name="eye" />Ver registro</button>;
-  else if (stage.step === 2) action = <button className="btn sm primary" onClick={() => onOpen(email.id)}><Icon name="send" />Simular envio</button>;
-  else action = <button className="btn sm dark" onClick={() => onOpen(email.id)}><Icon name="edit" />Revisar cobrança</button>;
+  if (!email || email.stale) action = <button className="btn xs" disabled={busy} onClick={onDraft}><Icon name="mail" />{email?.stale ? 'Gerar novo rascunho' : 'Preparar cobrança'}</button>;
+  else if (stage.step === 3) action = <button className="btn xs ghost" onClick={() => onOpen(email.id)}><Icon name="eye" />Ver registro</button>;
+  else if (stage.step === 2) action = <button className="btn xs primary" onClick={() => onOpen(email.id)}><Icon name="send" />Simular envio</button>;
+  else action = <button className="btn xs" onClick={() => onOpen(email.id)}><Icon name="edit" />Revisar cobrança</button>;
   return (
-    <article className="card invoice-card">
-      <div className="row between" style={{ alignItems: 'flex-start' }}>
-        <div style={{ minWidth: 0 }}>
-          <h3 className="invoice-name" title={nota.tomador}>{nota.tomador}</h3>
-          <p className="mono muted">{cnpj(nota.tomador_cnpj)}</p>
-        </div>
-        <Badge tone={remessa ? 'gate' : 'info'}>{remessa ? 'Remessa' : 'Checkout'}</Badge>
-      </div>
-      <div className="row" style={{ gap: 6, alignItems: 'baseline' }}>
-        <span className="invoice-value"><Money value={nota.valor_brl} /></span>
-        <OriginButton onClick={onTrace} label="Ver composição da nota" />
-      </div>
-      <p className="invoice-desc" title={nota.discriminacao}>{nota.discriminacao}</p>
-      <Stepper step={stage.step} label={stage.label} tone={stage.tone} />
-      <div className="row between">
-        {action}
-        {email?.to && <span className="muted nowrap" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis' }}>{email.to}</span>}
-      </div>
-    </article>
+    <tr>
+      <td className="wrap" style={{ minWidth: 200 }}>
+        <span className="strong" title={nota.tomador}>{nota.tomador}</span>
+        <span className="mono muted cell-sub">{cnpj(nota.tomador_cnpj)}</span>
+      </td>
+      <td><Badge tone={remessa ? 'gate' : 'info'}>{remessa ? 'Remessa' : 'Checkout'}</Badge></td>
+      <td className="r"><span className="row" style={{ gap: 4, justifyContent: 'flex-end' }}><span className="strong"><Money value={nota.valor_brl} /></span><OriginButton onClick={onTrace} label="Ver composição da nota" /></span></td>
+      <td className="wrap"><span className="invoice-desc" title={nota.discriminacao}>{nota.discriminacao}</span></td>
+      <td><Stepper step={stage.step} label={stage.label} tone={stage.tone} />{email?.to && <span className="muted cell-sub">{email.to}</span>}</td>
+      <td className="r">{action}</td>
+    </tr>
   );
 }
 
@@ -86,14 +79,14 @@ function NotasTab({ state, onTrace }: { state: AppState; onTrace: (id: string, t
   };
   return (
     <div className="stack-lg">
-      <div className="card">
-        <div className="card-head"><div><h3 className="card-title">Faturamento por tomador</h3><p className="card-sub">Notas propostas · clique para ver a composição</p></div></div>
+      <details className="card collapsible">
+        <summary className="card-head"><div><h3 className="card-title">Faturamento por tomador</h3><p className="card-sub">Maiores notas propostas · clique numa barra para ver a composição</p></div><Icon name="chevronDown" className="collapse-icon" /></summary>
         <div className="card-body">
           <HBarChart ariaLabel="Valor das notas por tomador" labelWidth={230}
             data={notas.slice(0, 8).map(nota => ({ key: nota.id_saida, label: nota.tomador, value: Number(nota.valor_brl), display: moneyShort(nota.valor_brl), sub: nota.linha_negocio === 'REMESSA' ? 'remessa' : undefined }))}
             onSelect={key => { const nota = notas.find(item => item.id_saida === key); if (nota) onTrace(nota.id_saida, nota.tomador); }} />
         </div>
-      </div>
+      </details>
       <div className="filter-bar">
         <label className="search" style={{ maxWidth: 320 }}><Icon name="search" /><input className="input" type="search" placeholder="Buscar tomador ou CNPJ" value={term} onChange={event => setTerm(event.target.value)} /></label>
         <Segmented value={line} onChange={setLine} label="Linha" options={[{ value: 'ALL', label: 'Todas' }, { value: 'CHECKOUT', label: 'Checkout' }, { value: 'REMESSA', label: 'Remessa' }]} />
@@ -101,12 +94,17 @@ function NotasTab({ state, onTrace }: { state: AppState; onTrace: (id: string, t
           options={[{ value: 'all', label: 'Todas as etapas' }, ...STAGES.map((label, index) => ({ value: String(index), label }))]} />
       </div>
       {list.length ? (
-        <div className="invoice-grid">
-          {list.map(nota => {
-            const email = latestBilling(state.emails, nota.id_saida);
-            return <InvoiceCard key={nota.id_saida} nota={nota} email={email} busy={busy === nota.id_saida}
-              onOpen={id => setEditing({ id, cnpj: nota.tomador_cnpj })} onDraft={() => draft(nota)} onTrace={() => onTrace(nota.id_saida, nota.tomador)} />;
-          })}
+        <div className="card table-wrap">
+          <table className="table">
+            <thead><tr><th>Tomador</th><th>Linha</th><th className="r">Valor</th><th>Discriminação</th><th>Cobrança</th><th className="r"><span className="sr-only">Ação</span></th></tr></thead>
+            <tbody>
+              {list.map(nota => {
+                const email = latestBilling(state.emails, nota.id_saida);
+                return <InvoiceRow key={nota.id_saida} nota={nota} email={email} busy={busy === nota.id_saida}
+                  onOpen={id => setEditing({ id, cnpj: nota.tomador_cnpj })} onDraft={() => draft(nota)} onTrace={() => onTrace(nota.id_saida, nota.tomador)} />;
+              })}
+            </tbody>
+          </table>
         </div>
       ) : <div className="card"><Empty icon="search" title="Nenhuma nota com esses filtros" /></div>}
       {editing && <EmailEditor emailId={editing.id} cnpj={editing.cnpj} onClose={() => setEditing(null)} />}
@@ -281,8 +279,8 @@ export default function NotasBancos() {
   return (
     <>
       <TopbarSlot><Icon name="calendar" /><span>Competência <strong>{periodShort(lastComp(state.period))}</strong></span></TopbarSlot>
-      <PageHead eyebrow="Faturamento e caixa" title="Notas e bancos" sub="Da nota proposta à cobrança aprovada e ao lançamento classificado no banco. Todo envio é simulado." />
-      <div className="grid grid-3" style={{ marginBottom: 18 }}>
+      <PageHead title="Notas e bancos" sub="Da nota proposta à cobrança aprovada e ao lançamento classificado no banco. Todo envio é simulado." />
+      <div className="kpi-strip kpi-strip-3" style={{ marginBottom: 16 }}>
         <button className={`kpi ${tab === 'notas' ? 'selected' : ''}`} onClick={() => setParams({ aba: 'notas' })}>
           <span className="kpi-label">Notas propostas <Icon name="invoice" /></span>
           <span className="kpi-value"><Money value={state.summary.notas_brl} /></span>
@@ -290,7 +288,7 @@ export default function NotasBancos() {
         </button>
         <button className={`kpi ${tab === 'notas' ? 'selected' : ''}`} onClick={() => setParams({ aba: 'notas' })}>
           <span className="kpi-label">Cobranças <Icon name="mail" /></span>
-          <span className="kpi-value num">{sent}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {notes.length} enviadas</small></span>
+          <span className="kpi-value num">{sent}<small> de {notes.length} enviadas</small></span>
           <div className="meter" aria-label={`${sent} enviadas, ${approved} aprovadas, ${drafts} em rascunho`}>
             <span style={{ flexGrow: sent, background: 'var(--st-good)' }} /><span style={{ flexGrow: approved, background: 'var(--st-info)' }} />
             <span style={{ flexGrow: drafts, background: 'var(--accent)' }} /><span style={{ flexGrow: notes.length - sent - approved - drafts, background: 'var(--surface-3)' }} />
@@ -299,14 +297,12 @@ export default function NotasBancos() {
         </button>
         <button className={`kpi ${tab === 'bancos' ? 'selected' : ''} ${bankIssues ? 'attention' : ''}`} onClick={() => setParams({ aba: 'bancos' })}>
           <span className="kpi-label">Bancos <Icon name="bank" /></span>
-          <span className="kpi-value num">{count(state.results.lancamentos.length)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> lançamentos</small></span>
+          <span className="kpi-value num">{count(state.results.lancamentos.length)}<small> lançamentos</small></span>
           <span className="kpi-detail">{plural(banks, 'conta', 'contas')} · {bankIssues ? `${plural(bankIssues, 'item precisa', 'itens precisam')} de você` : 'tudo classificado'}</span>
         </button>
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <Segmented<Tab> size="lg" value={tab} onChange={value => setParams({ aba: value })} label="Seção"
-          options={[{ value: 'notas', label: <><Icon name="invoice" />Notas e cobranças</> }, { value: 'bancos', label: <><Icon name="bank" />Bancos</> }]} />
-      </div>
+      <Tabs<Tab> value={tab} onChange={value => setParams({ aba: value })}
+        items={[{ value: 'notas', label: 'Notas e cobranças', icon: 'invoice', count: notes.length }, { value: 'bancos', label: 'Bancos', icon: 'bank', count: state.results.lancamentos.length }]} />
       {tab === 'notas' ? <NotasTab state={state} onTrace={(id, title) => setTrace({ id, title })} /> : <BancosTab state={state} onTrace={(id, title) => setTrace({ id, title })} />}
       <div style={{ marginTop: 18 }}><Callout tone="info">Notas são propostas de emissão, sem integração com NFS-e. Cobranças só saem depois de aprovadas, e o envio é simulado.</Callout></div>
       {trace && <Sheet eyebrow="Origem" title={trace.title} onClose={() => setTrace(null)}><TraceView id={trace.id} /></Sheet>}

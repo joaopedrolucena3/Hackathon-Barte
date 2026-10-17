@@ -16,14 +16,14 @@ function Home() {
   return data ? <Navigate to={`/competencias/${lastComp(data.period)}`} replace /> : <Loading page label="Preparando o fechamento…" />;
 }
 
-/** "Execução" in the nav opens the latest run of the competência in focus. */
-function LatestRun() {
+/** "Execuções" and "Revisão" in the nav open the latest run of the competência in focus. */
+function LatestRun({ section = '' }: { section?: string }) {
   const { data: state } = useAppState();
   const comp = state ? lastComp(state.period) : '';
   const { data: runs, isLoading } = useRuns(comp);
   if (!state || isLoading) return <Loading page />;
   const latest = runs?.find(run => !run.draft) || runs?.[0];
-  if (latest) return <Navigate to={`/runs/${latest.id}`} replace />;
+  if (latest) return <Navigate to={`/runs/${latest.id}${section}`} replace />;
   return <Navigate to={`/competencias/${comp}?sem-run=1`} replace />;
 }
 
@@ -51,6 +51,7 @@ export function App() {
           <Route path="/" element={<Home />} />
           <Route path="/competencias/:comp" element={<Fechamento />} />
           <Route path="/runs" element={<LatestRun />} />
+          <Route path="/revisao" element={<LatestRun section="/revisao" />} />
           <Route path="/runs/:runId" element={<RunPage tab="passos" />} />
           <Route path="/runs/:runId/revisao" element={<RunPage tab="revisao" />} />
           <Route path="/runs/:runId/auditoria" element={<RunPage tab="auditoria" />} />

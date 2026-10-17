@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import type { Status } from '../api/agent';
 import { count, dateBR, money, percent, pp, shortHash, shortRunId } from '../lib/format';
 import { Icon, type IconName } from './Icon';
-import { NumberTicker } from './motion';
 
 type Tone = 'neutral' | 'good' | 'warning' | 'critical' | 'info' | 'gate' | 'accent';
 
@@ -39,21 +38,15 @@ export function SeverityBadge({ severity }: { severity: string }) {
   return <Badge tone="warning" dot>{severity === 'atencao' ? 'Atenção' : 'Alerta'}</Badge>;
 }
 
-const finite = (value: string | number | null | undefined) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
-
-/** `animate` counts up on first view (headline figures only); the resting text is always the exact value. */
-export function Money({ value, className = '', animate }: { value: string | number | null | undefined; className?: string; animate?: boolean }) {
+export function Money({ value, className = '' }: { value: string | number | null | undefined; className?: string }) {
   const negative = Number(value) < 0;
-  const classes = `nowrap ${negative ? 'neg' : ''} ${className}`;
-  if (animate && finite(value)) return <NumberTicker value={Number(value)} format={money} className={classes} />;
-  return <span className={`num ${classes}`}>{money(value)}</span>;
+  return <span className={`num nowrap ${negative ? 'neg' : ''} ${className}`}>{money(value)}</span>;
 }
 
 export const Percent = ({ value }: { value: string | number | null | undefined }) => <span className="num">{percent(value)}</span>;
 export const PP = ({ value }: { value: string | number | null | undefined }) => <span className="num">{pp(value)}</span>;
 export const DateBR = ({ value }: { value: string | null | undefined }) => <span className="num">{dateBR(value)}</span>;
-export const Count = ({ value, animate }: { value: number | null | undefined; animate?: boolean }) =>
-  animate && finite(value) ? <NumberTicker value={value!} format={n => count(Math.round(n))} /> : <span className="num">{count(value)}</span>;
+export const Count = ({ value }: { value: number | null | undefined }) => <span className="num">{count(value)}</span>;
 
 export function HashChip({ hash, size = 6 }: { hash?: string | null; size?: number }) {
   const [copied, setCopied] = useState(false);
@@ -157,11 +150,11 @@ export function Field({ label, help, children, wide, required }: { label: string
   );
 }
 
-export function PageHead({ eyebrow, title, sub, actions }: { eyebrow?: string; title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
+/** One header for every page: title, a meta line and the actions on the right. */
+export function PageHead({ title, sub, actions }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="page-head">
       <div>
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1 className="page-title">{title}</h1>
         {sub && <p className="page-sub">{sub}</p>}
       </div>

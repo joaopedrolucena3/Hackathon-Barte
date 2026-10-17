@@ -346,7 +346,7 @@ def validate_ledger(rows, accounts):
 
 def _gerar(ctx, params):
     result = _computed(ctx)
-    mapping = json.loads((CONFIG / "mapa_contabil.json").read_text())
+    mapping = json.loads((CONFIG / "mapa_contabil.json").read_text(encoding="utf-8"))
     accounts = ctx["datasets"]["accounts"]
     allowed = {a["code"] for a in accounts if a.get("postable")}
     exceptions = []

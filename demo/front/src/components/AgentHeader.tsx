@@ -4,7 +4,7 @@ import type { Run, StepRun } from '../api/agent';
 import { capitalize, count, dateTimeBR, duration, gerund, periodLong, plural } from '../lib/format';
 import { progressOf } from '../state/runEvents';
 import { Icon } from './Icon';
-import { AgentOrb, BorderBeam, moodOf, TextShimmer } from './motion';
+import { moodOf } from './motion';
 import { Badge, RunId, STATUS, StatusBadge } from './ui';
 
 type Summary = { total: number; decided: number; open_blocking: number } | undefined;
@@ -54,18 +54,15 @@ export function AgentHeader({ run, summary, elapsed, gateAt }: { run: Run; summa
   const reviewable = ['awaiting_approval', 'approved', 'rejected'].includes(run.status) || (run.draft && run.status === 'done');
   return (
     <section className={`agent-card ${mood}`} aria-live="polite">
-      {mood === 'working' && <BorderBeam />}
       <div className="agent-card-top">
-        <AgentOrb mood={mood} />
         <div className="grow">
-          <p className="eyebrow">Execução do agente{run.draft ? ' · teste' : ''}</p>
-          <h1 className="page-title">Fechamento de {periodLong(run.comp)}</h1>
-          <p className="agent-line">{mood === 'working' ? <TextShimmer>{line}</TextShimmer> : line}</p>
+          <h1 className="page-title">Fechamento de {periodLong(run.comp)}{run.draft ? ' · teste' : ''}</h1>
+          <p className="agent-line">{mood === 'working' && <span className="spin" aria-hidden />}{line}</p>
         </div>
         <div className="agent-card-side">
           <div className="row wrap" style={{ justifyContent: 'flex-end' }}>
             {run.draft && <Badge tone="gate">Teste · não exporta</Badge>}
-            <StatusBadge status={run.status} size="lg" />
+            <StatusBadge status={run.status} />
           </div>
           {run.status === 'awaiting_approval' && !run.draft && <Link className="btn primary" to={`/runs/${run.id}/revisao`}><Icon name="alert" />Revisar exceções</Link>}
           {run.status === 'failed' && <Link className="btn" to={`/competencias/${run.comp}`}><Icon name="refresh" />Rodar de novo</Link>}

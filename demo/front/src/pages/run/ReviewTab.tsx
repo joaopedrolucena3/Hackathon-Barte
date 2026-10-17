@@ -19,32 +19,32 @@ const GROUP_LIMIT = 40;
 
 function Summary({ run }: { run: Run }) {
   const { data: s } = useApprovalSummary(run.id);
-  if (!s) return <div className="skeleton" style={{ height: 96, marginBottom: 16 }} />;
+  if (!s) return <div className="skeleton" style={{ height: 84, marginBottom: 16 }} />;
   return (
-    <div className="review-summary">
+    <div className="kpi-strip review-summary">
       <div className="kpi">
         <span className="kpi-label">Exceções decididas</span>
-        <span className="kpi-value num"><Count value={s.decided} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.total)}</small></span>
+        <span className="kpi-value num"><Count value={s.decided} /><small> de {count(s.total)}</small></span>
         <div className="meter"><span style={{ flexGrow: s.decided, background: 'var(--st-good)' }} /><span style={{ flexGrow: s.total - s.decided, background: 'var(--surface-3)' }} /></div>
       </div>
       <div className={`kpi ${s.open_blocking ? 'attention' : ''}`}>
-        <span className="kpi-label">Bloqueantes abertas <Badge tone="critical" dot>Bloqueante</Badge></span>
-        <span className="kpi-value num"><Count value={s.open_blocking} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.blocking)}</small></span>
+        <span className="kpi-label"><span className="row" style={{ gap: 6 }}><span className="mark-dot bloqueante" />Bloqueantes abertas</span></span>
+        <span className="kpi-value num"><Count value={s.open_blocking} /><small> de {count(s.blocking)}</small></span>
         <span className="kpi-detail">{s.open_blocking ? 'Decida uma a uma antes de aprovar' : 'Nenhuma bloqueia a aprovação'}</span>
       </div>
       <div className="kpi">
-        <span className="kpi-label">Alertas abertos <Badge tone="warning" dot>Alerta</Badge></span>
-        <span className="kpi-value num"><Count value={s.open_alerts} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.alerts)}</small></span>
+        <span className="kpi-label"><span className="row" style={{ gap: 6 }}><span className="mark-dot" />Alertas abertos</span></span>
+        <span className="kpi-value num"><Count value={s.open_alerts} /><small> de {count(s.alerts)}</small></span>
         <span className="kpi-detail">Podem ser aceitos em lote</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Impacto em aberto</span>
-        <span className="kpi-value"><Money value={s.open_impact_brl} animate /></span>
+        <span className="kpi-value"><Money value={s.open_impact_brl} /></span>
         <span className="kpi-detail">de {moneyShort(s.impact_brl)} em exceções (valores absolutos)</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Lote a exportar {s.batch.balanced && <Badge tone="good" dot>Balanceado</Badge>}</span>
-        <span className="kpi-value num"><Count value={s.batch.entries} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> lançamentos</small></span>
+        <span className="kpi-value num"><Count value={s.batch.entries} /><small> lançamentos</small></span>
         <span className="kpi-detail">Débitos {moneyShort(s.batch.debit_brl)} = créditos {moneyShort(s.batch.credit_brl)}{s.batch.excluded ? ` · ${s.batch.excluded} excluídos` : ''}</span>
       </div>
     </div>
@@ -144,6 +144,17 @@ export default function ReviewTab({ run }: { run: Run }) {
     for (const item of visible) { const key = `${item.kind}|${item.step_type}`; map.set(key, [...(map.get(key) || []), item]); }
     return [...map].sort(([, a], [, b]) => Number(b.some(i => i.severity === 'bloqueante')) - Number(a.some(i => i.severity === 'bloqueante')) || b.length - a.length);
   }, [visible]);
+  /** Open exceptions per kind: the old "pendências por tipo" chart, now a row of filters. */
+  const kinds = useMemo(() => {
+    const map = new Map<string, { open: number; blocking: boolean }>();
+    for (const item of exceptions || []) {
+      if (item.decision) continue;
+      const entry = map.get(item.kind) || { open: 0, blocking: false };
+      map.set(item.kind, { open: entry.open + 1, blocking: entry.blocking || item.severity === 'bloqueante' });
+    }
+    return [...map].sort(([, a], [, b]) => Number(b.blocking) - Number(a.blocking) || b.open - a.open);
+  }, [exceptions]);
+  const openBySeverity = (value: SeverityFilter) => (exceptions || []).filter(item => !item.decision && (value === 'all' || item.severity === value)).length;
   const order = groups.flatMap(([group, items]) => (expanded[group] ? items : items.slice(0, GROUP_LIMIT)));
   const currentId = params.get('ex') || order[0]?.id;
   const current = exceptions?.find(item => item.id === currentId);
@@ -211,12 +222,26 @@ export default function ReviewTab({ run }: { run: Run }) {
           <div className="table-toolbar">
             <label className="search"><Icon name="search" /><input className="input sm" type="search" value={term} onChange={event => setTerm(event.target.value)} placeholder="Buscar lojista, referência ou motivo" /></label>
             <Segmented value={status} onChange={setStatus} label="Situação" options={[{ value: 'open', label: 'Abertas' }, { value: 'decided', label: 'Decididas' }, { value: 'all', label: 'Todas' }]} />
-            <Segmented value={severity} onChange={setSeverity} label="Severidade" options={[{ value: 'all', label: 'Todas' }, { value: 'bloqueante', label: 'Bloqueantes' }, { value: 'alerta', label: 'Alertas' }]} />
-            {(tipo || steps?.length) && (
-              <span className="chip">{tipo ? readable(tipo) : `Passo: ${steps!.length > 1 ? `${steps!.length} passos` : steps![0]}`}
+            <Segmented value={severity} onChange={setSeverity} label="Severidade" options={[
+              { value: 'all', label: 'Todas' },
+              { value: 'bloqueante', label: <>Bloqueantes <span className="count">{count(openBySeverity('bloqueante'))}</span></> },
+              { value: 'alerta', label: <>Alertas <span className="count">{count(openBySeverity('alerta'))}</span></> },
+            ]} />
+            {steps?.length && (
+              <span className="chip">{`Passo: ${steps.length > 1 ? `${steps.length} passos` : steps[0]}`}
                 <button className="icon-btn" style={{ width: 18, height: 18 }} aria-label="Limpar filtro" onClick={() => setParams({})}><Icon name="x" size={12} /></button></span>
             )}
           </div>
+          {kinds.length > 1 && (
+            <div className="kind-filter" role="group" aria-label="Exceções abertas por tipo">
+              {kinds.map(([kind, info]) => (
+                <button key={kind} type="button" className="kind-chip" aria-pressed={tipo === kind}
+                  onClick={() => setParams(current => { if (tipo === kind) current.delete('tipo'); else current.set('tipo', kind); current.delete('ex'); return current; }, { replace: true })}>
+                  <span className={`mark-dot ${info.blocking ? 'bloqueante' : ''}`} />{readable(kind)}<span className="num muted">{count(info.open)}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {selected.size > 0 && editable && (
             <div className="bulk-bar">
               <strong>{plural(selected.size, 'alerta selecionado', 'alertas selecionados')}</strong>
