@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 if [ ! -x .venv/bin/python ]; then
   python3 -m venv .venv
 fi
-if ! .venv/bin/python -c 'import openpyxl, fastapi, uvicorn, multipart, pyarrow, jsonschema, httpx' >/dev/null 2>&1; then
+if ! .venv/bin/python -c 'import openpyxl, fastapi, uvicorn, multipart, pyarrow, jsonschema, httpx, duckdb, anthropic'>/dev/null 2>&1; then
   .venv/bin/python -m pip install -r requirements.lock.txt
 fi
 

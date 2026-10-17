@@ -31,6 +31,16 @@ describe('pt-BR formatting', () => {
     expect(pp('-0.25')).toBe('−0,25 p.p.');
     expect(moneyShort('207039.73')).toBe('R$ 207,0 mil');
   });
+  it('formats money from the decimal text, without float drift', () => {
+    const plain = (text: string) => text.replace(/\s/g, ' ');
+    expect(plain(money('4715852.69'))).toBe('R$ 4.715.852,69');
+    expect(plain(money('123456789012345678.91'))).toBe('R$ 123.456.789.012.345.678,91');
+    expect(plain(money('0.005'))).toBe('R$ 0,01');
+    expect(plain(money('-0.005'))).toBe('-R$ 0,01');
+    expect(plain(money('-0.001'))).toBe('R$ 0,00');
+    expect(plain(money('-1234.5'))).toBe('-R$ 1.234,50');
+    expect(pp('0')).toBe('0,00 p.p.');
+  });
   it('formats dates, periods and CNPJ', () => {
     expect(dateBR('2026-09-01')).toBe('01/09/2026');
     expect(periodShort('2026-09')).toBe('09/2026');
