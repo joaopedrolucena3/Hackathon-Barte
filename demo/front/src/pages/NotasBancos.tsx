@@ -1,6 +1,7 @@
 // Invoices and banks in one place: from the proposed invoice to the approved charge and the classified bank line.
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { updateSearch } from '../lib/scope';
 import { core } from '../api/core';
 import type { AppState, Email, Lancamento, Nota, Pendencia } from '../api/types';
 import { HBarChart } from '../components/charts/Bars';
@@ -12,7 +13,7 @@ import { TopbarSlot } from '../components/TopbarSlot';
 import { TraceView } from '../components/TraceView';
 import { Badge, Callout, DateBR, Empty, Loading, Money, OriginButton, PageHead, ReasonInput, Segmented } from '../components/ui';
 import { cnpj, count, moneyShort, periodShort, plural, readable } from '../lib/format';
-import { keys, lastComp, useAppState, useInsights, useRuns } from '../state/queries';
+import { keys, useAppState, useInsights, useRuns } from '../state/queries';
 import { useAction } from '../state/useAction';
 
 type Tab = 'notas' | 'bancos';
@@ -104,7 +105,7 @@ function NotasTab({ state, onTrace }: { state: AppState; onTrace: (id: string, t
         <div className="invoice-grid">
           {list.map(nota => {
             const email = latestBilling(state.emails, nota.id_saida);
-            return <InvoiceCard key={nota.id_saida} nota={nota} email={email} busy={busy === nota.id_saida}
+            return <InvoiceCard key={nota.id_saida} nota={nota} email={email} busy={busy === nota.id_saida || !!state.read_only || !!state.run_id}
               onOpen={id => setEditing({ id, cnpj: nota.tomador_cnpj })} onDraft={() => draft(nota)} onTrace={() => onTrace(nota.id_saida, nota.tomador)} />;
           })}
         </div>
@@ -141,13 +142,13 @@ function Reclassify({ id, current, state, onDone }: { id: string; current: strin
 function BancosTab({ state, onTrace }: { state: AppState; onTrace: (id: string, title: string) => void }) {
   const { data: insights } = useInsights(state.period);
   const { data: runs } = useRuns(state.period);
-  const reviewRun = runs?.find(run => run.status === 'awaiting_approval');
+  const reviewRun = state.run_id ? runs?.find(run => run.id === state.run_id) : runs?.find(run => run.status === 'awaiting_approval');
   const [bank, setBank] = useState('ALL');
   const [account, setAccount] = useState<string | null>(null);
   const [term, setTerm] = useState('');
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<string | null>(null);
-  const bankIssues = state.results.pendencias.filter(p => p.status !== 'resolved' && p.evidence?.[0]?.arquivo.startsWith('05'));
+  const bankIssues = state.results.pendencias.filter(p => p.status !== 'resolved' && state.results.lancamentos.some(line => line.ref_origem === p.ref_origem));
   const lines = state.results.lancamentos.filter(line => (bank === 'ALL' || line.banco === bank) && (!account || line.conta_codigo === account)
     && (!term || `${line.descricao} ${line.ref_origem} ${line.conta_descricao}`.toLocaleLowerCase('pt-BR').includes(term.toLocaleLowerCase('pt-BR'))));
   const groups = useMemo(() => {
@@ -176,7 +177,7 @@ function BancosTab({ state, onTrace }: { state: AppState; onTrace: (id: string, 
                     {line && <p className="muted" style={{ fontSize: 12 }}>{line.banco} · <DateBR value={line.data} /> · {line.descricao}</p>}
                   </div>
                   <Money value={p.valor_brl} className="strong" />
-                  {line && <button className="btn xs" onClick={() => setEditing(editing === p.id_saida ? null : p.id_saida)}><Icon name="edit" />Classificar</button>}
+                  {line && !state.read_only && !state.run_id && <button className="btn xs" onClick={() => setEditing(editing === p.id_saida ? null : p.id_saida)}><Icon name="edit" />Classificar</button>}
                   {editing === p.id_saida && line && <div style={{ flexBasis: '100%' }}><Reclassify id={p.id_saida} current={line.conta_codigo} state={state} onDone={() => setEditing(null)} /></div>}
                 </div>
               );
@@ -247,7 +248,7 @@ function BancosTab({ state, onTrace }: { state: AppState; onTrace: (id: string, 
                             <td className="r" style={{ width: 120 }}>
                               <span className="row" style={{ justifyContent: 'flex-end', gap: 2 }}>
                                 <OriginButton onClick={() => onTrace(line.id_saida, line.descricao)} />
-                                <button className="btn xs ghost" onClick={() => setEditing(editing === line.id_saida ? null : line.id_saida)}><Icon name="edit" />Reclassificar</button>
+                                {!state.read_only && !state.run_id && <button className="btn xs ghost" onClick={() => setEditing(editing === line.id_saida ? null : line.id_saida)}><Icon name="edit" />Reclassificar</button>}
                               </span>
                             </td>
                           </tr>
@@ -267,28 +268,31 @@ function BancosTab({ state, onTrace }: { state: AppState; onTrace: (id: string, 
 }
 
 export default function NotasBancos() {
-  const { data: state } = useAppState();
+  const { data: state, error } = useAppState();
   const [params, setParams] = useSearchParams();
   const [trace, setTrace] = useState<{ id: string; title: string } | null>(null);
   const tab = (params.get('aba') as Tab) || 'notas';
+  useEffect(() => setTrace(null), [state?.period, state?.run_id]);
+  if (error) return <Empty icon="info" title="Resultados desta seleção ainda indisponíveis">{error.message}{params.get('run_id') && <Link className="btn sm" to={`/runs/${params.get('run_id')}`}>Abrir execução selecionada</Link>}</Empty>;
   if (!state) return <Loading page />;
   const notes = state.results.notas;
   const billing = notes.map(nota => emailStage(latestBilling(state.emails, nota.id_saida)).step);
   const sent = billing.filter(step => step === 3).length, approved = billing.filter(step => step === 2).length, drafts = billing.filter(step => step === 1).length;
-  const bankIssues = state.results.pendencias.filter(p => p.status !== 'resolved' && p.evidence?.[0]?.arquivo.startsWith('05')).length;
+  const bankIssues = state.results.pendencias.filter(p => p.status !== 'resolved' && state.results.lancamentos.some(line => line.ref_origem === p.ref_origem)).length;
   const banks = new Set(state.results.lancamentos.map(line => line.banco)).size;
 
   return (
     <>
-      <TopbarSlot><Icon name="calendar" /><span>Competência <strong>{periodShort(lastComp(state.period))}</strong></span></TopbarSlot>
+      <TopbarSlot><Icon name="calendar" /><span>Competência <strong>{periodShort(state.period)}</strong></span></TopbarSlot>
+      {state.run_id && <Callout tone="info" icon="info">Resultados da execução <Link className="link" to={`/runs/${state.run_id}`}>{state.run_id.slice(0, 13)}</Link>. Decisões do lote ficam na <Link className="link" to={`/runs/${state.run_id}/revisao`}>Revisão desta execução</Link>; cobranças legadas não alteram este snapshot.</Callout>}
       <PageHead eyebrow="Faturamento e caixa" title="Notas e bancos" sub="Da nota proposta à cobrança aprovada e ao lançamento classificado no banco. Todo envio é simulado." />
       <div className="grid grid-3" style={{ marginBottom: 18 }}>
-        <button className={`kpi ${tab === 'notas' ? 'selected' : ''}`} onClick={() => setParams({ aba: 'notas' })}>
+        <button className={`kpi ${tab === 'notas' ? 'selected' : ''}`} onClick={() => setParams(current => updateSearch(current, { aba: 'notas' }))}>
           <span className="kpi-label">Notas propostas <Icon name="invoice" /></span>
           <span className="kpi-value"><Money value={state.summary.notas_brl} /></span>
           <span className="kpi-detail">{plural(notes.length, 'nota', 'notas')} · {notes.filter(nota => nota.linha_negocio === 'REMESSA').length} de remessa</span>
         </button>
-        <button className={`kpi ${tab === 'notas' ? 'selected' : ''}`} onClick={() => setParams({ aba: 'notas' })}>
+        <button className={`kpi ${tab === 'notas' ? 'selected' : ''}`} onClick={() => setParams(current => updateSearch(current, { aba: 'notas' }))}>
           <span className="kpi-label">Cobranças <Icon name="mail" /></span>
           <span className="kpi-value num">{sent}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {notes.length} enviadas</small></span>
           <div className="meter" aria-label={`${sent} enviadas, ${approved} aprovadas, ${drafts} em rascunho`}>
@@ -297,17 +301,17 @@ export default function NotasBancos() {
           </div>
           <span className="kpi-detail">{count(approved)} aprovadas · {count(drafts)} em rascunho · {count(notes.length - sent - approved - drafts)} sem cobrança</span>
         </button>
-        <button className={`kpi ${tab === 'bancos' ? 'selected' : ''} ${bankIssues ? 'attention' : ''}`} onClick={() => setParams({ aba: 'bancos' })}>
+        <button className={`kpi ${tab === 'bancos' ? 'selected' : ''} ${bankIssues ? 'attention' : ''}`} onClick={() => setParams(current => updateSearch(current, { aba: 'bancos' }))}>
           <span className="kpi-label">Bancos <Icon name="bank" /></span>
           <span className="kpi-value num">{count(state.results.lancamentos.length)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> lançamentos</small></span>
           <span className="kpi-detail">{plural(banks, 'conta', 'contas')} · {bankIssues ? `${plural(bankIssues, 'item precisa', 'itens precisam')} de você` : 'tudo classificado'}</span>
         </button>
       </div>
       <div style={{ marginBottom: 16 }}>
-        <Segmented<Tab> size="lg" value={tab} onChange={value => setParams({ aba: value })} label="Seção"
+        <Segmented<Tab> size="lg" value={tab} onChange={value => setParams(current => updateSearch(current, { aba: value }))} label="Seção"
           options={[{ value: 'notas', label: <><Icon name="invoice" />Notas e cobranças</> }, { value: 'bancos', label: <><Icon name="bank" />Bancos</> }]} />
       </div>
-      {tab === 'notas' ? <NotasTab state={state} onTrace={(id, title) => setTrace({ id, title })} /> : <BancosTab state={state} onTrace={(id, title) => setTrace({ id, title })} />}
+      {tab === 'notas' ? <NotasTab key={`${state.period}:${state.run_id}`} state={state} onTrace={(id, title) => setTrace({ id, title })} /> : <BancosTab key={`${state.period}:${state.run_id}`} state={state} onTrace={(id, title) => setTrace({ id, title })} />}
       <div style={{ marginTop: 18 }}><Callout tone="info">Notas são propostas de emissão, sem integração com NFS-e. Cobranças só saem depois de aprovadas, e o envio é simulado.</Callout></div>
       {trace && <Sheet eyebrow="Origem" title={trace.title} onClose={() => setTrace(null)}><TraceView id={trace.id} /></Sheet>}
     </>

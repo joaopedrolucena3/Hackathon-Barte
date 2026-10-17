@@ -3,6 +3,7 @@ import {
   adaptAudit, adaptCatalog, adaptChecklist, adaptException, adaptFile, adaptPipeline, adaptPreview,
   adaptRun, adaptRunEvent, adaptValidation, array, object, type RecordData,
 } from './adapters';
+import { scopedUrl } from '../../lib/scope';
 import { downloadBlob } from '../../lib/storage';
 import type { AgentApi, PipelineStep, PreviewPage, PreviewQuery, ReviewDecision, ReviewException, Run, RunComparison, StepTable } from './contract';
 
@@ -60,10 +61,10 @@ async function sendDecision(runId: string, exceptionId: string, decision: Pick<R
 export const httpAgent: AgentApi = {
   mode: 'http',
   listCompetencias: () => getJSON('/api/competencias'),
-  getInsights: comp => getJSON(`/api/insights?comp=${enc(comp)}`),
+  getInsights: (comp, runId) => getJSON(scopedUrl('/api/insights', { comp, run_id: runId })),
 
-  async getChecklist(comp) {
-    const data = await getJSON<RecordData>(`/api/competencias/${enc(comp)}/checklist`);
+  async getChecklist(comp, runId) {
+    const data = await getJSON<RecordData>(scopedUrl(`/api/competencias/${enc(comp)}/checklist`, { run_id: runId }));
     return array(data.tasks).map(adaptChecklist);
   },
   async updateChecklistTask(id, patch) {
@@ -79,19 +80,26 @@ export const httpAgent: AgentApi = {
     for (const file of files) {
       const form = new FormData();
       form.append('file', file);
-      uploaded.push(adaptFile(await parseResponse(await fetch('/api/files', { method: 'POST', headers, body: form }))));
+      try { uploaded.push(adaptFile(await parseResponse(await fetch('/api/files', { method: 'POST', headers, body: form })))); }
+      catch (error) {
+        const data = error instanceof ApiError ? object(error.data) : {};
+        const record = object(data.file ?? object(data.error).file);
+        uploaded.push({ ...adaptFile(record), name: file.name, size: file.size, status: 'rejected', validation_reason: error instanceof Error ? error.message : 'Não foi possível receber o arquivo.' });
+      }
     }
     return uploaded;
   },
   async createRun(input) {
-    if (input.source === 'upload' && (input.files?.length !== 6 || input.files.some(file => !file.id))) {
-      throw new Error('Envie os seis arquivos ao servidor antes de iniciar a execução.');
+    if (input.source === 'upload' && ((!input.files?.length && !input.parent_run_id) || input.files?.some(file => !file.id))) {
+      throw new Error('Envie os arquivos ao servidor antes de iniciar a execução.');
     }
     const started = await sendAuthorizedJSON<RecordData>('/api/runs', {
       pipeline_id: PIPELINE, competencia: input.comp, draft: input.draft === true,
-      ...(input.source === 'upload' ? { file_ids: input.files!.map(file => file.id) } : {}),
+      ...(input.source === 'upload' ? { file_ids: (input.files || []).map(file => file.id) } : {}),
       ...(input.source === 'folder' ? { source_dir: input.folder } : {}),
       ...(input.steps ? { steps: workflowSteps(input.steps) } : {}),
+      ...(input.parent_run_id ? { parent_run_id: input.parent_run_id } : {}),
+      ...(input.operational_parameters ? { operational_parameters: input.operational_parameters } : {}),
     });
     return getRun(String(started.run_id ?? started.id));
   },
@@ -108,32 +116,48 @@ export const httpAgent: AgentApi = {
   subscribeRun(id, onEvent, onReconnect) {
     let source: EventSource | null = null, closed = false, dropped = false, retry = 1000, cursor = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const types = ['step_started', 'step_progress', 'step_finished', 'awaiting_approval', 'run_finished', 'run_started', 'export_started', 'exception_decided', 'approval_decided'];
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    const refreshNow = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = undefined;
+      if (!closed) onReconnect?.();
+    };
+    // A batch emits one decision event per occurrence. Reload once after the burst,
+    // while advancing the cursor for every event so reconnects never replay it.
+    const queueRefresh = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(refreshNow, 100);
+    };
+    const types = ['step_started', 'step_progress', 'step_finished', 'awaiting_approval', 'run_finished', 'run_started', 'export_started', 'exception_decided', 'approval_decided', 'recommendations_applied'];
     const connect = () => {
       if (closed) return;
       source = new EventSource(`${runPath(id)}/events?after=${cursor}`);
       source.onopen = () => {
+        if (closed) return;
         retry = 1000;
-        if (dropped) { dropped = false; onReconnect?.(); }
+        if (dropped) { dropped = false; refreshNow(); }
       };
       for (const type of types) {
         source.addEventListener(type, message => {
           try {
+            if (closed) return;
             const raw = object(JSON.parse((message as MessageEvent).data));
+            if (raw.run_id && raw.run_id !== id) return;
             const sequence = Number((message as MessageEvent).lastEventId || raw.seq || raw.sequence || raw.id || 0);
             if (sequence && sequence <= cursor) return;
             cursor = Math.max(cursor, sequence);
             const event = adaptRunEvent({ ...raw, type });
             if (event) onEvent(event);
-            else onReconnect?.();
+            else queueRefresh();
             if (event?.type === 'run_finished') {
+              if (refreshTimer !== undefined) refreshNow();
               closed = true;
               clearTimeout(timer);
               source?.close();
             }
           } catch {
             // Reload the consolidated state if an event cannot be decoded.
-            onReconnect?.();
+            refreshNow();
           }
         });
       }
@@ -146,7 +170,7 @@ export const httpAgent: AgentApi = {
       };
     };
     connect();
-    return () => { closed = true; clearTimeout(timer); source?.close(); };
+    return () => { closed = true; clearTimeout(timer); clearTimeout(refreshTimer); source?.close(); };
   },
   async getPreview(runId, stepId, query) {
     const run = await getRun(runId);
@@ -203,7 +227,7 @@ export const httpAgent: AgentApi = {
   },
   async compareRuns(a, b) {
     const response = await getJSON<RecordData>(`/api/runs/compare?a=${enc(a)}&b=${enc(b)}`);
-    return { a: adaptRun(response.a), b: adaptRun(response.b), steps: array(response.steps) as RunComparison['steps'], reproducible: response.reproducible === true };
+    return { a: adaptRun(response.a), b: adaptRun(response.b), steps: array(response.steps) as RunComparison['steps'], reproducible: response.reproducible === true, binary_identical: typeof response.binary_identical === 'boolean' ? response.binary_identical : undefined, business_hash_a: typeof response.business_hash_a === 'string' ? response.business_hash_a : undefined, business_hash_b: typeof response.business_hash_b === 'string' ? response.business_hash_b : undefined, comparison_basis: typeof response.comparison_basis === 'string' ? response.comparison_basis : undefined };
   },
 
   async getCatalog() { return adaptCatalog(array((await getJSON<RecordData>('/api/steps/catalog')).steps)); },

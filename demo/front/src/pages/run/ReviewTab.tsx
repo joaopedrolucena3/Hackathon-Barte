@@ -1,14 +1,16 @@
 // B5: human approval before the ERP. One queue for every exception (formerly "Pendências").
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { agent, type ReviewException, type Run } from '../../api/agent';
-import { DecisionBadge, ExceptionDetail, type DecisionPreset } from '../../components/ExceptionDetail';
+import { DecisionBadge, ExceptionDetail } from '../../components/ExceptionDetail';
+import { ExceptionExposure } from '../../components/ExceptionExposure';
 import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Overlay';
 import { RunLauncher } from '../../components/RunLauncher';
 import { useToast } from '../../components/Toast';
 import { Badge, Callout, Count, Empty, Field, HashChip, Loading, Money, ReasonInput, Segmented, Tip } from '../../components/ui';
-import { count, dateBR, dateTimeBR, moneyShort, plural, readable } from '../../lib/format';
+import { cnpj, count, dateBR, dateTimeBR, moneyShort, periodShort, plural, readable } from '../../lib/format';
+import { exceptionSearchText, isRegistrationGroup, operationCountLabel } from '../../lib/reviewScope';
 import { keys, useApprovalSummary, useExceptions } from '../../state/queries';
 import { useAction } from '../../state/useAction';
 import { useQueryClient } from '@tanstack/react-query';
@@ -38,9 +40,9 @@ function Summary({ run }: { run: Run }) {
         <span className="kpi-detail">Podem ser aceitos em lote</span>
       </div>
       <div className="kpi">
-        <span className="kpi-label">Impacto em aberto</span>
-        <span className="kpi-value"><Money value={s.open_impact_brl} animate /></span>
-        <span className="kpi-detail">de {moneyShort(s.impact_brl)} em exceções (valores absolutos)</span>
+        <span className="kpi-label">Valor relacionado em aberto</span>
+        <span className="kpi-value"><Money value={s.open_impact_brl ?? s.known_open_impact_brl} animate /></span>
+        <span className="kpi-detail">{s.open_impact_brl === null ? `Subtotal conhecido; ${s.unknown_open_impact_count ?? 'há'} exceções com valor incompleto.` : s.impact_brl === null ? `Total geral incompleto; subtotal conhecido ${moneyShort(s.known_impact_brl)}.` : `de ${moneyShort(s.impact_brl)} associados às exceções; não é a variação do lote`}</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Lote a exportar {s.batch.balanced && <Badge tone="good" dot>Balanceado</Badge>}</span>
@@ -124,7 +126,6 @@ export default function ReviewTab({ run }: { run: Run }) {
   const [term, setTerm] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [preset, setPreset] = useState<DecisionPreset | null>(null);
   const [modal, setModal] = useState<'approve' | 'reject' | 'rerun' | null>(null);
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
   const [bulkNote, setBulkNote] = useState('');
@@ -137,7 +138,7 @@ export default function ReviewTab({ run }: { run: Run }) {
     (status === 'all' || (status === 'open' ? !item.decision : !!item.decision))
     && (severity === 'all' || item.severity === severity)
     && (!tipo || item.kind === tipo) && (!steps?.length || steps.includes(item.step_type))
-    && (!term || `${item.merchant} ${item.ref_origem} ${item.description}`.toLocaleLowerCase('pt-BR').includes(term.toLocaleLowerCase('pt-BR')))),
+    && (!term || exceptionSearchText(item).includes(term.toLocaleLowerCase('pt-BR')))),
   [exceptions, status, severity, tipo, steps?.join(','), term]);
   const groups = useMemo(() => {
     const map = new Map<string, ReviewException[]>();
@@ -172,7 +173,7 @@ export default function ReviewTab({ run }: { run: Run }) {
       toast.error(error);
     } finally {
       setBulk(null); setSelected(new Set()); setBulkNote('');
-      for (const key of [keys.exceptions(run.id), keys.approval(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)]) void client.invalidateQueries({ queryKey: key });
+      for (const key of [keys.exceptions(run.id), keys.approval(run.id), keys.recommendations(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)]) void client.invalidateQueries({ queryKey: key });
     }
   };
   /** Open blockers of one issue for one merchant: a single business decision, so the backend takes them together. */
@@ -190,7 +191,7 @@ export default function ReviewTab({ run }: { run: Run }) {
       toast.error(error);
       setMerchantBatch(state => state && { ...state, busy: false });
     } finally {
-      for (const key of [keys.exceptions(run.id), keys.approval(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)]) void client.invalidateQueries({ queryKey: key });
+      for (const key of [keys.exceptions(run.id), keys.approval(run.id), keys.recommendations(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)]) void client.invalidateQueries({ queryKey: key });
     }
   };
   const blocking = summary?.open_blocking || 0;
@@ -198,6 +199,8 @@ export default function ReviewTab({ run }: { run: Run }) {
   return (
     <>
       <Summary run={run} />
+      <div className="row between wrap" style={{ marginBottom: 16 }}><p className="help">Confira os fatos, as regras e o efeito previsto antes de registrar sua decisão. Pendências de cadastro agrupadas contam como uma exceção por empresa e competência; as operações aparecem no detalhe.</p><Link className="btn" to={`/runs/${run.id}/hipoteses`}><Icon name="origin" />Seguir sugestões do agente</Link></div>
+      <div className="row wrap" style={{ marginBottom: 16 }}><Link className="btn" to={`/comunicacoes?aba=gmail&run_id=${encodeURIComponent(run.id)}`}><Icon name="mail" />Revisar sugestões de contestação</Link><span className="muted">Toda mensagem precisa da sua permissão antes de enviar.</span></div>
       {run.status === 'approved' && <Downloads run={run} />}
       {run.status === 'rejected' && (
         <div style={{ marginBottom: 16 }}>
@@ -209,7 +212,7 @@ export default function ReviewTab({ run }: { run: Run }) {
       <div className="review-layout">
         <section className="card review-list">
           <div className="table-toolbar">
-            <label className="search"><Icon name="search" /><input className="input sm" type="search" value={term} onChange={event => setTerm(event.target.value)} placeholder="Buscar lojista, referência ou motivo" /></label>
+            <label className="search"><Icon name="search" /><input className="input sm" type="search" value={term} onChange={event => setTerm(event.target.value)} placeholder="Buscar empresa, CNPJ, operação ou motivo" /></label>
             <Segmented value={status} onChange={setStatus} label="Situação" options={[{ value: 'open', label: 'Abertas' }, { value: 'decided', label: 'Decididas' }, { value: 'all', label: 'Todas' }]} />
             <Segmented value={severity} onChange={setSeverity} label="Severidade" options={[{ value: 'all', label: 'Todas' }, { value: 'bloqueante', label: 'Bloqueantes' }, { value: 'alerta', label: 'Alertas' }]} />
             {(tipo || steps?.length) && (
@@ -244,7 +247,7 @@ export default function ReviewTab({ run }: { run: Run }) {
             <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 260px)' }}>
               <table className="table">
                 <thead>
-                  <tr><th style={{ width: 34 }} /><th>Severidade</th><th>Lojista</th><th>Data</th><th className="r">Valor</th><th className="r">Impacto</th><th>Decisão</th></tr>
+                  <tr><th style={{ width: 34 }} /><th>Severidade</th><th>Empresa / operações</th><th>Data / competência</th><th className="r">Valor da operação</th><th className="r">Valor relacionado</th><th>Decisão</th></tr>
                 </thead>
                 <tbody>
                   {groups.map(([group, items]) => {
@@ -274,10 +277,10 @@ export default function ReviewTab({ run }: { run: Run }) {
                                 : item.severity === 'bloqueante' && !item.decision ? <Tip text="Bloqueantes são decididas uma a uma ou todas do mesmo lojista"><Icon name="lock" className="muted" size={13} /></Tip> : null}
                             </td>
                             <td><Badge tone={item.severity === 'bloqueante' ? 'critical' : 'warning'} dot>{item.severity === 'bloqueante' ? 'Bloqueante' : 'Alerta'}</Badge></td>
-                            <td className="wrap" style={{ minWidth: 180 }}><span className="strong">{item.merchant}</span><span className="mono muted" style={{ display: 'block', fontSize: 11 }}>{item.ref_origem}</span></td>
-                            <td className="nowrap">{dateBR(item.date)}</td>
-                            <td className="r">{item.amount ? <Money value={item.amount} /> : '—'}</td>
-                            <td className="r"><Money value={item.impact_brl} /></td>
+                            <td className="wrap" style={{ minWidth: 180 }}><span className="strong">{item.merchant}</span><span className="mono muted" style={{ display: 'block', fontSize: 11 }}>{isRegistrationGroup(item) ? `${cnpj(item.cnpj)} · ${operationCountLabel(item)}` : item.ref_origem}</span></td>
+                            <td className="nowrap">{isRegistrationGroup(item) ? periodShort(item.period) : dateBR(item.date)}</td>
+                            <td className="r">{!isRegistrationGroup(item) && item.amount ? <Money value={item.amount} /> : '—'}</td>
+                            <td className="r"><ExceptionExposure exception={item} /></td>
                             <td><DecisionBadge exception={item} /></td>
                           </tr>
                         ))}
@@ -295,8 +298,8 @@ export default function ReviewTab({ run }: { run: Run }) {
         <aside className="card review-detail">
           <div className="card-body">
             {current ? (
-              <ExceptionDetail key={current.id} exception={current} run={run} editable={editable} preset={preset}
-                onDecided={(item, decision) => { setPreset(decision); const next = nextOpen(item.id); if (next) open(next.id); }} />
+              <ExceptionDetail key={current.id} exception={current} run={run} editable={editable}
+                onDecided={item => { const next = nextOpen(item.id); if (next) open(next.id); }} />
             ) : <Empty icon="info" title="Selecione uma exceção" />}
           </div>
         </aside>
@@ -313,7 +316,7 @@ export default function ReviewTab({ run }: { run: Run }) {
       )}
       {modal === 'approve' && <ApproveModal run={run} onClose={() => setModal(null)} />}
       {modal === 'reject' && <RejectModal run={run} onClose={() => setModal(null)} />}
-      {modal === 'rerun' && <RunLauncher comp={run.comp} onClose={() => setModal(null)} />}
+      {modal === 'rerun' && <RunLauncher comp={run.comp} parentRun={run} onClose={() => setModal(null)} />}
     </>
   );
 }

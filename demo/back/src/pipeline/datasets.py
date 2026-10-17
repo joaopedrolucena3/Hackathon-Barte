@@ -39,6 +39,14 @@ def column_type(name):
     return "text"
 
 
+def has_unknown_exposure(dataset, column, rows):
+    """Unknown issue exposure differs from a commission excluded from calculation."""
+    if column not in {"valor", "valor_brl", "impacto_rs", "exposure_brl"}: return False
+    exposure_dataset = dataset in {"pendencias", "rastro", "detalhes_calculo"}
+    return any(row.get(column) in (None, "")
+               and (exposure_dataset or row.get("group_scope") == "merchant_period") for row in rows)
+
+
 def write_dataset(path, rows):
     path = Path(path)
     normalized = [canonical(row) for row in rows]
@@ -148,6 +156,9 @@ def preview(path, query=None, input_rows=None):
     def totals(selected):
         output = {}
         for name in money_columns:
+            # Missing exposure cannot become a complete total. Nullable commissions
+            # on non-billable operations keep the existing eligible-output semantics.
+            if has_unknown_exposure(Path(path).stem, name, selected): continue
             values = [Decimal(str(row[name])) for row in selected if row.get(name) not in (None, "")]
             if any(not value.is_finite() for value in values): raise ValueError("Número não finito no dataset.")
             if values: output[name] = format(sum(values, Decimal(0)), ".2f")

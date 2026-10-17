@@ -152,7 +152,9 @@ class PipelineServiceTests(unittest.TestCase):
             self.assertIn('rows_read', source)
             self.assertIn('rows_discarded', source)
             self.assertNotEqual(source['original_path'], source['snapshot_path'])
-        self.assert_error(409, 'PERIOD_BUSY', lambda: self.service.start_run({'competencia': '2026-09'}, ACTOR))
+        successor = self.service.start_run({'competencia': '2026-09', 'parent_run_id': ident}, ACTOR)
+        self.assertIsNone(self.wait(successor['id'])['approval'])
+        self.assertEqual(self.service.get_run(ident)['status'], 'awaiting_approval')
         self.assert_error(409, 'EXPORT_NOT_APPROVED', lambda: self.service.export(ident))
         self.assert_error(422, 'OPEN_BLOCKERS', lambda: self.service.approval(ident, {'decisao': 'aprovar', 'comentario': 'Tentativa sem revisar'}, ACTOR))
         events = self.service.events(ident)
@@ -177,8 +179,9 @@ class PipelineServiceTests(unittest.TestCase):
         first_hashes = {name: item['sha256'] for name, item in first['datasets'].items()}
         first_files = {f['name']: f['sha256'] for f in first['exports'] if f.get('reproducible') is not False}
         second = self.approve(self.start()['id'])
-        self.assertEqual(first_hashes, {name: item['sha256'] for name, item in second['datasets'].items()})
-        self.assertEqual(first_files, {f['name']: f['sha256'] for f in second['exports'] if f.get('reproducible') is not False})
+        self.assertTrue(self.service.compare_runs(first['id'], second['id'])['reproducible'])
+        self.assertEqual(first_hashes, {name: item['sha256'] for name, item in self.service.get_run(first['id'])['datasets'].items()})
+        self.assertEqual(first_files, {f['name']: f['sha256'] for f in self.service.get_run(first['id'])['exports'] if f.get('reproducible') is not False})
         with ZipFile(BytesIO(self.service.export(second['id']))) as archive:
             self.assertEqual(set(archive.namelist()), {'lancamentos_fenix.csv', 'relatorio_excecoes.csv', 'ajustes.csv', 'auditoria.json'})
             ledger = list(csv.DictReader(StringIO(archive.read('lancamentos_fenix.csv').decode()), delimiter=';'))
@@ -265,7 +268,8 @@ class PipelineServiceTests(unittest.TestCase):
 
     def test_excluding_already_blocked_origin_is_audited_without_inventing_entry(self):
         run = self.start()
-        issue = next(e for e in self.service.exceptions(run['id'], {'page_size': 500})['items'] if 'ATLAS' in e.get('descricao', '').upper() or e['tipo'] == 'VINCULO_NAO_CONFIRMADO')
+        issue = next(e for e in self.service.exceptions(run['id'], {'page_size': 500})['items']
+                     if e['tipo'] == 'CADASTRO_NAO_CONFIRMADO' and e.get('cnpj') == '39566044000119')
         excluded = self.service.decision(run['id'], issue['id'], {'acao': 'excluir', 'justificativa': 'Manter Atlas fora até contrato confirmado'}, ACTOR)
         self.assertEqual(excluded['status'], 'excluded')
         self.assertTrue(excluded['decision'].get('already_excluded'))

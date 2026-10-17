@@ -1,4 +1,4 @@
-"""Minimal Gmail OAuth, private server sessions and conservative send outcomes.
+"""Gmail OAuth/app-password connections and conservative send outcomes.
 
 There is deliberately no runtime fake provider or endpoint override. Tests may inject
 an object implementing GoogleProvider's methods. Gmail credentials never leave this
@@ -7,6 +7,9 @@ module; callers receive only the verified account and an opaque session referenc
 from __future__ import annotations
 
 import base64
+from email import policy
+from email.parser import BytesParser
+from email.utils import getaddresses
 import hashlib
 import json
 import math
@@ -14,10 +17,13 @@ import os
 from pathlib import Path
 import re
 import secrets
+import smtplib
+import ssl
 import threading
 import time
 from urllib.parse import urlencode, urlparse
 
+import certifi
 import httpx
 
 SCOPES = ("openid", "email", "https://www.googleapis.com/auth/gmail.send")
@@ -28,8 +34,8 @@ REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
 DEFAULT_REDIRECT_URI = "http://127.0.0.1:8765/api/mail/oauth/callback"
 STATE_TTL = 600
-SESSION_TTL = 8 * 60 * 60
-_REPO = Path(__file__).resolve().parents[2]
+SESSION_TTL = 30 * 24 * 60 * 60
+_REPO = Path(__file__).resolve().parents[4]
 _EMAIL = re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}\Z")
 
 
@@ -153,11 +159,94 @@ class GoogleProvider:
             self.client.close()
 
 
+class GmailSMTPProvider:
+    """Fixed Gmail TLS transport; never retries or claims a Gmail API message ID."""
+
+    def __init__(self, smtp_factory=None):
+        self._smtp_factory = smtp_factory or smtplib.SMTP_SSL
+
+    def _connect(self, email, password):
+        client = None
+        try:
+            client = self._smtp_factory("smtp.gmail.com", 465, timeout=25,
+                                        context=ssl.create_default_context(cafile=certifi.where()))
+            client.ehlo()
+            client.login(email, password)
+            return client
+        except smtplib.SMTPAuthenticationError:
+            self._close(client)
+            raise AuthError(401, "SMTP_AUTH_REJECTED", "O Gmail recusou a conexão. Use o e-mail completo e uma senha de app do Google de 16 caracteres.") from None
+        except Exception:
+            self._close(client)
+            raise AuthError(503, "SMTP_UNAVAILABLE", "Não foi possível conectar ao Gmail. Confira a conexão e tente novamente.") from None
+
+    @staticmethod
+    def _close(client):
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+
+    def verify(self, email, password):
+        client = self._connect(email, password)
+        self._close(client)
+
+    def send(self, email, password, rawbytes):
+        # The MIME is already the approved immutable snapshot. Never rewrite it.
+        try:
+            message = BytesParser(policy=policy.default).parsebytes(rawbytes)
+            senders = getaddresses(message.get_all("From", []))
+            recipients = getaddresses(message.get_all("To", []) + message.get_all("Cc", []))
+            if len(senders) != 1 or senders[0][1].lower() != email or message.get_all("Bcc"):
+                raise ValueError()
+            addresses = list(dict.fromkeys(address for _, address in recipients))
+            if not addresses or any(not _EMAIL.fullmatch(address) for address in addresses):
+                raise ValueError()
+        except Exception:
+            raise KnownSendFailure("MESSAGE_INVALID", "O remetente ou destinatário da mensagem é inválido. Nenhum envio foi realizado.") from None
+        try:
+            client = self._connect(email, password)
+        except AuthError as exc:
+            raise KnownSendFailure(exc.code, exc.message) from None
+        data_started = False
+        try:
+            code, _ = client.mail(email)
+            if code != 250:
+                raise KnownSendFailure("SMTP_SENDER_REJECTED", "O Gmail recusou o remetente. Nenhum envio foi realizado.")
+            # If even one recipient is refused, do not transmit the message at all.
+            for address in addresses:
+                code, _ = client.rcpt(address)
+                if code not in (250, 251):
+                    raise KnownSendFailure("SMTP_RECIPIENT_REJECTED", "O Gmail recusou um destinatário. Nenhum envio foi realizado.")
+            data_started = True
+            code, _ = client.data(rawbytes)
+            if code != 250:
+                raise KnownSendFailure("SMTP_MESSAGE_REJECTED", "O Gmail recusou a mensagem. Nenhum envio foi aceito.")
+            return {"accepted": True, "provider": "gmail_smtp", "smtp_response_code": 250,
+                    "message_id": str(message.get("Message-ID", "")) or None}
+        except KnownSendFailure:
+            raise
+        except smtplib.SMTPDataError:
+            # Explicit negative DATA response proves rejection, unlike a timeout.
+            raise KnownSendFailure("SMTP_MESSAGE_REJECTED", "O Gmail recusou a mensagem. Nenhum envio foi aceito.") from None
+        except Exception:
+            if data_started:
+                raise SendUncertain("SMTP_RESULT_UNCERTAIN", "A conexão terminou durante o envio. Confira a pasta Enviados antes de tentar novamente; não haverá repetição automática.") from None
+            raise KnownSendFailure("SMTP_CONNECTION_FAILED", "A conexão com o Gmail terminou antes do envio da mensagem. Nenhum envio foi realizado.") from None
+        finally:
+            # A connection-close failure cannot undo an already confirmed 250.
+            self._close(client)
+
+
 class AuthManager:
-    def __init__(self, private_dir, provider=None, config=None):
+    def __init__(self, private_dir, provider=None, config=None, smtp_provider=None):
         self._lock = threading.RLock()
         self.provider = provider if provider is not None else GoogleProvider()
-        self.provider_mode = "injected_test" if provider is not None else "gmail"
+        self._oauth_provider_mode = "injected_test" if provider is not None else "gmail"
+        self.smtp_provider = smtp_provider if smtp_provider is not None else GmailSMTPProvider()
+        self._smtp_provider_mode = "injected_test" if smtp_provider is not None else "gmail_smtp"
+        self._background_token = secrets.token_urlsafe(48)
         raw_path = Path(private_dir).expanduser()
         if raw_path.is_symlink():
             raise AuthError(500, "PRIVATE_DIRECTORY_INVALID", "A pasta de credenciais deve ser privada e ficar fora do projeto.")
@@ -261,11 +350,22 @@ class AuthManager:
 
     def _connection_allowed(self):
         connection = self._state.get("connection")
+        if isinstance(connection, dict) and connection.get("provider") == "gmail_smtp":
+            email = connection.get("email", "")
+            return bool(isinstance(email, str) and _EMAIL.fullmatch(email)
+                        and email != "financeiro@tarvo.com.br"
+                        and connection.get("sub") == "smtp:" + email
+                        and connection.get("connection_id") and connection.get("app_password"))
         return bool(not self.missing_config and isinstance(connection, dict)
                     and connection.get("email") == self.config["test_account"]
                     and connection.get("config_fingerprint") == self._config_fingerprint()
                     and connection.get("refresh_token") and connection.get("sub")
                     and set(connection.get("scopes", [])) == set(SCOPES))
+
+    @property
+    def provider_mode(self):
+        connection = self._state.get("connection") or {}
+        return self._smtp_provider_mode if connection.get("provider") == "gmail_smtp" else self._oauth_provider_mode
 
     def _account(self):
         if not self._connection_allowed():
@@ -291,13 +391,50 @@ class AuthManager:
         with self._lock:
             account = self._account()
             session = self._session(_digest(session_token)) if isinstance(session_token, str) and session_token else None
-            result = {"configured": not self.missing_config, "connected": bool(account),
+            connection = self._state.get("connection") or {}
+            smtp = connection.get("provider") == "gmail_smtp" and bool(account)
+            result = {"configured": smtp or not self.missing_config, "connected": bool(account),
                       "email": account["email"] if account else None, "authorized": bool(session),
-                      "missing_config": list(self.missing_config), "provider_mode": self.provider_mode,
+                      "missing_config": [] if smtp else list(self.missing_config), "provider_mode": self.provider_mode,
+                      "provider": ("gmail_smtp" if smtp else "gmail_oauth") if account else None,
+                      "smtp_available": True, "oauth_configured": not self.missing_config,
                       "connection": account}
             if session:
                 result["csrf_token"] = session["csrf_token"]
             return result
+
+    def connect_smtp(self, email, app_password):
+        email = email.strip().lower() if isinstance(email, str) else ""
+        password = "".join(app_password.split()) if isinstance(app_password, str) else ""
+        if not _EMAIL.fullmatch(email) or email == "financeiro@tarvo.com.br":
+            raise AuthError(400, "SMTP_EMAIL_INVALID", "Informe o e-mail completo da conta Gmail de demonstração.")
+        if not re.fullmatch(r"[A-Za-z]{16}", password):
+            raise AuthError(400, "SMTP_APP_PASSWORD_INVALID", "Use a senha de app do Google de 16 letras. Os espaços são opcionais; não use a senha normal da conta.")
+        with self._lock:
+            # Verify remotely before replacing a previously usable connection.
+            try:
+                self.smtp_provider.verify(email, password)
+            except AuthError:
+                raise
+            except Exception:
+                raise AuthError(503, "SMTP_UNAVAILABLE", "Não foi possível verificar a conexão com o Gmail. Tente novamente.") from None
+            previous = self._state.get("connection") or {}
+            same_account = (self._connection_allowed() and previous.get("provider") == "gmail_smtp"
+                            and previous.get("email") == email)
+            connection = {"provider": "gmail_smtp", "email": email, "sub": "smtp:" + email,
+                          "app_password": password,
+                          "connection_id": previous["connection_id"] if same_account else secrets.token_urlsafe(24),
+                          "connected_at": previous["connected_at"] if same_account else time.time()}
+            session_token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
+            sessions = {key: value for key, value in self._state["sessions"].items()
+                        if same_account and value.get("expires_at", 0) > time.time()
+                        and value.get("connection_id") == connection["connection_id"]}
+            sessions[_digest(session_token)] = {"connection_id": connection["connection_id"], "csrf_token": csrf,
+                                                "created_at": time.time(), "expires_at": time.time() + SESSION_TTL}
+            self._state = {"connection": connection, "sessions": sessions, "pending": {}}
+            self._save()
+            return {"session_token": session_token, "email": email, "connection": self._account(),
+                    "csrf_token": csrf, "expires_in": SESSION_TTL}
 
     def begin(self):
         with self._lock:
@@ -385,9 +522,9 @@ class AuthManager:
                 self._revoke((token or {}).get("refresh_token") or (token or {}).get("access_token") if isinstance(token, dict) else None)
                 raise AuthError(502, "GOOGLE_AUTH_FAILED", "Não foi possível concluir a conexão com o Google.") from None
             previous = self._state.get("connection")
-            same_account = (self._connection_allowed() and previous["email"] == identity["email"]
+            same_account = (self._connection_allowed() and previous.get("provider") != "gmail_smtp" and previous["email"] == identity["email"]
                             and previous["sub"] == identity["sub"])
-            connection = {**credentials, **identity,
+            connection = {**credentials, **identity, "provider": "gmail_oauth",
                           "connection_id": previous["connection_id"] if same_account else secrets.token_urlsafe(24),
                           "connected_at": previous["connected_at"] if same_account else time.time(),
                           "config_fingerprint": self._config_fingerprint()}
@@ -420,23 +557,62 @@ class AuthManager:
         account = self._account()
         return all(context.get(key) == account[key] for key in ("email", "sub", "connection_id"))
 
+    def background_context(self):
+        """Server-only capability; callers enforce the saved notification opt-in.
+
+        This capability is never returned by a route or written into audit metadata.
+        It survives a browser session expiring, but not a disconnect/account change.
+        """
+        with self._lock:
+            account = self._account()
+            if not account:
+                raise AuthError(401, "GMAIL_SESSION_REQUIRED", "Conecte uma conta Gmail para enviar avisos automáticos.")
+            return {**account, "background_token": self._background_token}
+
+    def _send_context_valid(self, context):
+        if self._context_valid(context):
+            return True
+        if not isinstance(context, dict) or not isinstance(context.get("background_token"), str):
+            return False
+        account = self._account()
+        return bool(account and secrets.compare_digest(context["background_token"], self._background_token)
+                    and all(context.get(key) == account[key] for key in ("email", "sub", "connection_id")))
+
     def disconnect(self, context):
         with self._lock:
             if not self._context_valid(context):
                 raise AuthError(401, "GMAIL_SESSION_REQUIRED", "Conecte a conta Gmail de teste para autorizar esta ação.")
-            token = self._state["connection"]["refresh_token"]
+            smtp = self._state["connection"].get("provider") == "gmail_smtp"
+            token = self._state["connection"].get("refresh_token")
             self._state = {"connection": None, "sessions": {}, "pending": {}}
             self._save()
             revoked = self._revoke(token)
-            return {"disconnected": True, "revocation_confirmed": revoked}
+            return {"disconnected": True, "revocation_confirmed": revoked,
+                    "manual_revocation_required": smtp}
 
     def send_message(self, auth_context, rawbytes):
         with self._lock:
-            if not self._context_valid(auth_context):
+            if not self._send_context_valid(auth_context):
                 raise KnownSendFailure("GMAIL_SESSION_REQUIRED", "A conta foi desconectada ou a sessão expirou. Nenhum envio foi realizado.")
             if not isinstance(rawbytes, bytes) or not rawbytes:
                 raise KnownSendFailure("MESSAGE_INVALID", "A mensagem está vazia ou inválida. Nenhum envio foi realizado.")
             current = self._state["connection"]
+            if current.get("provider") == "gmail_smtp":
+                try:
+                    result = self.smtp_provider.send(current["email"], current["app_password"], rawbytes)
+                except KnownSendFailure as exc:
+                    if exc.code == "SMTP_AUTH_REJECTED":
+                        self._state = {"connection": None, "sessions": {}, "pending": {}}
+                        self._save()
+                    raise
+                except SendUncertain:
+                    raise
+                except Exception:
+                    raise SendUncertain() from None
+                if not isinstance(result, dict) or result.get("accepted") is not True or result.get("smtp_response_code") != 250:
+                    raise SendUncertain()
+                return {"accepted": True, "provider": "gmail_smtp", "smtp_response_code": 250,
+                        "message_id": result.get("message_id") if isinstance(result.get("message_id"), str) else None}
             try:
                 refreshed = self.provider.refresh(self.config, current["refresh_token"])
                 credentials = self._validated_token(refreshed, current)

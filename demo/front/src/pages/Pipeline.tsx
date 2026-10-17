@@ -13,7 +13,8 @@ import { RunLauncher } from '../components/RunLauncher';
 import { useToast } from '../components/Toast';
 import { Badge, Callout, Empty, Loading, PageHead, Tip, Toggle } from '../components/ui';
 import { dateTimeBR } from '../lib/format';
-import { keys, lastComp, useAppState, useCatalog, usePipeline, usePipelineVersions, useRuns } from '../state/queries';
+import { updateSearch } from '../lib/scope';
+import { keys, useAppState, useCatalog, usePipeline, usePipelineVersions, useRuns } from '../state/queries';
 
 function SortableStep({ step, item, index, selected, issues, readOnly, onSelect, onToggle, onRemove }: {
   step: PipelineStep; item?: StepCatalogItem; index: number; selected: boolean; issues: ValidationIssue[]; readOnly: boolean;
@@ -80,9 +81,9 @@ export default function PipelinePage() {
   const { data: catalog, error: catalogError } = useCatalog();
   const { data: versions } = usePipelineVersions();
   const { data: state } = useAppState();
-  const comp = state ? lastComp(state.period) : '';
+  const comp = state?.period || '';
   const { data: runs } = useRuns(comp);
-  const sampleRun = runs?.find(run => run.status !== 'running' && run.status !== 'pending' && run.status !== 'failed');
+  const sampleRun = state?.run_id ? runs?.find(run => run.id === state.run_id) : runs?.find(run => run.status !== 'running' && run.status !== 'pending' && run.status !== 'failed');
   const client = useQueryClient();
   const toast = useToast();
   const readOnly = !!viewVersion && viewVersion !== latest?.version;
@@ -230,7 +231,7 @@ export default function PipelinePage() {
                 </div>
                 <p className="muted" style={{ fontSize: 12.5 }}>por {version.author}</p>
                 <ul>{version.changes.map(change => <li key={change}>{change}</li>)}</ul>
-                <button className="btn xs" onClick={() => { setModal(null); setParams(version.version === latest.version ? {} : { versao: String(version.version) }); }}>{version.version === latest.version ? 'Abrir atual' : 'Ver esta versão'}</button>
+                <button className="btn xs" onClick={() => { setModal(null); setParams(current => updateSearch(current, { versao: version.version === latest.version ? null : String(version.version) })); }}>{version.version === latest.version ? 'Abrir atual' : 'Ver esta versão'}</button>
               </li>
             ))}
           </ol>

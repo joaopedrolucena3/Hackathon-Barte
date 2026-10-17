@@ -98,6 +98,7 @@ class WorkflowHTTPTests(unittest.TestCase):
         self.assertEqual(self.client.get(f'/api/runs/{run_id}/events?after=-1').status_code,422)
 
     def test_approve_exports_balanced_ledger_and_preview_is_paginated(self):
+        legacy_before = copy.deepcopy(self.app.state.store.state())
         run_id, state = self.start()
         self.assertEqual(state['status'],'awaiting_approval',state)
         preview=self.client.get(f'/api/runs/{run_id}/steps/s4/preview?only_exceptions=true&page_size=2').json()
@@ -106,7 +107,8 @@ class WorkflowHTTPTests(unittest.TestCase):
         self.assertTrue(any(col.get('new') for col in preview['schema']))
         self.assertEqual(self.client.get(f'/api/runs/{run_id}/steps/s4/preview?page_size=501').status_code,422)
         blocked=self.client.get(f'/api/runs/{run_id}/exceptions?severidade=bloqueante&page_size=500').json()
-        self.assertEqual(blocked['total'],58)
+        self.assertGreater(blocked['total'], 0)
+        self.assertTrue(all(row['severidade'] == 'bloqueante' for row in blocked['exceptions']))
         for issue in blocked['exceptions']:
             response=self.client.post(f"/api/runs/{run_id}/exceptions/{issue['id']}/decision",headers=self.user,
                 json={'acao':'aceitar','justificativa':'Fixture de aprovação; sem alteração de valor.'})
@@ -127,9 +129,18 @@ class WorkflowHTTPTests(unittest.TestCase):
         credit=sum(Decimal(row['credito']) for row in rows)
         self.assertEqual(debit,Decimal('23474915.80'))
         self.assertEqual(debit,credit)
-        old=self.client.get('/api/state').json()
-        self.assertEqual(old['summary']['resolved_issues'],0)
-        self.assertEqual(len(old['emails']),0)
+        # Conference HTTP follows the latest run of this month. It must expose
+        # the decisions just made, while the independent legacy store is intact.
+        selected=self.client.get('/api/state',params={'comp':'2026-09'}).json()
+        self.assertEqual(selected['run_id'],run_id)
+        self.assertEqual(selected['scope'],{'competencia':'2026-09','run_id':run_id})
+        self.assertEqual(selected['closing']['status'],'done')
+        self.assertEqual(selected['summary']['resolved_issues'],len(blocked['exceptions']))
+        self.assertEqual(selected['summary']['blocking_issues'],0)
+        legacy_after=self.app.state.store.state()
+        self.assertEqual(legacy_after['summary']['resolved_issues'],legacy_before['summary']['resolved_issues'])
+        self.assertEqual(legacy_after['results'],legacy_before['results'])
+        self.assertEqual(legacy_after['emails'],legacy_before['emails'])
 
     def test_upload_requires_actor_and_preserves_hash(self):
         filename='01_orbe_relatorio_comissoes_set2026.csv'
@@ -203,7 +214,8 @@ class WorkflowHTTPTests(unittest.TestCase):
         stored = {row['id']: row for row in self.app.state.workflow._exceptions(run_id)}
         atlas = [row['id'] for row in rows if row['severidade'] == 'bloqueante' and stored[row['id']].get('tipo') == 'CADASTRO_NAO_CONFIRMADO']
         other = next(row['id'] for row in rows if row['severidade'] == 'bloqueante' and stored[row['id']].get('tipo') != 'CADASTRO_NAO_CONFIRMADO')
-        self.assertGreater(len(atlas), 1)
+        self.assertEqual(len(atlas), 1)
+        self.assertEqual(stored[atlas[0]]['operation_count'], 57)
         mixed = self.client.post(f'/api/runs/{run_id}/exceptions/decisions', headers=self.user, json={'ids': [atlas[0], other], 'acao': 'excluir', 'justificativa': 'Teste'})
         self.assertEqual(mixed.json()['error']['code'], 'BATCH_BLOCKER')
         response = self.client.post(f'/api/runs/{run_id}/exceptions/decisions', headers=self.user, json={'ids': atlas, 'acao': 'excluir', 'justificativa': 'Atlas sem contrato vigente'})
@@ -228,8 +240,7 @@ class WorkflowHTTPTests(unittest.TestCase):
         self.assertEqual(response.json()['error']['code'], 'DRAFT_REQUIRED')
         with store.lock, store.db:
             rate = store.records('rates')[0]
-            rate['rate_pct'] = '0.1234'
-            store._store_rate(rate)
+            store._edit_rate({**rate, 'rate_pct': '0.1234', 'reason': 'Revisão humana de teste'}, 'Analista QA')
         response = self.client.post('/api/runs', headers=self.user, json={'pipeline_id': pipeline['id'], 'competencia': '2026-09', 'draft': True})
         self.assertEqual(response.status_code, 202, response.text)
         run_id = response.json()['run_id']
@@ -238,8 +249,7 @@ class WorkflowHTTPTests(unittest.TestCase):
         self.assertEqual(next(row for row in run['snapshot']['references']['rates'] if row['id'] == rate['id'])['rate_pct'], '0.1234')
         snapshot_hash = run['snapshot']['references_hash']
         with store.lock, store.db:
-            rate['rate_pct'] = '0.5678'
-            store._store_rate(rate)
+            store._edit_rate({**rate, 'rate_pct': '0.5678', 'reason': 'Segunda revisão humana de teste'}, 'Analista QA')
         after = self.client.get(f'/api/runs/{run_id}').json()
         self.assertEqual(after['snapshot']['references_hash'], snapshot_hash)
         self.assertEqual(next(row for row in after['snapshot']['references']['rates'] if row['id'] == rate['id'])['rate_pct'], '0.1234')

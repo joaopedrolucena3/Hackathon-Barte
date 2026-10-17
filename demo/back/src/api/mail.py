@@ -8,9 +8,9 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
-from ..mail.auth import AuthError
+from ..mail.auth import AuthError, SESSION_TTL
 from ..pipeline.service import ServiceError
 
 SESSION_COOKIE = 'tarvo_google_session'
@@ -38,6 +38,34 @@ class MailApproval(BaseModel):
     model_config = ConfigDict(extra='forbid')
     version: int = Field(ge=1)
     content_hash: str = Field(pattern=r'^[a-f0-9]{64}$')
+    permission: bool = Field(strict=True)
+
+    @field_validator('permission')
+    @classmethod
+    def explicit_permission(cls, value):
+        if value is not True:
+            raise ValueError('Autorize explicitamente o envio desta versão da contestação.')
+        return value
+
+
+class SuggestionPrepare(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    run_id: str = Field(min_length=1, max_length=160)
+
+
+class SuggestionEdit(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    version: int = Field(ge=1)
+    to: str | None = Field(default=None, min_length=1, max_length=320)
+    subject: str | None = Field(default=None, min_length=1, max_length=998)
+    body: str | None = Field(default=None, min_length=1, max_length=100000)
+    refresh_evidence: bool = False
+
+
+class SuggestionDismiss(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    version: int = Field(ge=1)
+    reason: str = Field(default='', max_length=2000)
 
 
 class CounterpartyContact(BaseModel):
@@ -48,7 +76,28 @@ class CounterpartyContact(BaseModel):
     id: str | None = Field(default=None, max_length=160)
 
 
-def mail_router(mail, auth, store, actor_dependency):
+class SMTPConnect(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    email: str = Field(min_length=1, max_length=254)
+    app_password: SecretStr = Field(min_length=1, max_length=100)
+
+
+class DemoMessage(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    counterparty: Literal['orbe', 'ponte']
+    to: str = Field(min_length=1, max_length=254)
+    subject: str = Field(min_length=1, max_length=998)
+    body: str = Field(min_length=1, max_length=100000)
+    request_id: str = Field(min_length=1, max_length=36)
+
+
+class NotificationSettings(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    enabled: bool
+    recipient: str = Field(min_length=1, max_length=254)
+
+
+def mail_router(mail, auth, store, actor_dependency, *, demo_mail=None, notifications=None, suggestions=None, workflow=None):
     router = APIRouter(prefix='/api/mail', tags=['E-mails de pendências'])
 
     def account(request):
@@ -66,6 +115,17 @@ def mail_router(mail, auth, store, actor_dependency):
                 attachment['url'] = f"/api/mail/drafts/{quote(draft['id'], safe='')}/attachments/{quote(attachment['id'], safe='')}"
         return draft
 
+    def present_suggestion(suggestion):
+        for attachment in suggestion.get('attachments', []):
+            attachment['url'] = f"/api/mail/suggestions/{quote(suggestion['id'], safe='')}/attachments/{quote(attachment['id'], safe='')}"
+        return suggestion
+
+    def suggestion_list(run_id=None):
+        result = {'suggestions': [present_suggestion(item) for item in suggestions.list(run_id)]}
+        if run_id:
+            result['summary'] = suggestions.run_summary(run_id)
+        return result
+
     @router.get('/setup', response_class=HTMLResponse)
     def setup():
         source = Path(__file__).resolve().parents[2] / 'docs' / 'GMAIL.md'
@@ -78,6 +138,17 @@ def mail_router(mail, auth, store, actor_dependency):
     @router.get('/account')
     def status(request: Request):
         return account(request)
+
+    @router.post('/smtp/connect')
+    def connect_smtp(request: Request, body: SMTPConnect):
+        result = auth.connect_smtp(body.email, body.app_password.get_secret_value())
+        response = JSONResponse(auth.status(result['session_token']))
+        response.set_cookie(SESSION_COOKIE, result['session_token'], max_age=SESSION_TTL,
+                            httponly=True, samesite='lax', secure=request.url.scheme == 'https', path=COOKIE_PATH)
+        with store.lock, store.db:
+            store._audit('Conta Gmail autorizada', 'gmail_smtp_connected', {
+                'email': result['email'], 'connection_id': result['connection']['connection_id']})
+        return response
 
     @router.post('/oauth/start')
     def connect(request: Request, body: dict = Body(...)):
@@ -96,7 +167,7 @@ def mail_router(mail, auth, store, actor_dependency):
                 raise AuthError(400, 'OAUTH_NOT_AUTHORIZED', 'A autorização Google não foi concluída. Conecte novamente quando desejar.')
             result = auth.complete(state, code, request.cookies.get(BINDING_COOKIE))
             response = RedirectResponse('/comunicacoes?aba=gmail', status_code=303)
-            response.set_cookie(SESSION_COOKIE, result['session_token'], max_age=8*60*60,
+            response.set_cookie(SESSION_COOKIE, result['session_token'], max_age=SESSION_TTL,
                                 httponly=True, samesite='lax', secure=request.url.scheme == 'https', path=COOKIE_PATH)
             context = auth.status(result['session_token']).get('connection') or {}
             with store.lock, store.db:
@@ -177,5 +248,74 @@ def mail_router(mail, auth, store, actor_dependency):
     @router.get('/issues/{issue_id}/history')
     def history(issue_id: str):
         return mail.history(issue_id)
+
+    if suggestions is not None:
+        @router.get('/suggestions/runs')
+        def suggestion_runs():
+            return {'runs': [{key: run.get(key) for key in ('id', 'period', 'competencia', 'draft', 'status', 'started_at', 'finished_at')}
+                             for run in workflow.list_runs()
+                             if run['status'] in ('awaiting_approval', 'done') or suggestions.run_summary(run['id']).get('prepared_at')]}
+
+        @router.get('/suggestions')
+        def list_suggestions(run_id: str | None = None):
+            return suggestion_list(run_id)
+
+        @router.post('/suggestions/prepare')
+        def prepare_suggestions(body: SuggestionPrepare, actor: str = Depends(actor_dependency)):
+            suggestions.prepare(body.run_id, actor)
+            return suggestion_list(body.run_id)
+
+        @router.get('/suggestions/{suggestion_id}')
+        def get_suggestion(suggestion_id: str):
+            return present_suggestion(suggestions.get(suggestion_id))
+
+        @router.put('/suggestions/{suggestion_id}')
+        def edit_suggestion(suggestion_id: str, request: Request, body: SuggestionEdit, actor: str = Depends(actor_dependency)):
+            return present_suggestion(suggestions.edit(suggestion_id, body.model_dump(exclude_none=True, exclude_unset=True), actor, sender(request)))
+
+        @router.post('/suggestions/{suggestion_id}/dismiss')
+        def dismiss_suggestion(suggestion_id: str, body: SuggestionDismiss, actor: str = Depends(actor_dependency)):
+            return present_suggestion(suggestions.dismiss(suggestion_id, body.model_dump(), actor))
+
+        @router.post('/suggestions/{suggestion_id}/approve-send')
+        def send_suggestion(suggestion_id: str, body: MailApproval, actor: str = Depends(actor_dependency), context=Depends(authorized)):
+            return present_suggestion(suggestions.approve_send(suggestion_id, body.model_dump(), actor, context))
+
+        @router.get('/suggestions/{suggestion_id}/attachments/{attachment_id}')
+        def suggestion_attachment(suggestion_id: str, attachment_id: str, download: bool = False):
+            meta, content = suggestions.attachment(suggestion_id, attachment_id)
+            disposition = 'attachment' if download else 'inline'
+            return Response(content, media_type=meta['content_type'], headers={
+                'Content-Disposition': f"{disposition}; filename*=UTF-8''{quote(meta['name'], safe='')}",
+                'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
+                'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"})
+
+    if demo_mail is not None:
+        @router.get('/demo/deliveries')
+        def demo_deliveries():
+            return {'deliveries': demo_mail.deliveries()}
+
+        @router.post('/demo/send')
+        def demo_send(body: DemoMessage, context=Depends(authorized), actor: str = Depends(actor_dependency)):
+            return demo_mail.send(body.model_dump(), context, actor)
+
+    if notifications is not None:
+        @router.get('/notifications')
+        def notification_settings():
+            return notifications.settings()
+
+        @router.put('/notifications')
+        def configure_notifications(body: NotificationSettings, context=Depends(authorized), actor: str = Depends(actor_dependency)):
+            return notifications.configure(body.model_dump(), actor, context)
+
+        @router.get('/notifications/deliveries')
+        def notification_deliveries():
+            return {'deliveries': notifications.deliveries()}
+
+        @router.post('/notifications/test')
+        def test_notification(body: dict = Body(...), context=Depends(authorized), actor: str = Depends(actor_dependency)):
+            if body:
+                raise ServiceError(422, 'INVALID_REQUEST', 'O teste usa o destinatário salvo nos avisos.')
+            return notifications.test(context, actor)
 
     return router

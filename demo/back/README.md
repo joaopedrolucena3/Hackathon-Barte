@@ -1,10 +1,10 @@
 # Tarvo Fechamento
 
-Plataforma local para apurar setembro de 2026 a partir dos arquivos originais da Tarvo. Calcula comissões, diferenças de taxa, notas propostas e contrapartidas bancárias; mantém pendências e decisões humanas, rastros e relatórios. E-mails de pendências podem ser enviados por Gmail após autorização e revisão; avisos internos e cobranças continuam em simulação. O analista trabalha pela interface, sem abrir planilhas.
+Plataforma local para apurar setembro de 2026 a partir dos arquivos originais da Tarvo. Calcula comissões, diferenças de taxa, notas propostas e contrapartidas bancárias; mantém pendências e decisões humanas, rastros e relatórios. E-mails diretos para Orbe/Ponte, pendências revisadas e avisos de runs/testes podem ser enviados pelo Gmail após conectar a conta. Cobranças e avisos do fluxo antigo continuam em simulação. O analista trabalha pela interface, sem abrir planilhas.
 
 ## Rodar
 
-Pré-requisitos: Python 3.11 ou superior com venv, Node.js 18+ e npm; acesso ao PyPI e npm na primeira execução. O fechamento funciona sem chave de API. Para envio real pelo Gmail, configure o OAuth descrito abaixo.
+Pré-requisitos: Python 3.11 ou superior com venv, Node.js 18+ e npm; acesso ao PyPI e npm na primeira execução. O fechamento funciona sem chave de API. Para envio real, conecte o Gmail com uma senha de app na aba Comunicações → E-mail real. OAuth também está disponível.
 
 ```sh
 ./run.sh
@@ -20,6 +20,10 @@ Abra http://127.0.0.1:8765. A interface React integrada está em `../front/`; o 
 
 Windows: crie o ambiente com `python -m venv .venv`, instale as dependências usando `.venv\Scripts\python -m pip install -r requirements.lock.txt`, compile o front com `cd ..\front && npm ci && npm run build`, volte para `back` e rode `.venv\Scripts\python -m src.app`.
 
+## E-mail real da demo
+
+Em **Comunicações → E-mail real**, conecte `financeirotarvo@gmail.com` com uma senha de app do Google. A conta envia e recebe os exemplos de Orbe/Ponte. Revise o destinatário e o texto e clique **Enviar e-mail real**. Ative os avisos para receber o resultado de uma execução ou teste do pipeline. A sessão dura até 30 dias; o segredo fica fora do repositório. Um e-mail de teste permite conferir a caixa de entrada. Veja **[Conectar o Gmail e demonstrar](docs/GMAIL.md)**.
+
 ## Chat de consulta
 
 Na aba **Passos** de um run, o chat abaixo da planilha responde perguntas sobre os dados do passo, somente leitura: o Claude monta consultas SQL e cada número da resposta vem de uma delas, conferido pelo servidor. Precisa de uma credencial da Anthropic no servidor; veja **[Conectar o chat à API](docs/CHAT_API.md)**. Sem ela, o resto da plataforma funciona normalmente.
@@ -28,9 +32,9 @@ Na aba **Passos** de um run, o chat abaixo da planilha responde perguntas sobre 
 
 Em **Comunicações → Gmail · pendências**, selecione a pendência e use **Gerar e-mail**. A mensagem tem texto editável, contraparte identificada pelas fontes e anexos restritos às evidências relacionadas. **Gmail · pendências** reúne os rascunhos, o histórico, os contatos Orbe/Ponte e a conexão da conta de teste.
 
-O botão **Aprovar e enviar** registra a versão revisada e inicia o envio real. Exige sessão OAuth autorizada no servidor, além do nome declarado do responsável. Alterações nas evidências exigem nova revisão. Tentativas simultâneas não duplicam mensagens; um resultado incerto exige conferência manual e não é repetido automaticamente.
+O botão **Aprovar e enviar** registra a versão revisada e inicia o envio real. Exige sessão Gmail autorizada no servidor, além do nome declarado do responsável. Alterações nas evidências exigem nova revisão. Tentativas simultâneas não duplicam mensagens; um resultado incerto exige conferência manual e não é repetido automaticamente.
 
-A integração está implementada, mas o envio real depende da configuração OAuth e da conta de teste. Veja **[Configurar e demonstrar Gmail](docs/GMAIL.md)**. Rascunhos e anexos são persistidos no banco com sufixo `-email.sqlite3`; tokens ficam fora do projeto. Os testes e a revisão de navegador usam um provedor simulado.
+O envio real exige conectar a conta Gmail; funciona com senha de app ou OAuth. Veja **[Configurar e demonstrar Gmail](docs/GMAIL.md)**. Rascunhos e anexos são persistidos no banco com sufixo `-email.sqlite3`; tokens ficam fora do projeto. Os testes e a revisão de navegador usam um provedor simulado.
 
 ## Pipeline versionado e checklist
 
@@ -45,6 +49,8 @@ O banco de workflows usa o mesmo nome-base com sufixo `-workflow.sqlite3`. Os ar
 ## Resultado inicial verificado
 
 Os valores são provisórios até o analista tratar as pendências ou aceitar as ressalvas. As 57 operações da Atlas não entram no faturamento sem contrato e identidade confirmados.
+
+Novos processamentos consolidam `CADASTRO_NAO_CONFIRMADO` em uma pendência por CNPJ e competência, com todas as operações e evidências vinculadas. A ressalva não autoriza faturamento. Veja [escopo, riscos e critérios de aceite](docs/CADASTRO_POR_EMPRESA.md). As contagens históricas abaixo antecedem esse agrupamento e outras revisões do motor.
 
 | Controle | Resultado |
 |---|---:|
@@ -112,7 +118,7 @@ O fechamento original arquiva importações e apresenta o lote ativo. A nova tel
 
 ## Limitações conhecidas
 
-- Avisos internos, cobranças e relatórios antigos são simulados. Apenas o fluxo explícito de pendências pode enviar pelo Gmail, após configuração, sessão autorizada e aprovação.
+- Cobranças, relatórios e avisos internos do fluxo antigo são simulados. A aba E-mail real envia mensagens diretas, pendências aprovadas e avisos automáticos de runs/testes após conectar a conta e ativar os avisos. Aceitação pelo provedor não confirma entrega na caixa; os testes automatizados não enviam mensagens reais.
 - Ator declarado pelo operador; a sessão Google autoriza o envio de pendências, mas não verifica a identidade individual de quem compartilha a conta. Sem login corporativo para o fechamento. Servidor local, não adequado a exposição na internet ou múltiplos usuários sem autenticação.
 - Notas são propostas de emissão, sem integração com NFS-e ou ERP. Não executa transferências, pagamentos ou devoluções.
 - Identificações sem chave confirmada, contratos ausentes, negativos e dados inválidos permanecem em revisão. Exceções podem ser aceitas como ressalvas com autoria e motivo.

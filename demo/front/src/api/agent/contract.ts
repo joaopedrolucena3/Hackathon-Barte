@@ -147,6 +147,17 @@ export interface InputFile {
   sha256: string;
   rows?: number;
   discarded?: number;
+  role?: string;
+  status?: string;
+  validation_reason?: string;
+  import_action?: string;
+  duplicate_of?: string;
+  rows_received?: number;
+  rows_valid?: number;
+  rows_unique?: number;
+  rows_duplicated?: number;
+  rows_conflicting?: number;
+  inherited?: boolean;
 }
 
 export interface Approval {
@@ -174,8 +185,12 @@ export interface RunRef {
   pipeline: { id: string; name: string; version: number };
 }
 
+export interface IngestionCounts { files_received?: number; files_valid?: number; by_role?: Record<string, Record<string, number>> }
+
 export interface Run extends RunRef {
+  ingestion_counts?: IngestionCounts;
   code_version: string;
+  parent_run_id?: string;
   finished_at?: string;
   source: 'pack' | 'upload' | 'folder';
   folder?: string;
@@ -214,12 +229,38 @@ export interface CompetenciaInfo {
   comp: string;
   has_data: boolean;
   current: boolean;
+  has_pack?: boolean;
+  origin?: string | string[];
+  status?: string;
+  runs?: number | RunRef[];
+  latest_run_id?: string | null;
 }
 
 export type ReviewSeverity = 'bloqueante' | 'alerta';
 export type ReviewAction = 'accept' | 'adjust' | 'exclude';
 
-export interface ReviewDecision {
+export interface RegistrationOperation {
+  id: string;
+  ref: string;
+  arquivo: string;
+  linha: number;
+  date?: string;
+  business: string;
+  exposure_brl: string | null;
+  exposure_basis?: 'reported_fee' | 'spread_brl';
+}
+
+/** Present only for a persisted company/period group; old line-level exceptions stay line-level. */
+export interface RegistrationScope {
+  group_scope?: 'merchant_period';
+  period?: string;
+  cnpj?: string;
+  operation_count?: number;
+  affected_operations?: RegistrationOperation[];
+  source_fingerprint?: string;
+}
+
+export interface ReviewDecision extends RegistrationScope {
   action: ReviewAction;
   actor: string;
   at: string;
@@ -229,9 +270,10 @@ export interface ReviewDecision {
   before_amount?: string;
   before_account?: string;
   entry_id?: string;
+  billing_authorized?: boolean;
 }
 
-export interface ReviewException {
+export interface ReviewException extends RegistrationScope {
   id: string;
   step_type: string;
   step_title: string;
@@ -243,7 +285,10 @@ export interface ReviewException {
   cnpj?: string;
   date?: string;
   amount?: string;
-  impact_brl: string;
+  impact_brl: string | null;
+  exposure_status?: 'complete' | 'partial' | 'unavailable';
+  known_exposure_brl?: string;
+  missing_exposure_count?: number;
   description: string;
   suggestion?: string;
   rule?: string;
@@ -264,8 +309,12 @@ export interface ApprovalSummary {
   decided: number;
   open_blocking: number;
   open_alerts: number;
-  impact_brl: string;
-  open_impact_brl: string;
+  impact_brl: string | null;
+  open_impact_brl: string | null;
+  known_impact_brl?: string;
+  unknown_impact_count?: number;
+  known_open_impact_brl?: string;
+  unknown_open_impact_count?: number;
   batch: { entries: number; excluded: number; debit_brl: string; credit_brl: string; balanced: boolean };
 }
 
@@ -273,7 +322,7 @@ export type AuditEntry =
   | { kind: 'input_file'; at: string; file: InputFile }
   | { kind: 'pipeline'; at: string; pipeline: RunRef['pipeline']; code_version: string; actor: string }
   | { kind: 'step'; at: string; step: StepRun }
-  | { kind: 'decision'; at: string; actor: string; exception_id: string; title: string; action: ReviewAction | 'reject'; before: string; after: string; note: string }
+  | ({ kind: 'decision'; at: string; actor: string; exception_id: string; title: string; action: ReviewAction | 'reject'; before: string; after: string; note: string } & RegistrationScope)
   | { kind: 'approval'; at: string; approval: Approval }
   | { kind: 'export'; at: string; file: ExportFile };
 
@@ -287,6 +336,10 @@ export interface RunComparison {
   b: RunRef;
   steps: { type: string; title: string; hash_a?: string; hash_b?: string; match: boolean }[];
   reproducible: boolean;
+  binary_identical?: boolean;
+  business_hash_a?: string;
+  business_hash_b?: string;
+  comparison_basis?: string;
 }
 
 export type StepKind = 'calc' | 'gate' | 'export';
@@ -353,14 +406,20 @@ export interface PendencySlice {
   key: string;
   label: string;
   count: number;
-  brl: string;
+  brl: string | null;
+  known_brl?: string;
+  missing_exposure_count?: number;
 }
 
 export interface Insights {
   comp: string;
   pendencias: {
-    open_brl: string;
-    resolved_brl: string;
+    open_brl: string | null;
+    resolved_brl: string | null;
+    known_open_brl?: string;
+    known_resolved_brl?: string;
+    missing_open_exposure_count?: number;
+    missing_resolved_exposure_count?: number;
     open_count: number;
     resolved_count: number;
     by_state: PendencySlice[];
@@ -386,6 +445,8 @@ export interface CreateRunInput {
   files?: InputFile[];
   folder?: string;
   draft?: boolean;
+  parent_run_id?: string;
+  operational_parameters?: { closing_deadline?: string | null };
   /** Builder "Testar": run unsaved steps as a draft (no export). */
   steps?: PipelineStep[];
 }
@@ -393,9 +454,9 @@ export interface CreateRunInput {
 export interface AgentApi {
   mode: 'mock' | 'http';
   listCompetencias(): Promise<CompetenciaInfo[]>;
-  getInsights(comp: string): Promise<Insights>;
+  getInsights(comp: string, runId?: string): Promise<Insights>;
 
-  getChecklist(comp: string): Promise<ChecklistTask[]>;
+  getChecklist(comp: string, runId?: string): Promise<ChecklistTask[]>;
   updateChecklistTask(id: string, patch: Partial<Pick<ChecklistTask, 'status' | 'owner' | 'comment'>>): Promise<ChecklistTask>;
 
   uploadFiles(files: File[]): Promise<InputFile[]>;

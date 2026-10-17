@@ -63,7 +63,18 @@ class MailHTTPTests(unittest.TestCase):
 
     def approve(self,draft,headers=None):
         return self.client.post('/api/mail/drafts/'+draft['id']+'/approve-send',
-            headers=headers or {**self.user,**self.csrf},json={'version':draft['version'],'content_hash':draft['content_hash']})
+            headers=headers or {**self.user,**self.csrf},json={'version':draft['version'],'content_hash':draft['content_hash'],'permission':True})
+
+    def test_individual_contestation_requires_explicit_true_permission(self):
+        self.connect()
+        self.contact()
+        draft = self.draft()
+        payload = {'version': draft['version'], 'content_hash': draft['content_hash']}
+        for approval in (payload, {**payload, 'permission': False}, {**payload, 'permission': 1}, {**payload, 'permission': 'true'}):
+            response = self.client.post('/api/mail/drafts/' + draft['id'] + '/approve-send',
+                                        headers={**self.user, **self.csrf}, json=approval)
+            self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(self.client.get('/api/mail/drafts/' + draft['id']).json()['status'], 'draft')
 
     def test_declared_actor_cannot_authorize_and_no_credentials_in_json(self):
         self.contact()
@@ -152,7 +163,7 @@ class MailHTTPTests(unittest.TestCase):
         sent = response.json()
         self.assertEqual(sent['provider_mode'], 'injected_test')
         self.assertEqual(sent['approval']['provider_mode'], 'injected_test')
-        self.auth.provider_mode = 'gmail'
+        self.auth._oauth_provider_mode = 'gmail'
         stored = self.client.get('/api/mail/drafts/' + draft['id']).json()
         self.assertEqual(stored['provider_mode'], 'injected_test')
         events = self.client.get('/api/mail/issues/' + draft['issue_id'] + '/history').json()

@@ -11,12 +11,15 @@ import re
 import sqlite3
 import threading
 import zipfile
+from collections import Counter
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .engine import calculate, load_data
+from .catalog import (ensure_catalog_schema, migrate_catalog, normalize_rate,
+                      persist_rate, reconcile_catalog, content_hash)
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTS = {
@@ -28,6 +31,8 @@ EXPORTS = {
     'rastro.csv': ('rastro', ['id_saida','arquivo_origem','ref_origem','valor']),
 }
 SEVERITIES = {'informativo': 0, 'atencao': 1, 'bloqueante': 2}
+DEFAULT_PARAMETERS = {'remittance_tolerance_pp':'0.002', 'closing_deadline':'',
+                      'remittance_share_pct':'50', 'mode':'simulation'}
 
 
 def encode(value):
@@ -70,13 +75,19 @@ class Store:
             CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, at TEXT, actor TEXT, action TEXT, detail TEXT);
             CREATE TABLE IF NOT EXISTS runs (id INTEGER PRIMARY KEY, at TEXT, period TEXT, input_hash TEXT, result_hash TEXT, result TEXT);
         ''')
+        ensure_catalog_schema(self.db)
         self.db.commit()
         fresh=self.get('source_data') is None
         if fresh:
             with self.db:
-                self.put('period','2026-09')
-                self.put('parameters', {'remittance_tolerance_pp':'0.002','closing_deadline':'2026-10-17','remittance_share_pct':'50','mode':'simulation'})
+                self.put('parameters', DEFAULT_PARAMETERS)
                 self._import(self.source_dir, 'Sistema · importação inicial')
+        else:
+            with self.db:
+                migrate_catalog(self.db)
+                period = self.get('period')
+                if period and self.get('parameters:'+period) is None:
+                    self.put('parameters:'+period, self.get('parameters', DEFAULT_PARAMETERS))
         engine_version=hashlib.sha256((ROOT/'src'/'engine.py').read_bytes()).hexdigest()
         with self.db:
             if not fresh and self.get('engine_version')!=engine_version:
@@ -108,31 +119,88 @@ class Store:
         data=load_data(p)
         if not data.get('checkout') and not data.get('remittances'):
             raise ValueError('Nenhuma operação foi encontrada na importação.')
-        old_rates={r['id']:r for r in self.records('rates')}
-        for rate in data.get('rates',[]):
-            old=old_rates.get(rate['id'])
-            fields=('cnpj','product','start','end','rate_pct')
-            if old and any(str(old.get(k,''))!=str(rate.get(k,'')) for k in fields):
-                data.setdefault('import_warnings',[]).append({'type':'REFERENCIA_ALTERADA','message':f'Taxa {rate["id"]} difere da referência já revisada. A referência do banco foi preservada; revisar vigência e taxa pela interface.','source_file':rate.get('source_file',''),'source_ref':rate.get('source_ref','')})
+        if not self.get('period'):
+            months=Counter(str(r.get('date') or r.get('contracted_date') or '')[:7]
+                           for r in data.get('checkout',[])+data.get('remittances',[]))
+            months.pop('',None)
+            ranked=months.most_common()
+            if not ranked or (len(ranked)>1 and ranked[0][1]==ranked[1][1]):
+                raise ValueError('Informe a competência: as fontes não indicam um mês predominante único.')
+            self._set_period(ranked[0][0])
+        catalog=reconcile_catalog(data,self.reference_snapshot())
+        data['import_warnings']=catalog['import_warnings']
         self.db.execute('INSERT INTO imports(at,path,hash,data) VALUES (?,?,?,?)',(now(),str(p),digest(data),encode(data)))
         self.put('source_data',data)
         self.put('source_dir',str(p))
         # Reimporting raw transactions must not discard analyst-maintained reference data.
-        for merchant in data.get('merchants',[]):
-            self.db.execute('INSERT OR IGNORE INTO merchants VALUES (?,?)',(merchant['cnpj'],encode(merchant)))
+        for merchant in catalog['merchants']:
+            self.db.execute('INSERT OR REPLACE INTO merchants VALUES (?,?)',(merchant['cnpj'],encode(merchant)))
         for rate in data.get('rates',[]):
-            self._store_rate(rate,ignore=True)
+            persist_rate(self.db,normalize_rate(rate),actor)
+        wanted={r['id'] for r in catalog['rates']}
+        for row in self.records('rates'):
+            if row['id'] not in wanted:
+                self.db.execute('DELETE FROM rates WHERE id=?',(row['id'],))
+        for rate in catalog['rates']:
+            persist_rate(self.db,rate,actor)
+        self.put('catalog_conflicts',catalog['catalog_conflicts'])
+        self.put('catalog_transitions',catalog['catalog_transitions'])
+        self.put('catalog_warnings',catalog['catalog_warnings'])
+        self.put('catalog_revision',catalog['catalog_revision'])
         self._audit(actor,'import',{'path':str(p),'sources':data.get('sources',[]),'hash':digest(data)})
         self._recalculate(actor)
 
     def _store_rate(self,r,ignore=False):
-        command='INSERT OR IGNORE' if ignore else 'INSERT OR REPLACE'
-        self.db.execute(f'{command} INTO rates VALUES (?,?,?,?,?,?,?)',(r['id'],r['cnpj'],r['product'],r['start'],r.get('end',''),str(r['rate_pct']),encode(r)))
+        rate=normalize_rate(r)
+        if ignore and self.db.execute('SELECT 1 FROM rates WHERE id=?',(rate['id'],)).fetchone():
+            return
+        persist_rate(self.db,rate,rate.get('reviewed_by','Sistema'))
+
+    def parameters_for(self,period=None):
+        period=period or self.get('period')
+        self._period(period)
+        saved=self.get('parameters:'+period)
+        if saved is None and period==self.get('period'):
+            saved=self.get('parameters')
+        return {**DEFAULT_PARAMETERS,**(saved or {})}
+
+    def operational_config(self,period):
+        with self.lock:
+            params=self.parameters_for(period)
+            return {'period':period,'competencia':period,**params,'parameters':params,
+                    'configured':bool(params.get('closing_deadline'))}
+
+    def set_operational_config(self,period,payload,actor):
+        values={**payload.get('parameters',{}),**{k:v for k,v in payload.items() if k!='parameters'},
+                'period':period,'actor':actor}
+        self.mutate('parameters',values)
+        return self.operational_config(period)
+
+    def _set_period(self,period):
+        self._period(period)
+        previous=self.get('period')
+        if previous:
+            self.put('parameters:'+previous,self.get('parameters',DEFAULT_PARAMETERS))
+        params=self.parameters_for(period)
+        self.put('period',period)
+        self.put('parameters',params)
+        self.put('parameters:'+period,params)
+
+    def reference_snapshot(self,period=None):
+        with self.lock:
+            references={'merchants':self.records('merchants'),'rates':self.records('rates'),
+                        'catalog_conflicts':self.get('catalog_conflicts',[]),
+                        'catalog_transitions':self.get('catalog_transitions',[]),
+                        'catalog_warnings':self.get('catalog_warnings',[]),
+                        'parameters':self.parameters_for(period or self.get('period'))}
+            return reconcile_catalog({},references)
 
     def _data(self):
         data=self.get('source_data')
         data['merchants']=self.records('merchants')
         data['rates']=self.records('rates')
+        warnings=[w for w in data.get('import_warnings',[]) if w.get('type') not in {'CONFLITO_CONTRATUAL','CONFLITO_CADASTRAL'}]
+        data['import_warnings']=warnings+self.get('catalog_warnings',[])
         return data
 
     def _recalculate(self,actor):
@@ -184,15 +252,28 @@ class Store:
         errors=[]
         warnings=[]
         sums={}
+        unknowns=Counter()
         for row in result.get('rastro',[]):
-            sums[row['id_saida']]=sums.get(row['id_saida'],Decimal('0'))+Decimal(str(row['valor']))
+            ident=row['id_saida']
+            sums.setdefault(ident,Decimal('0'))
+            if row.get('valor') is None:
+                unknowns[ident]+=1
+            else:
+                sums[ident]+=Decimal(str(row['valor']))
         ids=set()
         for key,field in [('comissoes','comissao_brl'),('divergencias','diferenca_brl'),('notas','valor_brl'),('lancamentos','valor'),('pendencias','valor_brl')]:
             for row in result.get(key,[]):
                 ident=row['id_saida']
                 if ident in ids: errors.append(f'ID de saída repetido: {ident}')
                 ids.add(ident)
-                if ident not in sums or sums[ident]!=Decimal(str(row[field] or '0')):
+                incomplete=key=='pendencias' and row.get('group_scope')=='merchant_period' and row.get('exposure_status') in ('partial','unavailable')
+                if incomplete:
+                    if (row.get(field) is not None or ident not in sums or not unknowns[ident]
+                            or unknowns[ident]!=row.get('missing_exposure_count')
+                            or sums[ident]!=Decimal(str(row.get('known_exposure_brl')))):
+                        errors.append(f'Rastro incompleto inconsistente: {ident}')
+                    warnings.append(f'Valor total indisponível em {ident}: {unknowns[ident]} operações sem valor informado; subtotal conhecido preservado.')
+                elif ident not in sums or unknowns[ident] or sums[ident]!=Decimal(str(row[field] or '0')):
                     errors.append(f'Rastro não fecha: {ident}')
         for group in self._rate_groups().values():
             ordered=sorted(group,key=lambda r:r['start'])
@@ -241,11 +322,11 @@ class Store:
         if action=='recalculate':
             period=p.get('period',self.get('period'))
             self._period(period)
-            self.put('period',period)
+            self._set_period(period)
             self._recalculate(actor)
         elif action=='import':
             self._period(p.get('period',self.get('period')))
-            self.put('period',p.get('period',self.get('period')))
+            self._set_period(p.get('period',self.get('period')))
             self._import(p.get('source_dir',''),actor)
         elif action=='decisions':
             ident=p.get('id')
@@ -254,12 +335,19 @@ class Store:
             if not row: raise ValueError('Item não encontrado nesta competência.')
             if p.get('action') not in ('confirm','reject','adjust'): raise ValueError('Decisão inválida.')
             if not str(p.get('note','')).strip(): raise ValueError('Registre a justificativa e o encaminhamento da decisão.')
+            if row.get('group_scope')=='merchant_period' and p.get('action')=='adjust':
+                raise ValueError('Regularize o cadastro e o contrato e recalcule. A ressalva não autoriza faturamento.')
             code=p.get('account_code','')
             if code:
                 account=next((a for a in self.get('source_data')['accounts'] if a['code']==code and a.get('postable')),None)
                 if not account: raise ValueError('Selecione uma conta analítica que aceita lançamentos.')
                 if p.get('action')!='adjust': raise ValueError('Reclassificação exige a decisão Ajustar.')
             decision={'action':p['action'],'actor':actor,'at':now(),'note':p['note'],'account_code':code}
+            if row.get('group_scope')=='merchant_period':
+                decision.update({key:copy.deepcopy(row.get(key)) for key in
+                                 ('group_scope','period','cnpj','merchant_name','operation_count','affected_operations','source_fingerprint',
+                                  'exposure_status','known_exposure_brl','missing_exposure_count')})
+                decision['billing_authorized']=False
             self.db.execute('INSERT OR REPLACE INTO decisions VALUES (?,?,?,?)',(self.get('period'),ident,digest(row),encode(decision)))
             self._audit(actor,'decision',{'id':ident,**decision})
             self.put('closing',{'status':'open','actor':actor,'closed_at':None,'waiver':False,'reason':''})
@@ -287,20 +375,25 @@ class Store:
             ec=str(p.get('ec','')).strip()
             if ec and any(m.get('ec')==ec and m['cnpj']!=cnpj for m in self.records('merchants')): raise ValueError('Este EC já pertence a outro CNPJ.')
             merchant={**old,'cnpj':cnpj,'name':p['name'],'ec':ec,'active':bool(p.get('active',True)),'candidate':bool(p.get('candidate',old.get('candidate',False))),'source_ref':old.get('source_ref','CADASTRO HUMANO'),'reviewed_by':actor,'reviewed_at':now()}
+            merchant['supersedes_revision_ids']=sorted(set(old.get('supersedes_revision_ids',[])+([old['revision_id']] if old.get('revision_id') else [])))
+            merchant=reconcile_catalog({'merchants':[merchant]})['merchants'][0]
             self.db.execute('INSERT OR REPLACE INTO merchants VALUES (?,?)',(cnpj,encode(merchant)))
             self._audit(actor,'merchant_edit',{'before':old,'after':merchant,'reason':p['reason']})
             self._recalculate(actor)
         elif action=='parameters':
             if not p.get('reason'): raise ValueError('Informe a justificativa do parâmetro.')
-            params=self.get('parameters')
+            target_period=p.get('period',self.get('period'))
+            params=self.parameters_for(target_period)
             value=self._decimal(p.get('remittance_tolerance_pp',params['remittance_tolerance_pp']))
             if not Decimal('0')<=value<=Decimal('0.05'): raise ValueError('Tolerância deve estar entre 0 e 0,05 ponto percentual.')
             deadline=p.get('closing_deadline',params['closing_deadline'])
-            date.fromisoformat(deadline)
+            if deadline: date.fromisoformat(deadline)
             updated={**params,'remittance_tolerance_pp':str(value),'closing_deadline':deadline}
-            self.put('parameters',updated)
-            self._audit(actor,'parameter_edit',{'before':params,'after':updated,'reason':p['reason']})
-            self._recalculate(actor)
+            self.put('parameters:'+target_period,updated)
+            self._audit(actor,'parameter_edit',{'period':target_period,'before':params,'after':updated,'reason':p['reason']})
+            if target_period==self.get('period'):
+                self.put('parameters',updated)
+                self._recalculate(actor)
         elif action=='contacts':
             email=self._address(p.get('email',''))
             if p.get('kind') not in ('internal','billing'): raise ValueError('Tipo de contato inválido.')
@@ -315,9 +408,10 @@ class Store:
         elif action.startswith('emails/'):
             return self._email_action(action.split('/',1)[1],p,actor)
         elif action=='notifications/run':
-            deadline=date.fromisoformat(self.get('parameters')['closing_deadline'])
-            delta=(deadline-today()).days
-            if delta<=2 and self.get('closing',{}).get('status')!='closed':
+            raw_deadline=self.parameters_for().get('closing_deadline')
+            deadline=date.fromisoformat(raw_deadline) if raw_deadline else None
+            delta=(deadline-today()).days if deadline else None
+            if delta is not None and delta<=2 and self.get('closing',{}).get('status')!='closed':
                 self._event('deadline','atencao','Prazo do fechamento',f'Prazo configurado: {deadline.isoformat()}. Revise os bloqueios e conclua o fechamento.','/#issues',self.get('period')+deadline.isoformat()+today().isoformat())
             self._deliver_notifications(immediate_only=False)
             self._audit(actor,'notifications_run',{'mode':'simulation'})
@@ -354,13 +448,32 @@ class Store:
         value=self._decimal(p.get('rate_pct'))
         if value<0 or value>100: raise ValueError('Taxa deve estar entre 0 e 100%.')
         if not str(p.get('reason','')).strip(): raise ValueError('Informe justificativa e fonte da taxa.')
-        ident=p.get('id') or 'RATE-'+digest({'cnpj':cnpj,'product':product,'start':str(start)})[:16]
-        previous=next((r for r in self.records('rates') if r['id']==ident),None)
+        ident=p.get('id')
+        previous=next((r for r in self.records('rates') if r['id']==ident or ident in r.get('legacy_ids',[])),None) if ident else None
+        logical=normalize_rate({'cnpj':cnpj,'product':product,'start':str(start),'end':str(end) if end else '', 'rate_pct':str(value)})['logical_id']
         for rate in self.records('rates'):
-            if rate['id']==ident or rate['cnpj']!=cnpj or rate['product']!=product: continue
+            if (previous and rate['id']==previous['id']) or (previous and rate.get('logical_id')==logical) or rate['cnpj']!=cnpj or rate['product']!=product: continue
             if str(start)<=(rate.get('end') or '9999-12-31') and (str(end) if end else '9999-12-31')>=rate['start']:
                 raise ValueError(f'Vigência sobreposta à taxa {rate["id"]}. Ajuste o fim da taxa anterior primeiro.')
-        rate={**(previous or {}),'id':ident,'cnpj':cnpj,'product':product,'start':str(start),'end':str(end) if end else '', 'rate_pct':str(value),'source_file':'CADASTRO HUMANO','source_ref':ident,'reviewed_by':actor,'reviewed_at':now(),'reason':p['reason']}
+        rate={**(previous or {}),'id':logical,'cnpj':cnpj,'product':product,'start':str(start),'end':str(end) if end else '', 'rate_pct':str(value),'source_file':'CADASTRO HUMANO','source_ref':logical,'reviewed_by':actor,'reviewed_at':now(),'reason':p['reason']}
+        superseded=set((previous or {}).get('supersedes_revision_ids',[]))
+        for old in self.records('rates'):
+            if old.get('logical_id')==logical or (previous and old['id']==previous['id']):
+                persist_rate(self.db,old,actor)
+                superseded.add(normalize_rate(old)['revision_id'])
+                self.db.execute('DELETE FROM rates WHERE id=?',(old['id'],))
+        conflicts=self.get('catalog_conflicts',[])
+        resolved={c['id'] for c in conflicts if c.get('logical_id') in {logical,(previous or {}).get('logical_id')}}
+        for conflict in conflicts:
+            if conflict['id'] in resolved:
+                superseded.update(r['revision_id'] for r in conflict.get('variants',[]))
+        rate=normalize_rate(rate)
+        if previous and previous.get('logical_id')!=logical:
+            rate['supersedes_logical_ids']=sorted(set(previous.get('supersedes_logical_ids',[])+[previous['logical_id']]))
+        superseded.discard(rate['revision_id'])
+        rate['supersedes_revision_ids']=sorted(superseded)
+        self.put('catalog_conflicts',[c for c in conflicts if c['id'] not in resolved])
+        self.put('catalog_warnings',[w for w in self.get('catalog_warnings',[]) if w.get('conflict_id') not in resolved])
         self._store_rate(rate)
         self._audit(actor,'rate_edit',{'before':previous,'after':rate})
         self._recalculate(actor)
@@ -484,10 +597,13 @@ class Store:
             'lancamentos':['banco','ref_origem','data','descricao','valor','conta_codigo','conta_descricao','metodo'],
         }
         labels={'lojista':'Lojista','cnpj':'CNPJ','tomador_cnpj':'CNPJ','linha_negocio':'Linha','comissao_brl':'Comissão (R$)','id_saida':'ID do rastro','ref_origem':'Origem','taxa_contratada_pct':'Contratada (%)','taxa_aplicada_pct':'Aplicada (%)','diferenca_brl':'Diferença (R$)','tomador':'Tomador','valor_brl':'Valor (R$)','discriminacao':'Serviço','tipo':'Ocorrência','motivo':'Motivo','quem_decide':'Responsável','status':'Situação','decision':'Decisão registrada','banco':'Banco','data':'Data','descricao':'Histórico','valor':'Valor (R$)','conta_codigo':'Conta','conta_descricao':'Contrapartida','metodo':'Método'}
+        labels.update(merchant_name='Empresa',operation_count='Operações afetadas')
         for key,title in [('comissoes','Comissões'),('divergencias','Divergências'),('notas','Notas propostas'),('pendencias','Pendências e decisões'),('lancamentos','Lançamentos classificados')]:
             rows=state['results'][key]; body+=f'<h2>{title}</h2>'
             if not rows: body+='<p>Nenhum registro.</p>'; continue
             columns=report_columns[key]
+            if key=='pendencias' and any(row.get('group_scope')=='merchant_period' for row in rows):
+                columns=columns[:2]+['merchant_name','cnpj','operation_count']+columns[2:]
             body+='<table><thead><tr>'+''.join('<th>'+esc(labels[c])+'</th>' for c in columns)+'</tr></thead><tbody>'
             for row in rows:
                 cells=[]
@@ -497,6 +613,8 @@ class Store:
                         value=f'{value["actor"]} · {value["at"]}: {value["note"]}' if value else 'Aguardando análise'
                     elif column=='status': value={'open':'Aberta','resolved':'Encaminhada','rejected':'Rejeitada; aberta'}.get(value,value)
                     elif column=='tipo': value=str(value).replace('_',' ').capitalize()
+                    elif column=='valor_brl' and value is None:
+                        value=f'Total indisponível; subtotal conhecido: {row.get("known_exposure_brl", "indisponível")}'
                     cells.append('<td>'+esc(value)+'</td>')
                 body+='<tr>'+''.join(cells)+'</tr>'
             body+='</tbody></table>'

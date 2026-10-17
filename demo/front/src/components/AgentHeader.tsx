@@ -68,6 +68,7 @@ export function AgentHeader({ run, summary, elapsed, gateAt }: { run: Run; summa
             <StatusBadge status={run.status} size="lg" />
           </div>
           {run.status === 'awaiting_approval' && !run.draft && <Link className="btn primary" to={`/runs/${run.id}/revisao`}><Icon name="alert" />Revisar exceções</Link>}
+          {run.status === 'awaiting_approval' && !run.draft && <Link className="btn" to={`/runs/${run.id}/hipoteses`}><Icon name="origin" />Seguir sugestões do agente</Link>}
           {run.status === 'failed' && <Link className="btn" to={`/competencias/${run.comp}`}><Icon name="refresh" />Rodar de novo</Link>}
           {reviewable && run.status !== 'awaiting_approval' && <Link className="btn" to={`/runs/${run.id}/auditoria`}><Icon name="audit" />Auditoria</Link>}
         </div>

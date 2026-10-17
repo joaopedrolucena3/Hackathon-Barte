@@ -7,7 +7,17 @@ export interface MailIdentity { email: string; sub: string; connection_id: strin
 export interface MailAccount {
   configured: boolean; connected: boolean; authorized: boolean; email?: string | null;
   missing_config: string[]; provider_mode: string; connection?: MailIdentity | null;
+  provider?: 'gmail_smtp' | 'gmail_oauth'; smtp_available?: boolean; oauth_configured?: boolean;
 }
+export const DEMO_MAILBOX = 'financeirotarvo@gmail.com';
+export interface DemoMailInput extends MailFields { counterparty: Counterparty; request_id: string }
+export interface MailDelivery {
+  id: string; request_id?: string; status: 'accepted' | 'failed' | 'uncertain' | 'sending' | 'unavailable'; recipient: string;
+  subject: string; body?: string; counterparty?: Counterparty; created_at: string;
+  run_id?: string; event?: string; provider_message_id?: string; provider_mode?: string;
+  error?: { code?: string; message: string } | string;
+}
+export interface MailNotificationSettings { enabled: boolean; recipient: string; connection_id?: string | null }
 export interface MailContact { id: string; counterparty: Counterparty; name: string; email: string; enabled: boolean }
 export interface MailAttachment { id: string; name: string; content_type: string; size: number; sha256: string; url: string }
 export interface MailDraft {
@@ -33,7 +43,7 @@ export interface MailEdit extends Partial<MailFields> {
 let csrfToken = '';
 const enc = encodeURIComponent;
 
-async function request<T>(path: string, body?: object, method = 'POST', declaredActor = true): Promise<T> {
+export async function mailRequest<T>(path: string, body?: object, method = 'POST', declaredActor = true): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
@@ -47,7 +57,9 @@ async function request<T>(path: string, body?: object, method = 'POST', declared
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const data = await response.json().catch(() => { throw new Error('Não foi possível confirmar a resposta do servidor. Consulte o estado antes de outra ação.'); });
-  if (!response.ok || data.error) {
+  // Failed/uncertain delivery records carry their own error and must remain inspectable.
+  const deliveryRecord = typeof data.id === 'string' && ['draft', 'sending', 'sent', 'accepted', 'failed', 'uncertain', 'unavailable'].includes(data.status);
+  if (!response.ok || (data.error && !deliveryRecord)) {
     const error = data.error;
     const details = error?.details || data.detail;
     const explanation = Array.isArray(details) ? details.map(item => typeof item === 'string' ? item : item.message || item.msg || '').filter(Boolean).join(' ') : '';
@@ -56,6 +68,8 @@ async function request<T>(path: string, body?: object, method = 'POST', declared
   return data as T;
 }
 
+const request = mailRequest;
+
 export const mail = {
   async account(): Promise<MailAccount> {
     const { csrf_token, ...account } = await request<MailAccount & { csrf_token?: string }>('/api/mail/account');
@@ -63,8 +77,13 @@ export const mail = {
     return account;
   },
   connect: () => request<{ authorization_url: string }>('/api/mail/oauth/start', {}, 'POST', false),
+  async connectSmtp(email: string, app_password: string): Promise<MailAccount> {
+    const { csrf_token, ...account } = await request<MailAccount & { csrf_token?: string }>('/api/mail/smtp/connect', { email, app_password }, 'POST', false);
+    csrfToken = csrf_token || '';
+    return account;
+  },
   async disconnect() {
-    const result = await request<{ disconnected: boolean; revocation_confirmed?: boolean }>('/api/mail/disconnect', {}, 'POST', false);
+    const result = await request<{ disconnected: boolean; revocation_confirmed?: boolean; manual_revocation_required?: boolean }>('/api/mail/disconnect', {}, 'POST', false);
     csrfToken = '';
     return result;
   },
@@ -74,14 +93,25 @@ export const mail = {
   draft: (id: string) => request<MailDraft>(`/api/mail/drafts/${enc(id)}`),
   create: (issue_id: string) => request<MailDraft>('/api/mail/drafts', { issue_id }),
   save: (id: string, edit: MailEdit) => request<MailDraft>(`/api/mail/drafts/${enc(id)}`, edit, 'PUT'),
-  approveSend: (draft: MailDraft) => request<MailDraft>(`/api/mail/drafts/${enc(draft.id)}/approve-send`, { version: draft.version, content_hash: draft.content_hash }),
+  approveSend: (draft: MailDraft) => request<MailDraft>(`/api/mail/drafts/${enc(draft.id)}/approve-send`, { version: draft.version, content_hash: draft.content_hash, permission: true }),
   history: (issueId: string) => request<MailEvent[]>(`/api/mail/issues/${enc(issueId)}/history`),
+  sendDemo: (message: DemoMailInput) => request<MailDelivery>('/api/mail/demo/send', message),
+  demoDeliveries: async () => (await request<{ deliveries: MailDelivery[] }>('/api/mail/demo/deliveries')).deliveries,
+  notifications: () => request<MailNotificationSettings>('/api/mail/notifications'),
+  saveNotifications: (settings: Pick<MailNotificationSettings, 'enabled' | 'recipient'>) => request<MailNotificationSettings>('/api/mail/notifications', settings, 'PUT'),
+  testNotification: () => request<MailDelivery>('/api/mail/notifications/test', {}),
+  notificationDeliveries: async () => (await request<{ deliveries: MailDelivery[] }>('/api/mail/notifications/deliveries')).deliveries,
 };
 
 export const isTestProvider = (mode?: string) => ['test', 'mock', 'fake', 'simulated', 'simulation', 'sandbox', 'injected', 'injected_test'].includes(mode || '');
 
+export function deliveryLabel(delivery: MailDelivery) {
+  if (delivery.status === 'accepted') return isTestProvider(delivery.provider_mode) ? 'Simulado · aceito pelo provedor de teste' : 'Aceito pelo servidor de e-mail';
+  return { failed: 'Falha no envio', uncertain: 'Resultado incerto', sending: 'Envio em andamento', unavailable: 'Nenhum envio · conta indisponível' }[delivery.status];
+}
+
 export function acceptedMailLabel(draft: MailDraft) {
-  return isTestProvider(draft.provider_mode) ? 'Aceito pelo provedor de teste' : draft.provider_mode === 'gmail' ? 'Aceito pelo Gmail' : 'Aceito pelo provedor';
+  return isTestProvider(draft.provider_mode) ? 'Aceito pelo provedor de teste' : draft.provider_mode === 'gmail_smtp' ? 'Aceito pelo servidor de e-mail' : draft.provider_mode === 'gmail' ? 'Aceito pelo Gmail' : 'Aceito pelo provedor';
 }
 
 function immutableSnapshot(draft: MailDraft) {

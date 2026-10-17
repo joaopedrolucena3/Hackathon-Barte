@@ -8,22 +8,28 @@ def build_insights(period, results):
     def money(value):
         return format(value, '.2f')
     def counter():
-        return {'count': 0, 'total': Decimal(0)}
+        return {'count': 0, 'total': Decimal(0), 'missing': 0}
+    def exposure(item):
+        return money(item['total']) if not item['missing'] else None
     states = {key: counter() for key in ('bloqueante', 'alerta', 'resolvido')}
     types = {}
     for issue in results.get('pendencias', []):
-        value = abs(number(issue['valor_brl']))
+        incomplete = issue.get('valor_brl') is None
+        value = abs(number(issue.get('known_exposure_brl', '0') if incomplete else issue['valor_brl']))
+        missing = max(1, int(issue.get('missing_exposure_count', 0))) if incomplete else 0
         decided = issue.get('status') == 'resolved'
         blocking = issue.get('severity') == 'bloqueante'
         bucket = states['resolvido' if decided else 'bloqueante' if blocking else 'alerta']
         bucket['count'] += 1
         bucket['total'] += value
+        bucket['missing'] += missing
         item = types.setdefault(issue['tipo'], {**counter(), 'open': 0, 'blocking': False})
         item['count'] += 1
         item['blocking'] |= blocking
         if not decided:
             item['open'] += 1
             item['total'] += value
+            item['missing'] += missing
     divergences = {}
     for row in results.get('divergencias', []):
         item = divergences.setdefault(row.get('cnpj', ''), {'count': 0, 'signed': Decimal(0), 'abs': Decimal(0), 'name': row.get('lojista', row.get('cnpj', ''))})
@@ -57,11 +63,15 @@ def build_insights(period, results):
     return {
         'comp': period, 'source': 'current_conference',
         'pendencias': {
-            'open_brl': money(states['bloqueante']['total'] + states['alerta']['total']),
-            'resolved_brl': money(states['resolvido']['total']),
+            'open_brl': None if states['bloqueante']['missing'] + states['alerta']['missing'] else money(states['bloqueante']['total'] + states['alerta']['total']),
+            'resolved_brl': exposure(states['resolvido']),
+            'known_open_brl': money(states['bloqueante']['total'] + states['alerta']['total']),
+            'known_resolved_brl': money(states['resolvido']['total']),
+            'missing_open_exposure_count': states['bloqueante']['missing'] + states['alerta']['missing'],
+            'missing_resolved_exposure_count': states['resolvido']['missing'],
             'open_count': states['bloqueante']['count'] + states['alerta']['count'], 'resolved_count': states['resolvido']['count'],
-            'by_state': [{'key': key, 'label': labels[key], 'count': item['count'], 'brl': money(item['total'])} for key, item in states.items()],
-            'by_type': [{'key': key, 'label': key.replace('_', ' ').capitalize(), 'count': item['count'], 'open_count': item['open'], 'brl': money(item['total']), 'severity': 'bloqueante' if item['blocking'] else 'alerta'} for key, item in sorted(types.items(), key=lambda pair: (-pair[1]['total'], -pair[1]['open']))],
+            'by_state': [{'key': key, 'label': labels[key], 'count': item['count'], 'brl': exposure(item), 'known_brl': money(item['total']), 'missing_exposure_count': item['missing']} for key, item in states.items()],
+            'by_type': [{'key': key, 'label': key.replace('_', ' ').capitalize(), 'count': item['count'], 'open_count': item['open'], 'brl': exposure(item), 'known_brl': money(item['total']), 'missing_exposure_count': item['missing'], 'severity': 'bloqueante' if item['blocking'] else 'alerta'} for key, item in sorted(types.items(), key=lambda pair: (-pair[1]['total'], -pair[1]['open']))],
         },
         'divergencias_por_lojista': [{'cnpj': key, 'lojista': item['name'], 'count': item['count'], 'signed_brl': money(item['signed']), 'abs_brl': money(item['abs'])} for key, item in sorted(divergences.items(), key=lambda pair: -pair[1]['abs'])],
         'bancos': [{'bank': key, 'account': item['account'], 'count': item['count'], 'in_brl': money(item['in']), 'out_brl': money(item['out']), 'net_brl': money(item['in'] - item['out']), 'daily': [{'date': day, 'in_brl': money(values['in']), 'out_brl': money(values['out'])} for day, values in sorted(item['daily'].items())]} for key, item in sorted(banks.items())],

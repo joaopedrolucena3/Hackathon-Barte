@@ -64,9 +64,38 @@ def _from_issue(issue):
             "descricao": issue["motivo"], "origens": copy.deepcopy(issue.get("evidence", [])), "impacto_rs": issue["valor_brl"]}
 
 
+def _registration_matches(exception, row):
+    """A shared registration cause only annotates its exact source locations."""
+    refs = {str(row[k]) for k in ("id", "source_ref", "ref_origem", "id_saida") if row.get(k)}
+    filename = row.get("source_file", row.get("arquivo_origem", ""))
+    line = row.get("physical_row", row.get("source_row"))
+    if row.get("cnpj") and row["cnpj"] != exception.get("cnpj"): return False
+    # Evidence is authoritative. The display-oriented affected_operations list may
+    # omit receipt identity and must never bypass a conflicting source fingerprint.
+    origins = exception.get("origens") or exception.get("evidence") or []
+    identity_fields = ("source_sha256", "source_receipt_id", "source_id")
+    identity = lambda value: "" if value in (None, "") else str(value)
+    for origin in origins:
+        if origin.get("arquivo", "") != filename: continue
+        if not refs.intersection(str(origin[k]) for k in ("ref", "id") if origin.get(k)): continue
+        origin_line = origin.get("linha")
+        if line not in (None, "") and origin_line not in (None, "") and str(line) != str(origin_line): continue
+        # If either side supplies a source identifier, require it on both sides.
+        # Missing identity is insufficient evidence to target another financial row.
+        if any(identity(row.get(key)) != identity(origin.get(key)) for key in identity_fields): continue
+        return True
+    return False
+
+
+def _registration_has_business(issue, business):
+    return any(op.get("business") == business for op in issue.get("affected_operations", []))
+
+
 def _annotate(rows, exceptions):
     index = defaultdict(set)
+    registrations = [exc for exc in exceptions if exc.get("group_scope") == "merchant_period"]
     for exc in exceptions:
+        if exc.get("group_scope") == "merchant_period": continue
         index[exc.get("ref_origem", "")].add(exc["id"])
         for origin in exc.get("origens", []):
             index[origin.get("ref", "")].add(exc["id"])
@@ -74,7 +103,8 @@ def _annotate(rows, exceptions):
     for row in rows:
         row = copy.deepcopy(row)
         refs = {str(row.get(k, "")) for k in ("id", "source_ref", "ref_origem", "id_saida")}
-        row["__exception_ids"] = sorted(set(row.get("__exception_ids", [])) | set().union(*(index[ref] for ref in refs)))
+        grouped = {exc["id"] for exc in registrations if _registration_matches(exc, row)}
+        row["__exception_ids"] = sorted(set(row.get("__exception_ids", [])) | set().union(*(index[ref] for ref in refs)) | grouped)
         result.append(row)
     return result
 
@@ -87,17 +117,18 @@ def _inputs(ctx):
     # Upstream normalization/resolution must feed the calculation, not just its preview.
     upstream = datasets.get("orbe_resolvido", datasets.get("orbe_normalizado", datasets.get("raw_orbe", [])))
     source_fields = ("id", "date", "ec", "name", "type", "modality", "installments", "brand", "gross", "applied_rate_pct",
-                     "reported_fee", "net", "original_id", "original_date", "source_file", "source_ref", "physical_row")
+                     "reported_fee", "net", "original_id", "original_date", "source_file", "source_ref", "physical_row", "source_id", "source_sha256", "source_receipt_id", "provenances")
     data["checkout"] = [{key: row.get(key) for key in source_fields} for row in upstream]
+    data['history_checkout'] = copy.deepcopy(ctx.get('history_checkout', []))
     data["bank_balances"] = {r["bank"]: {k: v for k, v in r.items() if k != "bank"} for r in datasets.get("bank_balances", [])}
     return data
 
 
 def _computed(ctx, tolerance=None):
     scratch = ctx.setdefault("scratch", {})
-    if tolerance is not None: scratch["remittance_tolerance_pp"] = str(tolerance)
+    if tolerance is not None: scratch["remittance_tolerance_pp"] = str(ctx.get("references", {}).get("parameters", {}).get("remittance_tolerance_pp", tolerance) if dec(tolerance) == Decimal("0.002") else tolerance)
     data = _inputs(ctx)
-    params = {**ctx.get("references", {}).get("parameters", {}), "period": ctx["period"], "remittance_tolerance_pp": scratch.get("remittance_tolerance_pp", "0.002")}
+    params = {**ctx.get("references", {}).get("parameters", {}), "period": ctx["period"], "remittance_tolerance_pp": scratch.get("remittance_tolerance_pp", ctx.get("references", {}).get("parameters", {}).get("remittance_tolerance_pp", "0.002"))}
     resolved_aliases = [(r.get("ec"), r.get("cnpj")) for r in ctx.get("datasets", {}).get("orbe_resolvido", [])
                         if r.get("match_confirmed") and r.get("match_method") == "CNPJ"]
     key = hashlib.sha256(dumps([data, params, sorted(set(resolved_aliases))]).encode()).hexdigest()
@@ -128,7 +159,8 @@ def _contract_entries(result, business):
 
 
 def _ler_arquivos(ctx, params):
-    data = load_data(ctx["source_dir"])
+    data = load_data(ctx["source_dir"], files=ctx.get('input_files'))
+    data['import_warnings'].extend(ctx.get('references', {}).get('import_warnings', []))
     for key in ("merchants", "rates"):
         if key in ctx.get("references", {}): data[key] = copy.deepcopy(ctx["references"][key])
     hard = [w for w in data["import_warnings"] if w["type"] in {"ARQUIVO_AUSENTE", "ARQUIVO_AMBIGUO", "ANEXO_AMBIGUO", "ABA_AUSENTE"}]
@@ -136,6 +168,8 @@ def _ler_arquivos(ctx, params):
     mapping = {"checkout": "raw_orbe", "rates": "raw_rates", "merchants": "raw_merchants", "bank": "raw_bank",
                "accounts": "accounts", "sources": "sources", "remittances": "raw_remittances", "import_warnings": "import_warnings"}
     datasets = {target: copy.deepcopy(data.get(source, [])) for source, target in mapping.items()}
+    datasets['input_manifest'] = copy.deepcopy(data.get('input_manifest', []))
+    datasets['ingestion_counts'] = [copy.deepcopy(data.get('ingestion_counts', {}))]
     for rate in datasets["raw_rates"]:
         rate["rate_pct"] = format(dec(rate["rate_pct"]).quantize(Decimal("0.0001")), "f")
     audit_sources = []
@@ -148,9 +182,10 @@ def _ler_arquivos(ctx, params):
     ctx.setdefault("scratch", {})["input_audit"] = audit_sources
     datasets["bank_balances"] = [{"bank": bank, **balance} for bank, balance in sorted(data.get("bank_balances", {}).items())]
     exceptions = [_exception(w["type"], w, w["message"]) for w in data["import_warnings"]]
-    _progress(ctx, 6, 6)
-    return StepResult(datasets, exceptions, {"rows_in": sum(s["rows"] for s in datasets["sources"] if not s.get("embedded")), "rows_out": len(datasets["raw_orbe"]) + len(datasets["raw_remittances"]) + len(datasets["raw_bank"]), "files": 6},
-                      ["Seis arquivos lidos sem modificar originais; anexo XLSX extraído em memória.", "Datasets não carregam caminhos absolutos de snapshots de execução."])
+    files = len(data.get('input_manifest', [])) or len(ctx.get('input_files', []))
+    _progress(ctx, files, files)
+    return StepResult(datasets, exceptions, {"rows_in": sum(s.get("rows", 0) for s in datasets["sources"] if not s.get("embedded")), "rows_out": len(datasets["raw_orbe"]) + len(datasets["raw_remittances"]) + len(datasets["raw_bank"]), "files": files, 'ingestion_counts': data.get('ingestion_counts', {})},
+                      ["Fontes recebidas registradas no manifesto; originais preservados e anexo XLSX extraído em memória."])
 
 
 def _normalizar_orbe(ctx, params):
@@ -198,7 +233,9 @@ def _resolver(ctx, params):
     rows, exceptions = [], []
     result = _computed(ctx)
     merchant_kinds = {"CADASTRO_AUSENTE", "CADASTRO_AMBIGUO", "CNPJ_INVALIDO", "CADASTRO_NAO_CONFIRMADO"}
-    exceptions.extend(_from_issue(i) for i in result["pendencias"] if i["tipo"] in merchant_kinds and not str(i["ref_origem"]).startswith("PC-"))
+    exceptions.extend(_from_issue(i) for i in result["pendencias"] if i["tipo"] in merchant_kinds
+                      and (_registration_has_business(i, "CHECKOUT") if i.get("group_scope") == "merchant_period"
+                           else not str(i["ref_origem"]).startswith("PC-")))
     for row in source:
         row = copy.deepcopy(row)
         choices = by_ec.get(row.get("ec"), [])
@@ -256,17 +293,17 @@ def _estornos(ctx, params):
         row = copy.deepcopy(original)
         row.update(calculated.get(row["id"], {"calculated": False, "comissao_brl": None}))
         if row["id"] in reverse_refs:
-            row["original_present"] = row.get("original_id") in index
-            row["link_status"] = "ORIGINAL_PRESENTE" if row["original_present"] else "HISTORICO_DATA_ORIGINAL" if row.get("original_date", "")[:7] < ctx["period"] and row.get("calculated") else "PENDENTE"
+            row["original_present"] = bool(row.get("original_evidence"))
+            row["link_status"] = ("HISTORICO_VALIDADO" if row.get("original_resolution") == "historical" else "ORIGINAL_PRESENTE") if row["original_present"] else "ORIGINAL_AUSENTE_CALCULO_PROVISORIO" if row.get("original_date", "")[:7] < ctx["period"] and row.get("calculated") else "PENDENTE"
         rows.append(row)
     return StepResult({"checkout_calculado": _annotate(rows, exceptions)}, exceptions,
-                      {"rows_in": len(source), "rows_out": len(rows), "checkout_brl": result["summary"]["checkout_brl"]}, ["Estornos usam data original. Ausência de venda de agosto não impede cálculo quando a fonte contém data, EC, modalidade e bruto."])
+                      {"rows_in": len(source), "rows_out": len(rows), "checkout_brl": result["summary"]["checkout_brl"]}, ["Estornos usam data original. Original ausente gera pendência bloqueante; cálculo provisório pela data declarada preserva a regra documentada do caso."])
 
 
 def _bancos(ctx, params):
     result = _computed(ctx)
     refs = {r["ref_origem"] for r in result["lancamentos"]}
-    exceptions = [_from_issue(i) for i in result["pendencias"] if i["ref_origem"] in refs]
+    exceptions = [_from_issue(i) for i in result["pendencias"] if i["ref_origem"] in refs and i.get("group_scope") != "merchant_period"]
     balances = []
     for raw in ctx["datasets"].get("bank_balances", []):
         movements = [r for r in result["lancamentos"] if r["banco"] == raw["bank"]]
@@ -291,7 +328,11 @@ def _cambio(ctx, params):
     calculated = {r["id"]: r for r in _contract_entries(result, "REMESSA")}
     source = ctx["datasets"]["raw_remittances"]
     refs = {r["id"] for r in source}
-    exceptions = [_from_issue(i) for i in result["pendencias"] if i["ref_origem"] in refs]
+    registrations = [_from_issue(i) for i in result["pendencias"]
+                     if i.get("group_scope") == "merchant_period" and _registration_has_business(i, "REMESSA")]
+    # Groups shared with checkout already belong to resolver_lojista; reuse their ID on these rows.
+    exceptions = [_from_issue(i) for i in result["pendencias"] if i.get("group_scope") != "merchant_period" and i["ref_origem"] in refs]
+    exceptions.extend(i for i in registrations if not _registration_has_business(i, "CHECKOUT"))
     rows, seen = [], set()
     for original in source:
         if original["contracted_date"][:7] != ctx["period"]: continue
@@ -304,7 +345,7 @@ def _cambio(ctx, params):
         row["compliance_aceito"] = row["compliance"] in ("APROVADO", "APROVADO C/ RESSALVA")
         seen.add(row["id"])
         rows.append(row)
-    return StepResult({"cambio_calculado": _annotate(rows, exceptions)}, exceptions,
+    return StepResult({"cambio_calculado": _annotate(rows, exceptions + registrations)}, exceptions,
                       {"rows_in": len(source), "rows_out": len(rows), "unique_operations": len(seen), "remessa_brl": result["summary"]["remessa_brl"]},
                       ["50% do realizado positivo por operação, HALF_UP; duplicata conta uma vez, negativos fora da comissão.", "Spread padrão 1,5% e aprovação com ressalva confirmados no Slack. Tolerância de cotação em pontos percentuais."])
 
@@ -316,7 +357,9 @@ def _post_pair(rows, event, source, amount, debit, credit, description, exceptio
     entry_id = uid("LCT", event, source.get("bank", source.get("banco", "")), ref)
     if amount < 0: debit, credit, amount = credit, debit, -amount
     accounts = [("D", debit), ("C", credit)]
-    ids = sorted({exc["id"] for exc in exceptions if exc.get("ref_origem") == ref or any(o.get("ref") == ref for o in exc.get("origens", []))})
+    ids = sorted({exc["id"] for exc in exceptions
+                  if (_registration_matches(exc, source) if exc.get("group_scope") == "merchant_period"
+                      else exc.get("ref_origem") == ref or any(o.get("ref") == ref for o in exc.get("origens", [])))})
     for side, account in accounts:
         rows.append({"id": entry_id + "-" + side, "entry_id": entry_id, "data": source.get("date", source.get("data", source.get("contracted_date", ""))),
                      "conta_codigo": account, "natureza": side, "debito": money(amount if side == "D" else 0), "credito": money(amount if side == "C" else 0),
@@ -384,7 +427,8 @@ def _gerar(ctx, params):
     errors = validate_ledger(ledger, accounts)
     if errors: exceptions.append(_exception("LOTE_DESBALANCEADO", {"id": "lote"}, "; ".join(errors)))
     datasets = {"lancamentos": ledger, "comissoes": result["comissoes"], "divergencias": result["divergencias"], "notas": result["notas"],
-                "pendencias": result["pendencias"], "rastro": result["rastro"], "detalhes_calculo": result["details"]}
+                "pendencias": result["pendencias"], "rastro": result["rastro"], "detalhes_calculo": result["details"],
+                "resultado_snapshot": [result]}
     total = sum((dec(r["debito"]) for r in ledger), Decimal(0))
     return StepResult(datasets, exceptions, {"rows_in": len(result["lancamentos"]) + len(result["comissoes"]), "rows_out": len(ledger),
                      "debit_total": money(total), "credit_total": money(sum((dec(r["credito"]) for r in ledger), Decimal(0))), "balanced": not errors},
@@ -464,10 +508,18 @@ def export_artifacts(ctx, adjustments, destination):
     columns = ["id", "entry_id", "data", "conta_codigo", "natureza", "debito", "credito", "valor", "historico", "ref_origem", "arquivo_origem", "event_type", "cnpj", "__exception_ids"]
     exceptions = sorted(ctx.get("exceptions", []), key=lambda r: r["id"])
     normalized_adjustments = [{key: value for key, value in row.items() if key not in {"at", "created_at", "updated_at", "timestamp", "run_id"}} for row in applied]
+    group_columns = ["group_scope", "period", "cnpj", "merchant_name", "operation_count", "affected_operations",
+                     "source_fingerprint", "exposure_status", "known_exposure_brl", "missing_exposure_count"]
+    exception_index = {row["id"]: row for row in exceptions}
+    for adjustment in normalized_adjustments:
+        exception = exception_index.get(adjustment.get("exception_id"), {})
+        if exception.get("group_scope") == "merchant_period":
+            for key in group_columns:
+                if key in exception: adjustment.setdefault(key, exception[key])
     payloads = {
         "lancamentos_fenix.csv": _csv_bytes(rows, columns),
-        "relatorio_excecoes.csv": _csv_bytes(exceptions, ["id", "step_id", "tipo", "severidade", "descricao", "ref_origem", "impacto_rs", "origens", "status"]),
-        "ajustes.csv": _csv_bytes(normalized_adjustments, ["exception_id", "acao", "valor", "conta", "entry_id", "target_entry_ids", "already_excluded", "justificativa", "actor"]),
+        "relatorio_excecoes.csv": _csv_bytes(exceptions, ["id", "step_id", "tipo", "severidade", "descricao", "ref_origem", "impacto_rs", "origens", "status", "decision"] + group_columns),
+        "ajustes.csv": _csv_bytes(normalized_adjustments, ["exception_id", "acao", "valor", "conta", "entry_id", "target_entry_ids", "already_excluded", "justificativa", "actor", "billing_authorized"] + group_columns),
     }
     manifest = []
     for name, content in payloads.items():

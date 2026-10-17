@@ -1,3 +1,45 @@
+# Sugestões de contestação com permissão — 17/10/2026
+
+Na branch `codex/email-real-demo`, a execução prepara sugestões por parceiro, competência e motivo. Nenhuma contestação é enviada pelo callback da run. O responsável salva a versão, revisa texto, remetente, destinatário e anexos, marca sua permissão e confirma o envio. Mudanças invalidam a autorização. As mensagens têm resumo curto e detalhamento nos anexos.
+
+- **256 testes do backend passaram** na suíte completa, em 674,155 segundos, incluindo as regressões de importação, processamento e gravação.
+- **13 testes do serviço passaram**, incluindo evidências imutáveis, conteúdo e anexos adulterados, revisão obrigatória, concorrência, reinício e resultado incerto.
+- **7 testes de API passaram**, com pipeline e banco reais e SMTP injetado. O histórico permanece acessível após rejeitar a execução. A suíte de API foi repetida após a proteção por ocorrência e passou novamente em 156,063 segundos.
+- **108 testes de frontend passaram**; TypeScript e compilação final de produção passaram. A interface antiga também passou na verificação de sintaxe e exige permissão explícita.
+- A deduplicação foi verificada com um grupo enviado, uma nova execução com mais uma ocorrência, outra com uma ocorrência a menos e outra com evidência financeira alterada. Somente a ocorrência nova ou alterada entra em uma nova mensagem; todas as repetições ficam bloqueadas.
+- Na revisão visual com provedor simulado, salvar não enviou, a confirmação começou desmarcada, editar o assunto invalidou a permissão anterior e a versão 3 exigiu uma nova autorização. Houve somente uma aceitação no provedor fictício (`fake-gmail-1`), com indicação visível de simulação e sem erros no console.
+- Na demo real da porta 8770, uma execução de teste produziu cinco sugestões (243 ocorrências) e 108 exclusões justificadas. As cinco permanecem aguardando revisão. O Gmail está desconectado e os avisos internos estão desativados.
+
+Os avisos internos continuam com autorização própria, separada da permissão individual de contestações. O controle de repetição por ocorrência pertence ao novo fluxo de sugestões; o editor individual antigo mantém seu histórico independente.
+
+**Limite:** nenhuma autenticação ou entrega real foi confirmada. Os testes usam provedores injetados, sem conexão ao Gmail para enviar mensagens. A autorização Google ainda depende do login do titular.
+
+Registros e capturas: `evidence/email-suggestions/`, incluindo `backend-tests-final.txt`, `api-tests.txt`, `frontend-verification.txt`, `frontend-final-build.txt`, `browser-verification.json` e `review-permission.png`. O patch de revisão nessa pasta compara o código com a cópia inicial, incluindo as alterações locais que já existiam; a cópia original recebeu mudanças paralelas posteriores e não foi sobrescrita nem integrada por esta tarefa. Nenhum commit ou push foi feito.
+
+---
+
+# Revisão da demo de e-mail — 17/10/2026
+
+Branch: `codex/email-real-demo`, em worktree isolada. A cópia original permaneceu na branch `main`, com o mesmo diff local de início. Nenhum commit, push ou alteração no banco original foi realizado.
+
+- Suíte completa do backend: **235 testes passaram**, em 246,009 segundos.
+- Após corrigir a descoberta de certificados TLS do Python no Mac, os **66 testes de e-mail passaram novamente**, em 34,040 segundos.
+- Frontend: **89 testes passaram**; compilação de produção concluída.
+- Revisão visual da tela real desconectada na porta 8770: conta e destinatários preenchidos, troca Orbe/Ponte, ações bloqueadas até conectar e nenhum erro no console.
+- Conexão externa ao `smtp.gmail.com:465`: TLS verificado com certificados `certifi`, resposta EHLO 250. A configuração padrão de certificados deste Python estava ausente; o transporte agora usa a cadeia incluída nas dependências, mantendo verificação do certificado e hostname.
+
+Os testes exercitam a conexão SMTP por senha de app, a sessão e CSRF, o envio manual com conteúdo exato, deduplicação, falhas conhecidas, resultados incertos, desconexão e avisos reais do pipeline por integração HTTP com transporte isolado. As notificações não mudam o resultado financeiro, usam destinatário explícito e não repetem tentativas automaticamente. O fluxo OAuth anterior continua coberto.
+
+**Limite de verificação:** nenhuma autenticação real na conta e nenhum envio externo foram efetuados. A conta ainda precisa ser conectada pela interface; somente a verificação da caixa confirma recebimento. O teste de conexão TLS não comprova login ou entrega. Os avisos começam desativados e são habilitados em “Salvar avisos”.
+
+A demo desta branch usa banco próprio (`data/email-demo.sqlite3`) e pasta própria de runs (`saida/email-demo-runs`). Para abrir: http://127.0.0.1:8770/comunicacoes?aba=gmail. Os logs desta revisão estão em `evidence/email-real-demo/`, na raiz da worktree, e a captura visual em `evidence/email-demo-disconnected.jpg`. Guia atual: [GMAIL.md](GMAIL.md).
+
+---
+
+## Registro da implementação anterior
+
+O registro abaixo é histórico; a configuração OAuth e as limitações da versão anterior não descrevem o novo fluxo simplificado.
+
 # Verificação da integração Gmail
 
 Em 17/10/2026, `./run.sh test` executou **130 testes com sucesso em 51,814 segundos**: 90 regressões existentes e 40 testes novos (17 de OAuth/provedor, 16 do serviço de mensagens e 7 da API). O registro completo está em [resultado-testes-email.txt](resultado-testes-email.txt).

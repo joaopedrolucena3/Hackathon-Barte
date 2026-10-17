@@ -28,7 +28,7 @@ export function CommissionsPanel({ state, line: initial, onClose }: { state: App
       onClose={onClose}
       headerExtra={trace
         ? <button className="btn sm" onClick={() => setTrace(null)}><Icon name="arrowLeft" />Voltar à lista</button>
-        : <a className="btn sm" href={downloads.csv('comissoes_por_lojista.csv')} download><Icon name="download" />CSV</a>}
+        : <a className="btn sm" href={downloads.csv('comissoes_por_lojista.csv', { comp: state.period, run_id: state.run_id })} download><Icon name="download" />CSV</a>}
     >
       {trace ? <TraceView id={trace.id_saida} /> : (
         <div className="stack-lg">
@@ -37,7 +37,7 @@ export function CommissionsPanel({ state, line: initial, onClose }: { state: App
             <div className="kpi"><span className="kpi-label">Remessa</span><span className="kpi-value"><Money value={s.remessa_brl} /></span><span className="kpi-detail">{count(s.remessa_count)} operações únicas</span></div>
             <div className="kpi"><span className="kpi-label">Lojistas com comissão</span><span className="kpi-value">{count(new Set(state.results.comissoes.map(row => row.cnpj)).size)}</span><span className="kpi-detail">{count(state.results.comissoes.length)} linhas lojista × negócio</span></div>
           </div>
-          <Callout tone="info">Operações sem contrato confirmado (Atlas) não entram na comissão: ficam como exceções bloqueantes na revisão.</Callout>
+          <Callout tone="info">Operações sem cadastro e contrato confirmados não entram na comissão. A pendência de cadastro reúne as operações da empresa na competência; aceitar como ressalva mantém o faturamento bloqueado.</Callout>
           <div className="card">
             <div className="card-head">
               <div><h3 className="card-title">Maiores comissões</h3><p className="card-sub">Top 10 {line === 'ALL' ? 'de checkout e remessa' : line === 'CHECKOUT' ? 'de checkout' : 'de remessa'} · clique para ver a origem</p></div>

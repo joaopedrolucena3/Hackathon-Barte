@@ -1,12 +1,17 @@
 // Endpoints that already exist in back/src/app.py.
-import { getJSON, sendJSON } from './http';
+import { getJSON, sendJSON, sendAuthorizedJSON } from './http';
 import type { AppState, Trace } from './types';
+import { scopedUrl, type DataScope } from '../lib/scope';
+
+export interface OperationalConfig { competencia: string; closing_deadline?: string | null; reason?: string; updated_by?: string; updated_at?: string }
 
 type Ok = { ok: true; id?: string; email?: { id: string } };
 
 export const core = {
-  state: () => getJSON<AppState>('/api/state'),
-  trace: (id: string) => getJSON<Trace>(`/api/trace?id=${encodeURIComponent(id)}`),
+  state: (scope: DataScope = {}) => getJSON<AppState>(scopedUrl('/api/state', scope)),
+  trace: (id: string, scope: DataScope = {}) => getJSON<Trace>(scopedUrl('/api/trace', scope, { id })),
+  operationalConfig: (comp: string) => getJSON<OperationalConfig>(`/api/competencias/${encodeURIComponent(comp)}/config`),
+  saveOperationalConfig: (comp: string, body: { closing_deadline: string | null; reason: string }) => sendAuthorizedJSON<OperationalConfig>(`/api/competencias/${encodeURIComponent(comp)}/config`, body, 'PUT'),
 
   recalculate: (period: string) => sendJSON<Ok>('/api/recalculate', { period }),
   importDir: (source_dir: string, period: string) => sendJSON<Ok>('/api/import', { source_dir, period }),
@@ -32,10 +37,10 @@ export const core = {
 };
 
 export const downloads = {
-  csv: (file: string) => `/api/export?file=${encodeURIComponent(file)}`,
-  report: '/api/report',
-  reportDownload: '/api/report?download=1',
-  zip: '/api/export.zip',
+  csv: (file: string, scope: DataScope = {}) => scopedUrl('/api/export', scope, { file }),
+  report: (scope: DataScope = {}) => scopedUrl('/api/report', scope),
+  reportDownload: (scope: DataScope = {}) => scopedUrl('/api/report', scope, { download: '1' }),
+  zip: (scope: DataScope = {}) => scopedUrl('/api/export.zip', scope),
 };
 
 export const OFFICIAL_EXPORTS: [file: string, title: string, subtitle: string][] = [

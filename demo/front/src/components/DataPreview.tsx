@@ -10,6 +10,10 @@ import { Badge, Callout, Empty, HashChip, Loading, Money, Toggle } from './ui';
 const OPS: Record<ColumnFilter['op'], string> = { contains: 'contém', eq: 'igual a', gt: 'maior que', lt: 'menor que' };
 const NUMERIC = new Set(['money', 'percent', 'pp', 'number']);
 
+function PreviewTotal({ value }: { value: string | undefined }) {
+  return value == null || value === '' ? <span className="muted">Indisponível</span> : <Money value={value} />;
+}
+
 export function formatCell(column: ColumnSchema, raw: CellValue | undefined) {
   if (raw === null || raw === undefined || raw === '') return <span className="muted">—</span>;
   switch (column.type) {
@@ -160,7 +164,7 @@ export function DataPreview({ runId, stepId, paramsOverride, onException, initia
                   <td />
                   {columns.map((column, index) => (
                     <td key={column.key} className={`${column.type === 'money' ? 'r' : ''} ${column.is_new ? 'new-col' : ''}`}>
-                      {column.type === 'money' ? <span className="stack" style={{ gap: 0 }}><Money value={page.totals.all[column.key]} /><span className="muted" style={{ fontSize: 11, fontWeight: 500 }}>página <Money value={page.totals.page[column.key]} /></span></span>
+                      {column.type === 'money' ? <span className="stack" style={{ gap: 0 }}><PreviewTotal value={page.totals.all[column.key]} /><span className="muted" style={{ fontSize: 11, fontWeight: 500 }}>página <PreviewTotal value={page.totals.page[column.key]} /></span></span>
                         : index === 0 ? <span>Total ({count(page.total_rows)} linhas)</span> : null}
                     </td>
                   ))}

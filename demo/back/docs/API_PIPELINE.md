@@ -97,3 +97,13 @@ Ao iniciar uma execução do pack atual, o servidor incorpora snapshot dos cadas
 - [Respostas HTTP e streaming no FastAPI](https://fastapi.tiangolo.com/advanced/custom-response/)
 - [Uploads de arquivos no FastAPI](https://fastapi.tiangolo.com/tutorial/request-files/)
 - [Parquet no PyArrow](https://arrow.apache.org/docs/python/parquet.html)
+
+## Hipóteses e sugestões preservadas por execução
+
+`GET /api/runs/{run_id}/recommendations` consulta a versão de hipóteses e recomendações capturada para a execução. Retorna `policy_version`, `snapshot_status`, `preview_token`, `can_apply`, `assumptions`, `recommendations`, `summary` e `effects`. Cada recomendação inclui fato, regra, hipóteses vinculadas, evidências, efeito, responsável e informação faltante. `exposure_brl` é o valor relacionado à ocorrência, não a variação esperada do lote; ausência de valor é `null`.
+
+`POST /api/runs/{run_id}/recommendations/apply`, com autoria no cabeçalho `X-User` e corpo `{"preview_token":"<token retornado pela prévia>"}`, aplica todas as sugestões elegíveis da execução. Filtros e paginação da tela não alteram esse conjunto. A resposta contém quantidade, IDs, versão da política, efeitos e `already_applied` para repetição idempotente da mesma prévia. Uma alteração de decisão entre consulta e aplicação retorna conflito e exige nova prévia. Decisões anteriores nunca são substituídas pela ação em lote.
+
+A política inicial aplica apenas a manutenção do cálculo de alertas de divergência de taxa ou duplicata idêntica com evidência suficiente e sem bloqueante na mesma origem. A operação válida deduplicada é preservada. O lote mantém valores e contas. Contestações e contatos permanecem explicitamente pendentes; a aprovação final e qualquer comunicação são ações separadas. As decisões e o registro do conjunto são gravados numa única transação.
+
+Runs antigas sem captura retornam `snapshot_status=legacy_unavailable`, listas vazias e efeitos indisponíveis, sem reconstruir hipóteses com o catálogo atual. Runs de teste permitem consultar a captura, mas não aplicar sugestões.

@@ -1,7 +1,10 @@
 // Home of the closing (A2 + visual summary + B3): progress, value in pendencies, last run, KPIs and checklist.
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ApiError } from '../api/http';
 import type { ChecklistTask, Run, Status } from '../api/agent';
+import { scopedUrl, updateSearch } from '../lib/scope';
+import { OperationalConfigModal } from '../components/OperationalConfig';
 import { core, downloads } from '../api/core';
 import { HBarChart, SegmentMeter, StackedBar, STATUS_COLORS } from '../components/charts/Bars';
 import { StepTrack } from '../components/AgentHeader';
@@ -13,8 +16,9 @@ import { AgentOrb, moodOf } from '../components/motion';
 import { Badge, Callout, Count, Empty, Loading, Money, PageHead, RunId, STATUS, StatusBadge } from '../components/ui';
 import { capitalize, count, dateBR, dateTimeBR, duration, issueNames, moneyShort, periodLong, periodShort, plural, shortRunId } from '../lib/format';
 import { progressOf } from '../state/runEvents';
-import { keys, rememberComp, useAppState, useApprovalSummary, useChecklist, useCompetencias, useElapsed, useInsights, useRun, useRuns, useRunEvents } from '../state/queries';
+import { keys, rememberComp, useAppState, useApprovalSummary, useChecklist, useCompetencias, useElapsed, useInsights, useRun, useRuns, useRunEvents, useOperationalConfig } from '../state/queries';
 import { useAction } from '../state/useAction';
+import { isUnstartedMonth, MonthSelector, UnstartedMonth } from './fechamento/MonthAvailability';
 import { CloseMonthModal, ReopenModal } from './fechamento/ClosingModals';
 import { CommissionsPanel } from './fechamento/CommissionsPanel';
 import { DivergencesPanel } from './fechamento/DivergencesPanel';
@@ -59,7 +63,7 @@ function LastRunCard({ run, onRun }: { run?: Run; onRun: () => void }) {
   if (!run) {
     return (
       <div className="card fill">
-        <div className="card-head"><div><h3 className="card-title">Último run</h3><p className="card-sub">O agente ainda não rodou nesta competência</p></div></div>
+        <div className="card-head"><div><h3 className="card-title">Execução selecionada</h3><p className="card-sub">O agente ainda não rodou nesta competência</p></div></div>
         <div className="card-body">
           <Empty icon="play" title="Nenhum run ainda">As tarefas do agente ficam pendentes até o primeiro run.</Empty>
           <button className="btn primary" style={{ width: '100%' }} onClick={onRun}><Icon name="play" />Rodar fechamento</button>
@@ -74,7 +78,7 @@ function LastRunCard({ run, onRun }: { run?: Run; onRun: () => void }) {
         <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
           <AgentOrb mood={moodOf(run.status)} size={28} />
           <div>
-            <h3 className="card-title">Último run</h3>
+            <h3 className="card-title">Execução selecionada</h3>
             <p className="card-sub row wrap" style={{ gap: '2px 6px' }}><RunId id={run.id} /><span className="nowrap">{run.created_by}</span><span className="nowrap">{dateTimeBR(run.created_at)}{run.draft ? ' · teste' : ''}</span></p>
           </div>
         </div>
@@ -105,47 +109,57 @@ export default function Fechamento() {
   const { comp = '' } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { data: state } = useAppState();
   const { data: comps } = useCompetencias();
-  const { data: insights } = useInsights(comp);
-  const { data: tasks } = useChecklist(comp);
   const { data: runs } = useRuns(comp);
-  const latestRef = runs?.find(run => !run.draft);
-  const { data: latest } = useRun(latestRef?.id || '');
-  useRunEvents(latestRef?.id || '');
-  const { data: summary } = useApprovalSummary(latest?.id || '', !!latest && ['awaiting_approval', 'approved'].includes(latest.status));
+  const requestedRun = params.get('run_id') || undefined;
+  const latestRef = requestedRun ? runs?.find(run => run.id === requestedRun) : runs?.find(run => !run.draft);
+  const selectedId = requestedRun || latestRef?.id;
+  const { data: state, error: stateError, isFetching: stateFetching } = useAppState({ comp, run_id: selectedId }, runs !== undefined);
+  const { data: insights } = useInsights(comp, selectedId, runs !== undefined);
+  const { data: tasks } = useChecklist(comp, selectedId);
+  const { data: latest } = useRun(selectedId || '');
+  useRunEvents(selectedId || '');
+  const { data: summary } = useApprovalSummary(selectedId || '', !!latest && ['awaiting_approval', 'approved', 'rejected'].includes(latest.status));
+  const { data: operational } = useOperationalConfig(comp);
+  useEffect(() => { if (!requestedRun && selectedId) setParams(current => updateSearch(current, { run_id: selectedId }), { replace: true }); }, [requestedRun, selectedId, setParams]);
   const [launch, setLaunch] = useState(false);
+  const [complement, setComplement] = useState(false);
+  const [configure, setConfigure] = useState(false);
   const [closing, setClosing] = useState<'close' | 'reopen' | null>(null);
   const { run: act, busy } = useAction();
   useEffect(() => { if (comp) rememberComp(comp); }, [comp]);
 
   const panel = params.get('painel');
   const closePanel = () => { params.delete('painel'); params.delete('linha'); setParams(params, { replace: true }); };
-  const openPanel = (name: string, line?: string) => setParams(line ? { painel: name, linha: line } : { painel: name });
+  const openPanel = (name: string, line?: string) => setParams(current => updateSearch(current, { painel: name, linha: line }));
 
   const taskStats = useMemo(() => {
     const list = tasks || [];
     return { done: list.filter(task => isDone(task.status)).length, total: list.length };
   }, [tasks]);
 
+  const monthSelector = <MonthSelector comp={comp} months={comps} onChange={value => navigate(`/competencias/${value}`)} />;
+  if (isUnstartedMonth(stateError, selectedId)) return <><TopbarSlot>{monthSelector}<Badge tone="neutral" dot>Sem execução</Badge></TopbarSlot><UnstartedMonth comp={comp} hasPack={comps?.find(item => item.comp === comp)?.has_pack} deadline={operational?.closing_deadline} onLaunch={() => setLaunch(true)} onConfigure={() => setConfigure(true)} />{launch && <RunLauncher key={comp} comp={comp} onClose={() => setLaunch(false)} />}{configure && <OperationalConfigModal key={comp} comp={comp} onClose={() => setConfigure(false)} />}</>;
+  if (stateError instanceof ApiError && (stateError.data?.error as { code?: string })?.code === 'RESULT_NOT_READY') return <><TopbarSlot>{monthSelector}</TopbarSlot><div className="stack-lg"><PageHead eyebrow="Fechamento mensal" title={capitalize(periodLong(comp))} sub="Esta execução ainda está preparando os resultados." /><Callout tone="info" icon="info">Os valores desta execução serão exibidos quando o cálculo estiver disponível.</Callout><LastRunCard run={latest} onRun={() => navigate(`/runs/${selectedId}`)} />{selectedId && <Link className="btn primary" to={`/runs/${selectedId}`}>Acompanhar processamento</Link>}</div></>;
+  if (stateError) return <><TopbarSlot>{monthSelector}</TopbarSlot><Empty icon="alert" title="Não foi possível abrir esta competência ou execução">{stateError.message} <button className="btn sm" onClick={() => navigate(`/competencias/${comp}`)}>Voltar à seleção do mês</button></Empty></>;
   if (!state) return <Loading page />;
-  const hasData = comp === state.period;
+  const scope = { comp, run_id: selectedId || state.run_id };
+  const hasData = state.has_data !== false && comp === state.period && (!selectedId || state.run_id === selectedId);
+  const monthInfo = comps?.find(item => item.comp === comp);
   const closed = state.closing.status === 'closed' && hasData;
   const s = state.summary;
-  const deadline = state.parameters.closing_deadline;
+  const deadline = selectedId ? state.parameters.closing_deadline : operational?.closing_deadline || undefined;
   const today = new Date().toISOString().slice(0, 10);
   const daysLeft = deadline ? Math.round((new Date(`${deadline}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86_400_000) : null;
   const p = insights?.pendencias;
+  const incompleteStates = !!p?.by_state.some(item => item.brl === null);
+  const incompleteTypes = !!p?.by_type.some(item => item.brl === null);
 
   return (
     <>
       <TopbarSlot>
-        <Icon name="calendar" />
-        <span>Competência</span>
-        <select className="select sm" style={{ width: 'auto', minWidth: 120 }} value={comp} aria-label="Competência"
-          onChange={event => navigate(`/competencias/${event.target.value}`)}>
-          {(comps || [{ comp, has_data: hasData, current: true }]).map(item => <option key={item.comp} value={item.comp}>{periodShort(item.comp)}{item.has_data ? '' : ' · sem dados'}</option>)}
-        </select>
+        {monthSelector}
+        <select className="select sm" aria-label="Execução do fechamento" style={{ maxWidth: 255 }} value={selectedId || ''} onChange={event => setParams(current => updateSearch(current, { run_id: event.target.value || null, painel: null, linha: null }))}><option value="" disabled={!!runs?.length}>Conferência da competência</option>{runs?.map(run => <option key={run.id} value={run.id}>{shortRunId(run.id)} · {dateTimeBR(run.created_at)}{run.draft ? ' · teste' : ''}</option>)}</select>
         {!hasData ? <Badge tone="neutral" dot>Sem dados</Badge> : closed ? <Badge tone="good" dot>Mês concluído</Badge> : <Badge tone="warning" dot>Em revisão</Badge>}
       </TopbarSlot>
 
@@ -157,15 +171,18 @@ export default function Fechamento() {
           {deadline && hasData && <> · prazo {dateBR(deadline)}{daysLeft !== null && <span className={daysLeft <= 1 ? 'deadline-hot' : ''}> ({daysLeft < 0 ? `${-daysLeft} dias atrasado` : daysLeft === 0 ? 'hoje' : `em ${plural(daysLeft, 'dia', 'dias')}`})</span>}</>}
         </>}
         actions={<>
-          {hasData && (closed
+          {hasData && !selectedId && !state.read_only && (closed
             ? <button className="btn" onClick={() => setClosing('reopen')}><Icon name="refresh" />Reabrir mês</button>
             : <button className="btn" onClick={() => setClosing('close')}><Icon name="lock" />Concluir fechamento</button>)}
+          <button className="btn" onClick={() => setConfigure(true)}><Icon name="calendar" />Prazo do mês</button>
+          {latest && !latest.draft && <button className="btn" onClick={() => setComplement(true)}><Icon name="plus" />Adicionar complemento</button>}
           <button className={`btn primary lg ${!latestRef ? 'pulse' : ''}`} onClick={() => setLaunch(true)}><Icon name="play" />Rodar fechamento</button>
         </>}
       />
 
       {params.get('sem-run') && !latestRef && <div style={{ marginBottom: 16 }}><Callout tone="info">Ainda não há run em {periodShort(comp)}. Clique em <strong>Rodar fechamento</strong> para o agente executar os passos.</Callout></div>}
-      {!hasData && <div style={{ marginBottom: 16 }}><Callout tone="warning" icon="alert">Competência nova: não há data pack de {periodShort(comp)} no servidor. Rode o fechamento enviando os arquivos ou importando uma pasta.</Callout></div>}
+      {!hasData && <div style={{ marginBottom: 16 }}><Callout tone="info" icon="info">{monthInfo?.has_pack ? `O pack de ${periodShort(comp)} está disponível. Rode o fechamento para gerar os resultados desta competência.` : 'Ainda não há resultados disponíveis nesta seleção. Envie as fontes ou indique uma pasta para rodar o fechamento.'}</Callout></div>}
+      {stateFetching && <p className="help" role="status">Atualizando esta execução…</p>}
 
       <div className="summary-grid">
         <div className="card fill">
@@ -183,18 +200,19 @@ export default function Fechamento() {
 
         <div className="card fill">
           <div className="card-head">
-            <div><h3 className="card-title">Valor em pendências</h3><p className="card-sub">Exposição em R$ (valores absolutos) por situação</p></div>
+            <div><h3 className="card-title">Valor em pendências</h3><p className="card-sub">{incompleteStates ? 'Valores incompletos · distribuição por quantidade de pendências' : 'Exposição em R$ (valores absolutos) por situação'}</p></div>
           </div>
           <div className="card-body stack" style={{ gap: 16 }}>
             {p ? (
               <>
                 <div>
-                  <div className="hero-num num"><Money value={p.open_brl} animate /></div>
+                  <div className="hero-num num"><Money value={p.open_brl ?? p.known_open_brl} animate /></div>
+                  {p.open_brl === null && <p className="help">Subtotal conhecido em aberto; há operações sem valor calculado. O total permanece indisponível.</p>}
                   <p className="muted" style={{ marginTop: 6 }}>{plural(p.open_count, 'pendência aberta', 'pendências abertas')} · {plural(p.resolved_count, 'decidida', 'decididas')}</p>
                 </div>
                 <StackedBar tall ariaLabel="Pendências por situação"
                   segments={p.by_state.map(slice => ({
-                    key: slice.key, label: slice.label, value: Number(slice.brl), display: moneyShort(slice.brl), sub: count(slice.count),
+                    key: slice.key, label: slice.label, value: incompleteStates ? slice.count : Number(slice.brl), display: incompleteStates ? plural(slice.count, 'pendência', 'pendências') : moneyShort(slice.brl), sub: incompleteStates ? slice.brl === null ? `Subtotal conhecido: ${moneyShort(slice.known_brl)}` : moneyShort(slice.brl) : count(slice.count),
                     color: slice.key === 'bloqueante' ? 'var(--st-critical)' : slice.key === 'alerta' ? 'var(--st-warning)' : 'var(--st-good)',
                   }))} />
                 {latest && ['awaiting_approval', 'approved'].includes(latest.status)
@@ -225,26 +243,26 @@ export default function Fechamento() {
             <span className="kpi-value"><Money value={s.divergencias_abs_brl} animate /></span>
             <span className="kpi-detail">{count(s.divergencias_count)} diferenças · exposição absoluta</span>
           </button>
-          <Link className="kpi" to="/notas-bancos">
+          <Link className="kpi" to={scopedUrl('/notas-bancos', scope)}>
             <span className="kpi-label">Notas a emitir <Icon name="arrowRight" className="kpi-go" /></span>
             <span className="kpi-value"><Money value={s.notas_brl} animate /></span>
             <span className="kpi-detail">{count(s.notas_count)} notas propostas</span>
           </Link>
         </div>
       )}
-      {hasData && <p className="help" style={{ marginTop: 8 }}>Conferência dos dados e cadastros atuais. Cada execução preserva seus próprios cálculos e decisões; consulte a Revisão para o lote ERP. Comissões, divergências e pendências são visões das mesmas operações: não some os cartões.</p>}
+      {hasData && <p className="help" style={{ marginTop: 8 }}>Resultados da competência e execução selecionadas. Cada execução preserva seus próprios cálculos e decisões; consulte a Revisão para o lote ERP. Comissões, divergências e pendências são visões das mesmas operações: não some os cartões.</p>}
 
       {hasData && (
         <div className="grid section" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)' }}>
           <div className="card">
             <div className="card-head">
-              <div><h3 className="card-title">Pendências abertas por tipo</h3><p className="card-sub">Exposição em R$ · cor indica a severidade · clique para revisar</p></div>
+              <div><h3 className="card-title">Pendências abertas por tipo</h3><p className="card-sub">{incompleteTypes ? 'Quantidade de pendências · valores incompletos' : 'Exposição em R$'} · cor indica a severidade · clique para revisar</p></div>
             </div>
             <div className="card-body">
               <HBarChart ariaLabel="Pendências abertas por tipo" labelWidth={240}
                 legend={<><span className="legend-item"><span className="legend-swatch" style={{ background: 'var(--st-critical)' }} />Bloqueante</span><span className="legend-item"><span className="legend-swatch" style={{ background: 'var(--st-warning)' }} />Alerta</span></>}
                 data={(p?.by_type || []).filter(item => item.open_count > 0).map(item => ({
-                  key: item.key, label: issueNames[item.key] || item.label, value: Number(item.brl) || 0.01, display: moneyShort(item.brl), sub: plural(item.open_count, 'item', 'itens'),
+                  key: item.key, label: issueNames[item.key] || item.label, value: incompleteTypes ? item.open_count : Number(item.brl) || 0.01, display: incompleteTypes ? plural(item.open_count, 'pendência', 'pendências') : moneyShort(item.brl), sub: incompleteTypes ? item.brl === null ? `Subtotal conhecido: ${moneyShort(item.known_brl)}` : moneyShort(item.brl) : plural(item.open_count, 'item', 'itens'),
                   color: item.severity === 'bloqueante' ? 'var(--st-critical)' : 'var(--st-warning)',
                 }))}
                 onSelect={latest && ['awaiting_approval', 'approved'].includes(latest.status) ? key => navigate(`/runs/${latest.id}/revisao?tipo=${key}`) : undefined}
@@ -252,11 +270,11 @@ export default function Fechamento() {
             </div>
           </div>
           <div className="card">
-            <div className="card-head"><div><h3 className="card-title">Relatório de conferência</h3><p className="card-sub">Dados atuais · {state.sources.filter(src => !src.embedded).length} arquivos de origem com SHA-256. O pacote ERP fica na Revisão do run aprovado.</p></div></div>
+            <div className="card-head"><div><h3 className="card-title">Relatório de conferência</h3><p className="card-sub">Seleção atual · {state.sources.filter(src => !src.embedded).length} arquivos de origem com SHA-256. O pacote ERP fica na Revisão do run aprovado.</p></div></div>
             <div className="card-body stack" style={{ gap: 8 }}>
-              <a className="btn" href={downloads.report} target="_blank" rel="noopener"><Icon name="file" />Abrir relatório imprimível</a>
-              <a className="btn" href={downloads.zip} download><Icon name="download" />Baixar pacote (6 CSVs + relatório)</a>
-              <button className="btn" disabled={!!busy} onClick={async () => {
+              <a className="btn" href={downloads.report(scope)} target="_blank" rel="noopener"><Icon name="file" />Abrir relatório imprimível</a>
+              <a className="btn" href={downloads.zip(scope)} download><Icon name="download" />Baixar pacote (6 CSVs + relatório)</a>
+              <button className="btn" disabled={!!busy || !!selectedId || state.read_only} title={selectedId ? 'O e-mail de relatório legado está disponível apenas na conferência atual. Baixe o relatório desta execução.' : undefined} onClick={async () => {
                 const result = await act('report', () => core.draftEmail({ report: true }), { success: 'Rascunho do relatório preparado.', invalidate: [keys.state] });
                 const id = result?.id || result?.email?.id;
                 if (result) navigate(`/comunicacoes${id ? `?email=${id}` : ''}`);
@@ -270,13 +288,15 @@ export default function Fechamento() {
       <div className="section">
         <div className="row between" style={{ marginBottom: 12 }}>
           <h2 className="section-title" style={{ margin: 0 }}>Checklist do fechamento</h2>
-          <span className="muted" style={{ fontSize: 12.5 }}>Tarefas do agente seguem o run mais recente; tarefas manuais são editáveis.</span>
+          <span className="muted" style={{ fontSize: 12.5 }}>Tarefas do agente seguem a execução selecionada; tarefas manuais pertencem à competência.</span>
         </div>
         {tasks ? <Checklist tasks={tasks} comp={comp} /> : <Loading />}
       </div>
 
       {panel === 'comissoes' && <CommissionsPanel state={state} line={params.get('linha') || undefined} onClose={closePanel} />}
       {panel === 'divergencias' && <DivergencesPanel state={state} insights={insights} run={latestRef && ['awaiting_approval', 'approved'].includes(latestRef.status) ? latestRef : undefined} onClose={closePanel} />}
+      {configure && <OperationalConfigModal comp={comp} onClose={() => setConfigure(false)} />}
+      {complement && latest && <RunLauncher comp={comp} parentRun={latest} onClose={() => setComplement(false)} />}
       {launch && <RunLauncher comp={comp} onClose={() => setLaunch(false)} />}
       {closing === 'close' && <CloseMonthModal period={state.period} openIssues={s.open_issues} onClose={() => setClosing(null)} />}
       {closing === 'reopen' && <ReopenModal onClose={() => setClosing(null)} />}

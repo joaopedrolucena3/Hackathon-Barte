@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { mail, isTestProvider, acceptedMailLabel, matchesReviewedVersion, type Counterparty, type MailAccount, type MailContact, type MailDraft, type MailEvent, type MailFields } from '../api/mail';
+import { mail, isTestProvider, acceptedMailLabel, type Counterparty, type MailAccount, type MailContact, type MailDraft, type MailEvent, type MailFields } from '../api/mail';
 import type { Pendencia } from '../api/types';
 import { dateTimeBR, money } from '../lib/format';
 import { useActor } from '../lib/actor';
 import { DataTable } from './DataTable';
+import { DemoMailPanel } from './DemoMailPanel';
+import { SuggestionPanel } from './SuggestionPanel';
 import { Icon } from './Icon';
 import { Modal, Sheet } from './Overlay';
 import { Badge, Callout, Empty, Field, Loading } from './ui';
@@ -43,7 +45,7 @@ function useMailAction() {
   return { busy, error, run, setError };
 }
 
-export function GmailPanel({ issues, issueId }: { issues: Pendencia[]; issueId?: string | null }) {
+export function GmailPanel({ issues, issueId, runId, onRunChange }: { issues: Pendencia[]; issueId?: string | null; runId?: string | null; onRunChange: (id: string) => void }) {
   const client = useQueryClient();
   const toast = useToast();
   const { busy, error, run } = useMailAction();
@@ -83,32 +85,14 @@ export function GmailPanel({ issues, issueId }: { issues: Pendencia[]; issueId?:
   const existing = drafts.find(draft => draft.issue_id === selectedIssue);
 
   return <div className="gmail-panel stack-lg">
-    <section className="card">
-      <div className="card-head">
-        <div><p className="eyebrow">Gmail · pendências</p><h3 className="card-title">{account?.email || 'Conta remetente'}</h3><p className="card-sub">{account?.authorized ? 'Esta sessão está autorizada pela conta Google.' : account?.connected ? 'A conta está conectada; autorize esta sessão para enviar.' : 'Conecte a conta de teste para aprovar mensagens de pendências.'}</p></div>
-        {account && <div className="row wrap"><Badge tone={account.authorized ? 'good' : 'neutral'}>{account.authorized ? 'Sessão autorizada' : account.connected ? 'Sessão não autorizada' : 'Desconectada'}</Badge><Badge tone="outline">{isTestProvider(account.provider_mode) ? 'Provedor de teste' : 'Gmail API'}</Badge></div>}
-      </div>
-      <div className="card-body stack">
-        {accountQuery.isPending ? <Loading label="Consultando conexão…" /> : <>
-          {!account?.configured && <Callout tone="warning">Configure no servidor: {account?.missing_config?.join(', ') || 'credenciais Google e conta de teste'}. <a href="/api/mail/setup" target="_blank" rel="noreferrer">Ver guia de configuração</a>.</Callout>}
-          <p className="muted">{isTestProvider(account?.provider_mode) ? 'Ambiente simulado: o provedor de teste não envia mensagens reais.' : 'A conexão permite envio pela conta Gmail de teste. A plataforma não lê a caixa de entrada.'}</p>
-          <div className="row wrap">
-            <button className="btn primary" disabled={busy || !account?.configured} onClick={() => void run(async () => {
-              await mail.account();
-              const result = await mail.connect();
-              const url = new URL(result.authorization_url, window.location.origin);
-              if (!['https:', 'http:'].includes(url.protocol)) throw new Error('O servidor retornou uma URL de autorização inválida.');
-              window.location.assign(url.href);
-            })}>{account?.connected ? 'Autorizar esta sessão' : 'Conectar conta Google'}</button>
-            {account?.connected && <button className="btn" disabled={busy || !account.authorized} onClick={() => setDisconnecting(true)}>Desconectar</button>}
-            <button className="btn" disabled={busy} onClick={() => void run(refresh)}><Icon name="refresh" />Atualizar estado</button>
-          </div>
-          {disconnectNotice && <Callout tone="warning">{disconnectNotice}</Callout>}
-        </>}
-      </div>
-    </section>
-    <Callout tone="info">Gere uma mensagem, confira os anexos e aprove a versão exata para enviar. O nome declarado do analista fica na auditoria; a sessão Google autoriza o envio. Enviar não resolve a pendência nem altera o fechamento.</Callout>
+    <SuggestionPanel runId={runId} issueId={issueId} account={account} onRunChange={onRunChange} onAccount={value => client.setQueryData(mailKeys.account, value)} />
+    <DemoMailPanel account={account} loading={accountQuery.isPending} onAccount={value => client.setQueryData(mailKeys.account, value)} onDisconnect={() => setDisconnecting(true)} onRefresh={refresh} />
+    {disconnectNotice && <Callout tone="warning">{disconnectNotice}</Callout>}
     {(error || queryError) && <div role="alert"><Callout tone="critical">{error || errorMessage(queryError)}</Callout></div>}
+    <details className="gmail-issue-workflow" open={!!issueId && !runId}>
+      <summary>Mensagens individuais do fechamento atual <span className="muted">Fluxo manual com evidências e permissão por versão</span></summary>
+      <div className="stack-lg">
+    <Callout tone="info">Gere uma mensagem, confira os anexos e aprove a versão exata para enviar. O nome declarado do analista fica na auditoria; a conta conectada autoriza o envio. Enviar não resolve a pendência nem altera o fechamento.</Callout>
     <details className="card gmail-contacts">
       <summary>Destinatários Orbe e Ponte <span className="muted">{contacts.filter(item => item.enabled).length} contatos ativos</span></summary>
       <div className="card-body gmail-contact-grid">
@@ -150,13 +134,15 @@ export function GmailPanel({ issues, issueId }: { issues: Pendencia[]; issueId?:
         { key: 'at', label: 'Atualizado', render: draft => dateTimeBR(draft.updated_at) },
       ]}
     /></div>
+      </div>
+    </details>
     {review && <GmailEditor initial={review} account={account} onChanged={changed} onAccount={value => client.setQueryData(mailKeys.account, value)} onClose={() => setReview(null)} />}
     {history && <Sheet title="Histórico de e-mails" sub={history} onClose={() => setHistory(null)}><MailHistory issueId={history} /></Sheet>}
     {contact && <ContactEditor party={contact} contacts={contacts} onClose={() => setContact(null)} onSaved={async () => { await refresh(); toast.ok('Contato salvo. Confira os destinatários dos rascunhos existentes.'); }} />}
     {disconnecting && <Modal title="Desconectar conta Google" onClose={() => { if (!busy) setDisconnecting(false); }} footer={<><button className="btn" disabled={busy} onClick={() => setDisconnecting(false)}>Cancelar</button><button className="btn danger" disabled={busy} onClick={() => void run(async () => {
       await mail.account();
       const result = await mail.disconnect();
-      setDisconnectNotice(result.revocation_confirmed === false ? 'A conexão local foi removida, mas a revogação no Google não foi confirmada. Confira as permissões da conta Google para remover o acesso.' : 'Conta desconectada. Os rascunhos e registros foram preservados.');
+      setDisconnectNotice(result.manual_revocation_required ? 'Conta desconectada. Para invalidar a senha de app, remova-a nas configurações de segurança do Google. Os registros foram preservados.' : result.revocation_confirmed === false ? 'A conexão local foi removida, mas a revogação no Google não foi confirmada. Confira as permissões da conta Google para remover o acesso.' : 'Conta desconectada. Os rascunhos e registros foram preservados.');
       setDisconnecting(false); await refresh();
     })}>Desconectar conta</button></>}><p>Desconectar {account?.email} impede novos envios por esta conexão. Os registros anteriores permanecem disponíveis.</p>{error && <Callout tone="critical">{error}</Callout>}</Modal>}
   </div>;
@@ -187,12 +173,16 @@ function GmailEditor({ initial, account, onAccount, onChanged, onClose }: { init
   const [actor, setActor] = useActor();
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [notice, setNotice] = useState('');
-  const { busy, error, run, setError } = useMailAction();
+  const [permissionKey, setPermissionKey] = useState<string | null>(null);
+  const { busy, error, run } = useMailAction();
   const readonly = locked(draft) || unconfirmed;
   const test = isTestProvider(draft.provider_mode || account?.provider_mode);
-  const canApprove = !busy && !readonly && draft.status === 'draft' && !draft.stale && !!account?.connected && !!account.authorized && !draft.blockers.length && !!form.to;
+  const reviewKey = JSON.stringify({ id: draft.id, version: draft.version, hash: draft.content_hash, sender: draft.sender, evidence: draft.evidence_hash, form, party, reason, actor });
+  const savedForm = draft.to === form.to && draft.subject === form.subject && draft.body === form.body && !party && !reason;
+  const sameSender = !!draft.sender && !!account?.connection && draft.sender.connection_id === account.connection.connection_id && draft.sender.email === account.connection.email;
+  const canApprove = !busy && !readonly && draft.status === 'draft' && !draft.stale && !!account?.connected && !!account.authorized && !draft.blockers.length && !!form.to && !!actor.trim() && savedForm && sameSender;
   function replace(value: MailDraft) {
-    setDraft(value); setForm({ to: value.to, subject: value.subject, body: value.body }); onChanged(value);
+    setDraft(value); setForm({ to: value.to, subject: value.subject, body: value.body }); setPermissionKey(null); setParty(''); setReason(''); onChanged(value);
   }
   useEffect(() => {
     if (draft.status !== 'sending' || unconfirmed) return;
@@ -211,24 +201,26 @@ function GmailEditor({ initial, account, onAccount, onChanged, onClose }: { init
     return () => { stopped = true; clearTimeout(timer); };
   }, [draft.id, draft.status, unconfirmed]);
 
-  async function save(approve: boolean) {
+  async function save() {
     const currentAccount = await mail.account(); onAccount(currentAccount);
-    if (approve && (!currentAccount.connected || !currentAccount.authorized)) throw new Error('Autorize esta sessão Google antes de aprovar o envio.');
     const fields = { ...form, to: form.to.trim() };
     if (!fields.subject.trim() || !fields.body.trim()) throw new Error('Preencha assunto e mensagem.');
     if (!draft.counterparty && party && !reason.trim()) throw new Error('Justifique a contraparte confirmada.');
     const saved = await mail.save(draft.id, { version: draft.version, ...fields, ...(party ? { counterparty: party, counterparty_reason: reason } : {}) });
     replace(saved);
-    if (!approve) { setNotice('Rascunho salvo. Nenhuma mensagem foi enviada.'); return; }
-    if (!matchesReviewedVersion(draft, saved, fields)) {
-      setError('O remetente, as evidências ou o conteúdo retornado mudou, ou há bloqueios. Confira esta versão atualizada antes de aprovar. Nenhum envio foi iniciado.'); return;
-    }
+    setNotice('Rascunho salvo. Confira a versão retornada e dê sua permissão para enviar. Nenhuma mensagem foi enviada.');
+  }
+  async function approve() {
+    if (!canApprove || permissionKey !== reviewKey) throw new Error('Confira a versão salva e marque a permissão para enviar.');
+    const currentAccount = await mail.account(); onAccount(currentAccount);
+    setPermissionKey(null);
+    if (!currentAccount.authorized || !currentAccount.connected || currentAccount.connection?.connection_id !== draft.sender?.connection_id) throw new Error('A conexão mudou. Salve e revise novamente antes de autorizar.');
     try {
-      replace(await mail.approveSend(saved));
+      replace(await mail.approveSend(draft));
       setNotice('Tentativa registrada. Confira a situação e o histórico abaixo.');
     } catch (failure) {
       // A lost response may hide an accepted message. Consult only; never replay approval.
-      try { replace(await mail.draft(saved.id)); }
+      try { replace(await mail.draft(draft.id)); }
       catch { setUnconfirmed(true); setNotice('O resultado da tentativa não pôde ser consultado. O envio está bloqueado nesta tela; atualize o estado e confira manualmente o Gmail.'); }
       throw failure;
     }
@@ -237,13 +229,13 @@ function GmailEditor({ initial, account, onAccount, onChanged, onClose }: { init
   return <Sheet title={readonly ? 'Registro de comunicação' : 'Revisar e-mail da pendência'} eyebrow={`${partyName(draft.counterparty)} · versão ${draft.version}`} sub={`${draft.issue_id} · ${draft.period}`} onClose={() => { if (!busy) onClose(); }}
     footer={<div className="gmail-editor-actions">
       <button className="btn" disabled={busy} onClick={() => void run(async () => { onAccount(await mail.account()); replace(await mail.draft(draft.id)); setUnconfirmed(false); })}>Atualizar estado</button>
-      {!readonly && <><button className="btn" disabled={busy} onClick={() => void run(() => save(false))}>Salvar rascunho</button><button className="btn primary" disabled={!canApprove} onClick={() => void run(() => save(true))}><Icon name="send" />{test ? 'Aprovar e simular envio' : 'Aprovar e enviar'}</button></>}
+      {!readonly && <><button className="btn" disabled={busy} onClick={() => void run(save)}>Salvar para revisão</button><button className="btn primary" disabled={!canApprove || permissionKey !== reviewKey} onClick={() => void run(approve)}><Icon name="send" />{test ? 'Autorizar e simular esta versão' : 'Autorizar e enviar esta versão'}</button></>}
     </div>}>
     <div className="gmail-panel stack-lg">
       <div className="row wrap"><MailBadge draft={draft} />{draft.stale && <Badge tone="warning">Evidências desatualizadas</Badge>}</div>
       <div className="gmail-origin"><strong>{draft.issue?.tipo || 'Pendência de origem'}</strong><p>{draft.issue?.motivo}</p><p className="muted">Referência: {draft.issue?.ref_origem || draft.issue_id}</p></div>
-      <dl className="facts"><div><dt>Remetente desta versão</dt><dd>{draft.sender?.email || 'Ainda não vinculado'}</dd></div><div><dt>Sessão Google</dt><dd>{account?.authorized ? account.email : 'Não autorizada para enviar'}</dd></div></dl>
-      {draft.status === 'sent' && <Callout tone="good">{isTestProvider(draft.provider_mode) ? 'O provedor de teste aceitou a mensagem. Nenhum e-mail real foi enviado.' : draft.provider_mode === 'gmail' ? 'O Gmail aceitou a mensagem. Isso não confirma entrega nem leitura.' : 'O provedor aceitou a mensagem. O modo de envio não foi identificado neste registro antigo; entrega e leitura não foram confirmadas.'}{draft.provider_message_id && <> Referência: <span className="mono">{draft.provider_message_id}</span>.</>}</Callout>}
+      <dl className="facts"><div><dt>Remetente desta versão</dt><dd>{draft.sender?.email || 'Ainda não vinculado'}</dd></div><div><dt>Conta conectada</dt><dd>{account?.authorized ? account.email : 'Não autorizada para enviar'}</dd></div></dl>
+      {draft.status === 'sent' && <Callout tone="good">{isTestProvider(draft.provider_mode) ? 'O provedor de teste aceitou a mensagem. Nenhum e-mail real foi enviado.' : draft.provider_mode === 'gmail_smtp' ? 'O servidor de e-mail aceitou a mensagem. Isso não confirma entrega nem leitura.' : draft.provider_mode === 'gmail' ? 'O Gmail aceitou a mensagem. Isso não confirma entrega nem leitura.' : 'O provedor aceitou a mensagem. O modo de envio não foi identificado neste registro antigo; entrega e leitura não foram confirmadas.'}{draft.provider_message_id && <> Referência: <span className="mono">{draft.provider_message_id}</span>.</>}</Callout>}
       {draft.status === 'sending' && <Callout tone="info">Envio em andamento. Estamos consultando o resultado, sem repetir a tentativa.</Callout>}
       {draft.status === 'uncertain' && <Callout tone="warning">Resultado incerto. Confira manualmente a pasta Enviados de {draft.sender?.email || 'sua conta'}. Esta mensagem não pode ser reenviada pela plataforma.</Callout>}
       {draft.status === 'failed' && <Callout tone="critical">{draft.error?.message || 'Falha conhecida no envio.'} Revise e salve uma nova versão antes de aprovar novamente.</Callout>}
@@ -264,7 +256,7 @@ function GmailEditor({ initial, account, onAccount, onChanged, onClose }: { init
           setNotice('Modelo e anexos regenerados. Confira a nova versão antes de aprovar.');
         })}>Atualizar texto e evidências</button><p className="muted">A atualização substitui o texto pelo modelo e abre uma nova versão para revisão.</p></>}
       </section>
-      {!readonly && <><Field label="Responsável declarado" required help="O nome identifica o registro de auditoria; a sessão Google autoriza o envio."><input className="input" maxLength={100} value={actor} disabled={busy} onChange={event => setActor(event.target.value)} /></Field><p className="muted">{test ? 'A aprovação usa o provedor de teste, sem envio real.' : 'Aprovar e enviar salva as alterações revisadas e inicia o envio real pela conta conectada.'}</p></>}
+      {!readonly && <><Field label="Responsável declarado" required help="O nome identifica o registro de auditoria; a conta conectada autoriza o envio."><input className="input" maxLength={100} value={actor} disabled={busy} onChange={event => setActor(event.target.value)} /></Field><label className="gmail-permission"><input type="checkbox" checked={permissionKey === reviewKey} disabled={!canApprove} onChange={event => setPermissionKey(event.target.checked ? reviewKey : null)} /><span>Revisei a justificativa, o texto e os anexos. Autorizo enviar esta versão para <strong>{draft.to || 'o destinatário informado'}</strong>.</span></label><p className="muted">{!savedForm || !sameSender ? 'Salve as alterações e confira a versão retornada antes de dar permissão.' : test ? 'A autorização usa o provedor de teste, sem envio real.' : 'A autorização inicia o envio real desta versão salva pela conta conectada.'}</p></>}
       {draft.approval && <p className="muted">Versão {draft.approval.version} aprovada por {draft.approval.declared_actor} · conta {draft.approval.google_account.email} · {dateTimeBR(draft.approval.at)}.</p>}
       <h3 className="section-title">Histórico da pendência</h3><MailHistory issueId={draft.issue_id} />
     </div>

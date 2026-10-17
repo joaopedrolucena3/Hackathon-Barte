@@ -22,6 +22,7 @@ import uuid
 
 from ..pipeline.service import ServiceError
 from .evidence import attachments_for, build_evidence, canonical, digest, template
+from .delivery import accepted_result
 
 
 def _now(): return datetime.now(timezone.utc).isoformat(timespec="microseconds")
@@ -276,7 +277,7 @@ class MailService:
     def approve_send(self, ident, payload, actor, auth_context, send_callable, *, provider_mode="unknown"):
         actor = _actor(actor)
         # Preserve how this attempt was dispatched; current configuration must not relabel old sends.
-        provider_mode = provider_mode if provider_mode in {"gmail", "injected_test"} else "unknown"
+        provider_mode = provider_mode if provider_mode in {"gmail", "gmail_smtp", "injected_test"} else "unknown"
         identity = _identity(auth_context)
         if not identity or not all(identity.values()) or not _email(identity["email"]):
             raise ServiceError(401, "MAIL_AUTH_REQUIRED", "Uma sessão Google autorizada no servidor é necessária para aprovar o envio.")
@@ -313,10 +314,8 @@ class MailService:
                     raise ServiceError(409, "MAIL_EVIDENCE_CHANGED", "As evidências mudaram antes do envio. Atualize o rascunho e revise novamente.")
                 dispatched = True
                 response = send_callable(raw)
-                if not isinstance(response, dict) or not isinstance(response.get("id"), str) or not response["id"].strip():
-                    raise ValueError("Provider did not confirm a message ID")
+                provider = accepted_result(response)
                 status, error = "sent", None
-                provider = {"provider_message_id": response["id"], "provider_thread_id": response.get("threadId")}
             except Exception as exc:
                 status = "failed" if not dispatched or getattr(exc, "outcome", None) == "known_failure" else "uncertain"
                 provider = {}
@@ -335,7 +334,7 @@ class MailService:
             if error: attempt["error"] = error
             self.db.execute("UPDATE mail_attempts SET status=?,data=? WHERE id=?", (status, canonical(attempt), attempt_id))
             self._put(draft)
-            accepted_note = ("Aceito pelo provedor de teste; nenhum e-mail real foi enviado." if provider_mode == "injected_test" else "Aceito pelo Gmail; entrega e leitura não foram confirmadas." if provider_mode == "gmail" else "Aceito pelo provedor; modo de envio não identificado. Entrega e leitura não foram confirmadas.")
+            accepted_note = ("Aceito pelo provedor de teste; nenhum e-mail real foi enviado." if provider_mode == "injected_test" else "Aceito pelo servidor de e-mail; entrega e leitura não foram confirmadas." if provider_mode == "gmail_smtp" else "Aceito pelo Gmail; entrega e leitura não foram confirmadas." if provider_mode == "gmail" else "Aceito pelo provedor; modo de envio não identificado. Entrega e leitura não foram confirmadas.")
             event = self._event(draft, "send_" + status, actor, {"attempt_id": attempt_id, "google_account": identity, "provider_mode": provider_mode, **provider, **({"error": error} if error else {}), "delivery_note": accepted_note if status == "sent" else ""})
         self._audit(actor, "send_" + status, event)
         return self.get_draft(ident, identity)

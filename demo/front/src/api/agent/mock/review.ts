@@ -135,7 +135,7 @@ export async function decide(
     ...(input.action === 'adjust' && input.account_code ? { account_code: input.account_code } : {}),
   });
   saveAdjustment(exceptionId, input.action === 'adjust'
-    ? { amount: input.amount || '', before: current.impact_brl, before_account: current.current_account, at: new Date().toISOString() }
+    ? { amount: input.amount || '', before: current.impact_brl ?? '', before_account: current.current_account, at: new Date().toISOString() }
     : null);
   const index = indexState(await refreshState());
   const updated = index.state.results.pendencias.find(p => p.id_saida === exceptionId);
@@ -148,7 +148,9 @@ export async function decideMany(run: Run, ids: string[], { action, note }: { ac
   if (run.status !== 'awaiting_approval') throw new ApiError('A revisão só aceita decisões enquanto o run aguarda aprovação.', 409);
   const byId = new Map((await listExceptions(run)).map(item => [item.id, item]));
   const chosen = ids.flatMap(id => byId.get(id) || []);
-  if (chosen.some(item => item.severity === 'bloqueante') && new Set(chosen.map(item => `${item.kind}|${item.cnpj || item.merchant}`)).size !== 1) {
+  if (chosen.some(item => item.severity === 'bloqueante') && (
+    chosen.some(item => !item.cnpj?.trim()) || new Set(chosen.map(item => `${item.kind}|${item.cnpj}`)).size !== 1
+  )) {
     throw new ApiError('Bloqueantes só são decididas em lote quando são do mesmo tipo e do mesmo lojista.', 400);
   }
   let decided = 0;

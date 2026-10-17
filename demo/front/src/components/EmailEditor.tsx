@@ -20,7 +20,7 @@ export function emailStage(email?: Email) {
 }
 
 export function EmailEditor({ emailId, onClose, cnpj }: { emailId: string; onClose: () => void; cnpj?: string }) {
-  const { data: state } = useAppState();
+  const { data: state } = useAppState({});
   const email = state?.emails.find(item => String(item.id) === String(emailId));
   const { run, busy } = useAction();
   const [form, setForm] = useState({ to: '', subject: '', body: '' });
