@@ -1,0 +1,17 @@
+{
+  "id": "fechamento-tarvo",
+  "version": 1,
+  "title": "Fechamento mensal Tarvo",
+  "steps": [
+    {"id": "s1", "type": "ler_arquivos", "params": {}},
+    {"id": "s2", "type": "normalizar_orbe", "params": {}},
+    {"id": "s3", "type": "resolver_lojista", "params": {"fallback": "cnpj", "sugerir_nome": true}},
+    {"id": "s4", "type": "conferir_mdr", "params": {"tolerancia_pp": 0}},
+    {"id": "s5", "type": "vincular_estornos", "params": {}},
+    {"id": "s6", "type": "conciliar_aurora", "params": {"janela_dias": 0, "conciliar_parcelas_orbe": false}},
+    {"id": "s7", "type": "processar_cambio", "params": {"participacao_spread": 0.5, "spread_padrao_pct": 1.5, "tolerancia_pp": 0.002}},
+    {"id": "s8", "type": "gerar_lancamentos", "params": {"mapa": "mapa_contabil", "calcular_tributos": false}},
+    {"id": "s9", "type": "aprovacao", "params": {}},
+    {"id": "s10", "type": "exportar_erp", "params": {"formato": "csv_fenix"}}
+  ]
+}

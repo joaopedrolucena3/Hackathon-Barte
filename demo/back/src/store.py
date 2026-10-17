@@ -19,7 +19,6 @@ from zoneinfo import ZoneInfo
 from .engine import calculate, load_data
 
 ROOT = Path(__file__).resolve().parents[1]
-FRONT = ROOT.parent / 'front' / 'dist'
 EXPORTS = {
     'comissoes_por_lojista.csv': ('comissoes', ['id_saida','cnpj','lojista','linha_negocio','comissao_brl']),
     'divergencias_taxa.csv': ('divergencias', ['id_saida','cnpj','linha_negocio','ref_origem','taxa_contratada_pct','taxa_aplicada_pct','diferenca_brl']),

@@ -1,0 +1,133 @@
+{
+  "checked_at": "2026-10-17",
+  "all_preserved": true,
+  "comparison": {
+    "imports": true,
+    "merchants": true,
+    "rates": true,
+    "contacts": true,
+    "decisions": true,
+    "emails": true,
+    "runs": true,
+    "kv_result": true,
+    "kv_source_data": true,
+    "kv_closing": true,
+    "kv_parameters": true,
+    "kv_period": true
+  },
+  "before": {
+    "imports": {
+      "count": 1,
+      "sha256": "d51fc04f255debc1bb0cecf431145556ac0bb1cb0d0132a25c01f3b7f5e7717b"
+    },
+    "merchants": {
+      "count": 25,
+      "sha256": "17856b9ca0c1a3989f6b5f82675fcf346b0ce74fa4f72003891999d7098d22df"
+    },
+    "rates": {
+      "count": 162,
+      "sha256": "fa9f17ca89679d7c1d47442d4e21289351dbfc17b907cbdd9579c6634f8fdbfb"
+    },
+    "contacts": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "decisions": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "emails": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "runs": {
+      "count": 1,
+      "sha256": "babee40b0cefc49f1b5ffe226f74569409c5d0f448fbbca83e22ad12e3677ec4"
+    },
+    "kv_result": "37fc13d5cf20d92d1f54e1b013523266995ea7df7765cc805a2e29e331ac6a82",
+    "kv_source_data": "d09bd7bdf42852138e6ca54f4e47a0dbf1539888ef8a473e324bbab4c5a4c8b9",
+    "kv_closing": "c906ae37f59800a73530b12984c70be369bc8cc5dd6e0bb3ae7bf8f507767d47",
+    "kv_parameters": "02de007c5c82e8726838ce012fcdef20940a309ed11b1e2849e8efd40b480f4b",
+    "kv_period": "c0a2c97fd84e45d4d705d1ffd8753d8abdb2f28b63dd5ae9355225d1e1e8697a"
+  },
+  "after": {
+    "imports": {
+      "count": 1,
+      "sha256": "d51fc04f255debc1bb0cecf431145556ac0bb1cb0d0132a25c01f3b7f5e7717b"
+    },
+    "merchants": {
+      "count": 25,
+      "sha256": "17856b9ca0c1a3989f6b5f82675fcf346b0ce74fa4f72003891999d7098d22df"
+    },
+    "rates": {
+      "count": 162,
+      "sha256": "fa9f17ca89679d7c1d47442d4e21289351dbfc17b907cbdd9579c6634f8fdbfb"
+    },
+    "contacts": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "decisions": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "emails": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "runs": {
+      "count": 1,
+      "sha256": "babee40b0cefc49f1b5ffe226f74569409c5d0f448fbbca83e22ad12e3677ec4"
+    },
+    "kv_result": "37fc13d5cf20d92d1f54e1b013523266995ea7df7765cc805a2e29e331ac6a82",
+    "kv_source_data": "d09bd7bdf42852138e6ca54f4e47a0dbf1539888ef8a473e324bbab4c5a4c8b9",
+    "kv_closing": "c906ae37f59800a73530b12984c70be369bc8cc5dd6e0bb3ae7bf8f507767d47",
+    "kv_parameters": "02de007c5c82e8726838ce012fcdef20940a309ed11b1e2849e8efd40b480f4b",
+    "kv_period": "c0a2c97fd84e45d4d705d1ffd8753d8abdb2f28b63dd5ae9355225d1e1e8697a"
+  },
+  "summary": {
+    "bank_count": 184,
+    "checkout_brl": "207039.73",
+    "checkout_count": 1943,
+    "divergencias_abs_brl": "22173.57",
+    "divergencias_brl": "14826.55",
+    "divergencias_count": 237,
+    "notas_brl": "246588.68",
+    "notas_count": 21,
+    "pendencias_count": 304,
+    "period": "2026-09",
+    "remessa_brl": "39543.45",
+    "remessa_count": 232,
+    "remittance_tolerance_pp": "0.002"
+  },
+  "workflow_runs": [
+    {
+      "id": "run-b9db179689a645d6b8cafb39b5eafbd3",
+      "status": "awaiting_approval",
+      "code_unchanged": false,
+      "exceptions": 305,
+      "human_decisions": 0,
+      "approval": null
+    }
+  ],
+  "health": {
+    "ok": true,
+    "mode": "local",
+    "workflow": true,
+    "legacy_emails": "simulation",
+    "gmail_configured": false
+  },
+  "gmail_account": {
+    "configured": false,
+    "connected": false,
+    "email": null,
+    "authorized": false,
+    "missing_config": [
+      "TARVO_GMAIL_TEST_ACCOUNT",
+      "TARVO_GOOGLE_CLIENT_FILE"
+    ],
+    "provider_mode": "gmail",
+    "connection": null
+  },
+  "verification_note": "Comparação por SHA-256 das mesmas linhas ordenadas e dos valores JSON originais. Os testes de envio usaram banco temporário e provedor simulado."
+}

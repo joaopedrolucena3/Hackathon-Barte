@@ -1,0 +1,97 @@
+Implemente a integração de e-mail da plataforma Tarvo no projeto `/Users/joaopedro/Downloads/Tarvo_Data_Pack_set2026/tarvo-mvp`.
+
+O objetivo é permitir que o financeiro selecione uma pendência financeira ou de dados, gere um e-mail com evidências, revise o conteúdo e aprove seu envio pela conta Gmail conectada.
+
+Inspecione as instruções do repositório e a implementação existente antes de editar. Aproveite os cadastros, rascunhos, rastreabilidade e auditoria atuais. Preserve os dados, cálculos financeiros, decisões humanas e funcionamento do fechamento.
+
+**1. Fluxo principal**
+
+Na tela de pendências, disponibilize a ação “Gerar e-mail”. A geração deve acontecer somente quando solicitada pelo usuário.
+
+Abra uma tela de revisão contendo a pendência de origem, a conta remetente, o destinatário sugerido, o assunto, o corpo e os anexos. Permita editar assunto e corpo, revisar o destinatário e visualizar ou baixar os anexos.
+
+O usuário pode salvar o rascunho para continuar depois. O botão “Aprovar e enviar” deve registrar a aprovação e iniciar o envio real na mesma ação. Não exigir um segundo botão de envio.
+
+Adote inicialmente um e-mail por pendência, com histórico das comunicações associado a ela.
+
+**2. Conta Gmail e acesso**
+
+Na demonstração do hackathon, usaremos uma conta Gmail de teste. O endereço corporativo `financeiro@tarvo.com.br` é contexto futuro e não deve ser usado como remetente da demonstração.
+
+Implemente conexão e desconexão da conta Google, exibindo claramente qual endereço está conectado. Utilize OAuth e a Gmail API, com o escopo de envio `gmail.send`, mantendo os rascunhos na própria plataforma. Não solicitar acesso à leitura da caixa para esta funcionalidade. Consulte os [escopos oficiais do Gmail](https://developers.google.com/workspace/gmail/api/auth/scopes) e a [documentação de envio](https://developers.google.com/workspace/gmail/api/guides/sending).
+
+Qualquer integrante do financeiro autorizado a acessar a conta conectada pode aprovar. A mesma pessoa pode gerar e aprovar o rascunho; não criar hierarquia de aprovadores.
+
+Proteja a aprovação e o envio por uma sessão autorizada, validada no servidor. O campo de nome do analista existente não é, sozinho, autenticação. Registre separadamente a conta Google autorizada e o nome declarado do responsável, sem afirmar identidade individual verificada quando todos utilizarem a mesma conta de teste.
+
+Guarde credenciais e tokens no servidor, fora do código versionado, dos logs e das respostas ao navegador.
+
+**3. Destinatários conforme a pendência**
+
+Sugira o contato cadastrado da Orbe para pendências de checkout e o contato cadastrado da Ponte para pendências de remessas.
+
+Use a origem estruturada da pendência para determinar a contraparte. Se a origem for ambígua ou o contato estiver ausente, peça a configuração ou revisão necessária e bloqueie o envio até resolver.
+
+Os endereços devem ser configuráveis. Não invente contatos nem extraia automaticamente destinatários de documentos de origem.
+
+Para a demonstração, permita cadastrar endereços de teste que representem Orbe e Ponte.
+
+**4. Texto padronizado e editável**
+
+Use modelos determinísticos, sem LLM. Preencha assunto e corpo com os dados disponíveis da pendência: competência, contraparte, descrição do problema, operações envolvidas, valores relevantes, referências das evidências e solicitação de esclarecimento ou correção.
+
+Adapte o modelo ao tipo de problema. Preserve a distinção entre uma divergência identificada e uma informação ainda não confirmada.
+
+Não invente valores, prazos, contratos ou conclusões. Quando faltar uma informação necessária, indique isso para revisão.
+
+**5. Evidências anexadas**
+
+Gere anexos pertinentes à pendência e à contraparte destinatária. Como padrão inicial, utilize um relatório legível com as evidências e, quando houver dados tabulares úteis, um CSV das linhas relacionadas.
+
+Inclua as fontes necessárias para compreender a ocorrência, com identificação do arquivo, referência ou linha de origem e valores aplicáveis. Considere todas as evidências vinculadas à pendência.
+
+Não anexe automaticamente o pacote completo de dados, extratos integrais ou informações de outras contrapartes.
+
+Mostre os arquivos antes da aprovação. Preserve uma cópia dos anexos efetivamente aprovados e enviados para auditoria.
+
+**6. Aprovação e integridade do envio**
+
+A aprovação deve corresponder à versão exata do remetente, destinatário, assunto, corpo, anexos e evidências utilizadas.
+
+Qualquer alteração desses elementos deve invalidar uma aprovação anterior. Se os dados relevantes da pendência mudarem após a geração do rascunho, sinalize a desatualização e exija nova revisão.
+
+O envio deve utilizar o conteúdo aprovado, sem regenerar texto ou anexos silenciosamente após o clique.
+
+Impeça envios duplicados por clique duplo, chamadas concorrentes ou repetição de requisição. Essas verificações devem existir no servidor.
+
+**7. Resultado e histórico**
+
+Diferencie claramente rascunho, envio em andamento, envio confirmado pelo Gmail, falha conhecida e resultado incerto.
+
+Registre conteúdo, anexos, pendência, responsável, conta remetente, horários, tentativa de envio e identificador retornado pelo Gmail.
+
+Não apresente a aceitação pelo Gmail como confirmação de entrega ou leitura pelo destinatário.
+
+Em caso de timeout ou interrupção após iniciar o envio, não repita automaticamente a operação quando houver risco de duplicidade. Exiba o resultado como incerto e oriente a conferência manual no Gmail.
+
+Enviar uma mensagem não resolve a pendência, não altera os cálculos e não aprova o fechamento.
+
+**8. Limites desta implementação**
+
+Esta versão prepara e envia mensagens externas sobre problemas financeiros ou de dados. Não inclui leitura de e-mails recebidos, acompanhamento de respostas, falhas técnicas do processamento ou integração com o endereço corporativo da Tarvo.
+
+Os avisos internos dispensam aprovação, mas seus gatilhos, frequência e destinatários ainda serão definidos. Preserve o funcionamento existente em simulação, sem conectá-lo automaticamente ao envio real.
+
+Também não transforme automaticamente outros fluxos existentes, como cobranças e relatórios, em envios reais.
+
+**9. Verificação e entrega**
+
+Verifique o fluxo completo na interface e adicione testes para roteamento Orbe/Ponte, ausência de contato, conta desconectada, revisão do conteúdo, anexos pertinentes, alteração de evidências, acesso não autorizado, clique duplo, falha e resultado incerto.
+
+Confirme que os dados e cálculos existentes permanecem preservados. Os testes automatizados devem usar um provedor simulado e não enviar mensagens reais.
+
+Documente como configurar o projeto Google, autorizar a conta de teste, cadastrar destinatários de demonstração e executar o roteiro de apresentação. A demonstração real deve ocorrer entre contas de teste configuradas, mediante o botão “Aprovar e enviar”.
+
+Se faltarem credenciais, conclua tudo o que puder ser implementado e verificado localmente. Informe exatamente qual configuração falta e diferencie os testes simulados da validação real.
+
+Ao finalizar, apresente as mudanças, os testes executados, as limitações e os passos para demonstrar a funcionalidade.

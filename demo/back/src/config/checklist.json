@@ -1,0 +1,13 @@
+{
+  "id": "checklist-fechamento-tarvo",
+  "version": 1,
+  "tasks": [
+    {"id": "conferir-mdr", "area": "Adquirência", "title": "Conferir taxas MDR cobradas pela Orbe", "step_type": "conferir_mdr", "manual": false},
+    {"id": "estornos", "area": "Adquirência", "title": "Tratar estornos e reversões", "step_type": "vincular_estornos", "manual": false},
+    {"id": "aurora", "area": "Bancos", "title": "Conferir extratos e transferências próprias", "step_type": "conciliar_aurora", "manual": false},
+    {"id": "cambio", "area": "Câmbio", "title": "Apurar receita de intermediação", "step_type": "processar_cambio", "manual": false},
+    {"id": "aprovar", "area": "Contabilidade", "title": "Revisar e aprovar lançamentos", "step_type": "aprovacao", "manual": false},
+    {"id": "exportar", "area": "Contabilidade", "title": "Exportar para o Fênix", "step_type": "exportar_erp", "manual": false},
+    {"id": "atualizar-taxas", "area": "Comercial", "title": "Atualizar tabela de taxas e confirmar cadastros pendentes", "step_type": null, "manual": true, "status": "pendente", "responsavel": "", "comentario": ""}
+  ]
+}

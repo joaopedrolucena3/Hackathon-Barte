@@ -1,5 +1,7 @@
 # Tarvo Fechamento
 
+> **Atualização da branch `backend`:** `back/` contém o backend FastAPI, o pipeline persistido e o envio de pendências pelo Gmail sob aprovação. O comando `cd back && ./run.sh` serve a interface de verificação incluída em `back/web/`, sem compilação React. Consulte [back/README.md](back/README.md), [API do pipeline](back/docs/API_PIPELINE.md) e [configuração Gmail](back/docs/GMAIL.md). A suíte atual tem 130 testes. Os arquivos de `front/` foram preservados; a adaptação do frontend React aos contratos atuais não faz parte deste commit. As instruções abaixo documentam a integração anterior do frontend e devem ser lidas com essa ressalva.
+
 Plataforma local para apurar setembro de 2026 a partir dos arquivos originais da Tarvo. Calcula comissões, diferenças de taxa, notas propostas e contrapartidas bancárias; mantém pendências e decisões humanas, rastros, relatórios e e-mails em simulação. O analista trabalha pela interface, sem abrir planilhas.
 
 ## Estrutura: front e back

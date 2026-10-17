@@ -1,11 +1,98 @@
 [
-  {"id":"H01","question":"Como combinar a isenção da Casa com estornos de vendas anteriores?","source":"Slack 20h06 e20h49, Orbe TX88445133","decision":"Aplicar a taxa pela data original da venda: isenção de2026-09-01 a2026-12-31 não é retroativa. Estorno da venda de21/08 abate R$5,50; Casa fica negativa e exige análise de Helena.","impact":"Se a isenção também cobrir vendas antigas estornadas em setembro, comissão checkout aumenta R$5,50. Não emitir NF negativa nem transportar saldo automaticamente.","status":"hipotese_explicita"},
-  {"id":"H02","question":"Que tolerância usar no spread realizado?","source":"Slack 20h58; cotações da Ponte com quatro casas","decision":"Tolerância de0,002 ponto percentual para remessa, configurável. Diferença usa spread realizado menos valor ME×PTAX×taxa contratada, com HALF_UP. Checkout compara taxa, sem tolerância monetária para truncamento.","impact":"Tolerância menor pode criar alarmes de arredondamento; maior pode esconder excesso. Alterações reabrem cálculo e ficam auditadas.","status":"parametro"},
-  {"id":"H03","question":"Como usar a identidade da Atlas presente só em2025?","source":"Slack20h24 e aba ANTIGO2025","decision":"Cadastro candidato mantém CNPJ e nome como evidência, sem autorizar vínculo ou taxas antigas. Comercial precisa confirmar identidade e contrato vigente pela interface.","impact":"57 movimentos ficam sem comissão autorizada até confirmação; totais do fechamento são provisórios e fechamento exige resolver ou aceitar ressalvas.","status":"pendencia"},
-  {"id":"H04","question":"O prazo de contestação venceu pelo calendário real?","source":"EML02/10 e Slack22h34","decision":"Prevalece o cenário esclarecido pelo financeiro: considerar prazo aberto. Não encerrar contestação por cálculo automático de cinco dias úteis. Prazo do fechamento é parâmetro separado.","impact":"Antes de uso real, confirmar datas e destinatário com financeiro. Nenhum e-mail real é disparado.","status":"esclarecido"},
-  {"id":"H05","question":"Como tratar movimentos bancários sem identificação conclusiva?","source":"Extratos e Slack20h49/21h14","decision":"Usar contrapartidas analíticas; créditos sem identificação ficam em transitória, devolução e transferência em trânsito mantêm revisão. Não transformar crédito desconhecido em receita nem reconhecer provisões de agosto duas vezes.","impact":"Identificação posterior pode mudar conta e responsável, com decisão registrada e método HUMANO.","status":"pendencia"},
-  {"id":"H06","question":"Como reconhecer dinheiro recebido após setembro?","source":"EML Ponte e Slack22h33/22h34","decision":"Comissão de remessa pela contratação. Não inferir valor do TED de outubro nem liquidar setembro automaticamente. Sem agenda Orbe, não forçar igualdade entre banco e relatório mensal.","impact":"Conciliação por parcelas e conferência do TED aguardam dados de outubro.","status":"esclarecido"},
-  {"id":"H07","question":"Como enviar e-mails e identificar o analista na demo?","source":"Pedido do usuário","decision":"Sandbox local com registro de destinatário, conteúdo, aprovação e horário. Ator informado pelo operador. Cobranças/contestações exigem aprovação da versão exata; editar invalida a aprovação. Avisos internos seguem preferências e dispensam aprovação.","impact":"Não há SMTP real nem autenticação corporativa; o registro do ator não prova identidade. Uso de produção exige autenticação e provedor de e-mail.","status":"limite_mvp"},
-  {"id":"H08","question":"Qual é o canal válido para a entrega do time?","source":"DOCX e resposta logística Slack20h13","decision":"Manter o projeto local pronto para repositório; conferir instrução de envio com organização, pois DOCX menciona thread e resposta menciona e-mail. Não publicar nem transmitir automaticamente.","impact":"Entrega formal e histórico de preparação anterior dependem do time antes do prazo.","status":"pendencia_logistica"},
-  {"id":"H09","question":"Como evoluir as referências na importação do mês seguinte?","source":"Pedido do usuário e formatos fornecidos","decision":"Preservar cadastros e taxas já revisados, acrescentar referências novas e substituir apenas o lote de movimentos do mês ativo. Importações e cálculos ficam arquivados no SQLite. Novos formatos não suportados exigem adaptação do importador.","impact":"Mudanças de contrato não são aceitas silenciosamente a partir de uma planilha reimportada; devem ser revisadas na interface.","status":"arquitetura"}
+  {
+    "id": "H01",
+    "question": "Como combinar a isenção da Casa com estornos de vendas anteriores?",
+    "source": "Slack 20h06 e20h49, Orbe TX88445133",
+    "decision": "Aplicar a taxa pela data original da venda: isenção de2026-09-01 a2026-12-31 não é retroativa. Estorno da venda de21/08 abate R$5,50; Casa fica negativa e exige análise de Helena.",
+    "impact": "Se a isenção também cobrir vendas antigas estornadas em setembro, comissão checkout aumenta R$5,50. Não emitir NF negativa nem transportar saldo automaticamente.",
+    "status": "hipotese_explicita"
+  },
+  {
+    "id": "H02",
+    "question": "Que tolerância usar no spread realizado?",
+    "source": "Slack 20h58; cotações da Ponte com quatro casas",
+    "decision": "Tolerância de0,002 ponto percentual para remessa, configurável. Diferença usa spread realizado menos valor ME×PTAX×taxa contratada, com HALF_UP. Checkout compara taxa, sem tolerância monetária para truncamento.",
+    "impact": "Tolerância menor pode criar alarmes de arredondamento; maior pode esconder excesso. Alterações reabrem cálculo e ficam auditadas.",
+    "status": "parametro"
+  },
+  {
+    "id": "H03",
+    "question": "Como usar a identidade da Atlas presente só em2025?",
+    "source": "Slack20h24 e aba ANTIGO2025",
+    "decision": "Cadastro candidato mantém CNPJ e nome como evidência, sem autorizar vínculo ou taxas antigas. Comercial precisa confirmar identidade e contrato vigente pela interface.",
+    "impact": "57 movimentos ficam sem comissão autorizada até confirmação; totais do fechamento são provisórios e fechamento exige resolver ou aceitar ressalvas.",
+    "status": "pendencia"
+  },
+  {
+    "id": "H04",
+    "question": "O prazo de contestação venceu pelo calendário real?",
+    "source": "EML02/10 e Slack22h34",
+    "decision": "Prevalece o cenário esclarecido pelo financeiro: considerar prazo aberto. Não encerrar contestação por cálculo automático de cinco dias úteis. Prazo do fechamento é parâmetro separado.",
+    "impact": "Antes de uso real, confirmar datas e destinatário com financeiro. Nenhum e-mail real é disparado.",
+    "status": "esclarecido"
+  },
+  {
+    "id": "H05",
+    "question": "Como tratar movimentos bancários sem identificação conclusiva?",
+    "source": "Extratos e Slack20h49/21h14",
+    "decision": "Usar contrapartidas analíticas; créditos sem identificação ficam em transitória, devolução e transferência em trânsito mantêm revisão. Não transformar crédito desconhecido em receita nem reconhecer provisões de agosto duas vezes.",
+    "impact": "Identificação posterior pode mudar conta e responsável, com decisão registrada e método HUMANO.",
+    "status": "pendencia"
+  },
+  {
+    "id": "H06",
+    "question": "Como reconhecer dinheiro recebido após setembro?",
+    "source": "EML Ponte e Slack22h33/22h34",
+    "decision": "Comissão de remessa pela contratação. Não inferir valor do TED de outubro nem liquidar setembro automaticamente. Sem agenda Orbe, não forçar igualdade entre banco e relatório mensal.",
+    "impact": "Conciliação por parcelas e conferência do TED aguardam dados de outubro.",
+    "status": "esclarecido"
+  },
+  {
+    "id": "H07",
+    "question": "Como enviar e-mails e identificar o analista na demo?",
+    "source": "Pedido do usuário",
+    "decision": "Sandbox local com registro de destinatário, conteúdo, aprovação e horário. Ator informado pelo operador. Cobranças/contestações exigem aprovação da versão exata; editar invalida a aprovação. Avisos internos seguem preferências e dispensam aprovação.",
+    "impact": "Não há SMTP real nem autenticação corporativa; o registro do ator não prova identidade. Uso de produção exige autenticação e provedor de e-mail.",
+    "status": "limite_mvp"
+  },
+  {
+    "id": "H08",
+    "question": "Qual é o canal válido para a entrega do time?",
+    "source": "DOCX e resposta logística Slack20h13",
+    "decision": "Manter o projeto local pronto para repositório; conferir instrução de envio com organização, pois DOCX menciona thread e resposta menciona e-mail. Não publicar nem transmitir automaticamente.",
+    "impact": "Entrega formal e histórico de preparação anterior dependem do time antes do prazo.",
+    "status": "pendencia_logistica"
+  },
+  {
+    "id": "H09",
+    "question": "Como evoluir as referências na importação do mês seguinte?",
+    "source": "Pedido do usuário e formatos fornecidos",
+    "decision": "Preservar cadastros e taxas já revisados, acrescentar referências novas e substituir apenas o lote de movimentos do mês ativo. Importações e cálculos ficam arquivados no SQLite. Novos formatos não suportados exigem adaptação do importador.",
+    "impact": "Mudanças de contrato não são aceitas silenciosamente a partir de uma planilha reimportada; devem ser revisadas na interface.",
+    "status": "arquitetura"
+  },
+  {
+    "id": "H10",
+    "question": "Qual mapa e leiaute usar no lote de partidas dobradas para o ERP?",
+    "source": "Solicitação de pipeline e plano de contas fornecido; sem manual oficial de importação Fênix.",
+    "decision": "Mapa explícito em src/config/mapa_contabil.json, somente contas analíticas e partidas balanceadas. Revisão obrigatória antes da exportação. Nenhuma apuração de tributos criada.",
+    "impact": "A importação real no ERP exige homologação do leiaute e mapa. Um mapa incorreto requer nova execução; não altera retrospectivamente o lote aprovado.",
+    "status": "hipotese_explicita"
+  },
+  {
+    "id": "H11",
+    "question": "Todos os arquivos de duas execuções devem ser byte a byte idênticos?",
+    "source": "Pedido de reprodutibilidade e de auditoria por execução.",
+    "decision": "Dados calculados e arquivos financeiros usam conteúdo determinístico. Horário, duração, identificador e autoria variam na auditoria operacional; seus campos não participam do hash semântico dos datasets.",
+    "impact": "Comparar hashes de conteúdo das etapas, sem exigir que o histórico operacional de runs diferentes seja igual.",
+    "status": "arquitetura"
+  },
+  {
+    "id": "H12",
+    "question": "As edições do cadastro antigo alteram uma execução versionada?",
+    "source": "Requisito de imutabilidade e reexecução por competência.",
+    "decision": "Cada run usa cópias dos arquivos e a definição versionada. Cadastros do fechamento original ficam preservados, mas não são incorporados silenciosamente no pipeline; novas referências entram pelos arquivos de uma nova execução.",
+    "impact": "Ao revisar uma referência, iniciar outro run com o conjunto atualizado; a evidência aprovada continua imutável.",
+    "status": "arquitetura"
+  }
 ]
