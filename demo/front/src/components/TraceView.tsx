@@ -64,11 +64,12 @@ function DetailCard({ detail }: { detail: Detail }) {
   );
 }
 
-export function TraceView({ id }: { id: string }) {
+export function TraceView({ id, compact }: { id: string; compact?: boolean }) {
   const { data, isLoading, error } = useTrace(id);
   if (isLoading) return <Loading label="Consultando linhas de origem e regras…" />;
   if (error) return <Callout tone="critical" icon="alert">{error.message}</Callout>;
   if (!data) return null;
+  const details = compact ? data.details.slice(0, 1) : data.details.slice(0, 12);
   return (
     <div className="stack-lg">
       <div className="row wrap" style={{ gap: 10 }}>
@@ -76,7 +77,7 @@ export function TraceView({ id }: { id: string }) {
         <span className="muted">{count(data.rows.length)} linhas de origem · {count(data.details.length)} regras de cálculo</span>
       </div>
       {data.rows.length ? (
-        <div className="card table-wrap" style={{ maxHeight: 320 }}>
+        <div className="card table-wrap" style={{ maxHeight: compact ? 180 : 320 }}>
           <table className="table">
             <thead><tr><th>Arquivo de origem</th><th>Referência</th><th className="r">Linha</th><th className="r">Valor</th></tr></thead>
             <tbody>
@@ -93,8 +94,8 @@ export function TraceView({ id }: { id: string }) {
           {data.rows.length > 200 && <p className="muted" style={{ padding: 10, fontSize: 12 }}>Mostrando 200 de {count(data.rows.length)} linhas. O rastro completo está em rastro.csv.</p>}
         </div>
       ) : <Empty icon="origin" title="Sem contribuição em dinheiro">O item representa uma decisão ou exceção sem valor calculável.</Empty>}
-      {data.details.slice(0, 12).map((detail, index) => <DetailCard key={`${detail.ref_origem}-${index}`} detail={detail} />)}
-      {data.details.length > 12 && <p className="muted" style={{ fontSize: 12 }}>Mais {count(data.details.length - 12)} regras no rastro completo.</p>}
+      {details.map((detail, index) => <DetailCard key={`${detail.ref_origem}-${index}`} detail={detail} />)}
+      {data.details.length > details.length && <p className="muted" style={{ fontSize: 12 }}>Mais {count(data.details.length - details.length)} regras no rastro completo.</p>}
     </div>
   );
 }

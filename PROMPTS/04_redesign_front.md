@@ -51,3 +51,12 @@ Depois: "Faça perguntas sobre as mudanças do front e confirmações que você 
 - **Cadastros**: lista de lojistas + ficha; nome, EC e situação editáveis direto na ficha com uma justificativa só; identidade candidata confirmada na própria ficha; taxas como linha do tempo de vigências por produto (vigência da competência em destaque, lacunas hachuradas, sobreposições marcadas) com editor inline; contatos de cobrança na ficha; abas de contatos, plano de contas (só leitura) e prazo. Parâmetros de cálculo apontam para o construtor.
 - **Comunicações**: rascunhos e envios simulados, avisos internos e quem recebe; o e-mail do relatório abre direto no editor.
 - Verificação no navegador: ficha da Casa do Estudante mostra 0% a partir de 01/09/2026 em destaque; rascunho de cobrança da Ponte criado e aberto no editor (banco de verificação); valores negativos não quebram mais linha; toast passou para o topo.
+
+### Fase 3 — Execução do run (B1, B3, B4, C8)
+
+- `/runs/:id`: cabeçalho com barra de progresso, tempo decorrido e status; abas Passos · Revisão · Auditoria; banner fixo "O agente terminou. N exceções aguardam sua revisão" com botão Revisar; selo `Pipeline … · código … · N arquivos`.
+- Lateral (B1/B4): ícone por estado (○, girando, ✓, !, ✕, ⏸, –), resultado do passo (`1.943 linhas · 210 exceções · 1,7 s`), barra `800 / 1.943` durante a execução, portão de aprovação com visual próprio, falha com mensagem e "Ver detalhes".
+- Eventos ao vivo: `useRunEvents` aplica `step_started/progress/finished/awaiting_approval/run_finished` ao cache (reducer testado) e seleciona o passo em execução enquanto o usuário não escolheu outro. O mock retoma runs interrompidos por recarga.
+- Preview (C8): paginação, ordenação e filtros no "servidor" (mock), colunas novas destacadas com marcador "novo", linhas com exceção marcadas na margem, "Só exceções", "Comparar com entrada" (linha duplicada removida aparece riscada), totais de dinheiro da página e do dataset.
+- Painel direito: métricas, parâmetros efetivos, versão do código e hash de saída do passo; clique numa exceção abre o detalhe com origem.
+- Verificação no navegador: run R-0001 rodou do início ao portão em ~20 s; Conferir MDR mostra 1.886 linhas, 210 exceções e as colunas taxa contratada, diferença (p.p.) e impacto; banner mostra 304 exceções e 57 bloqueantes.
