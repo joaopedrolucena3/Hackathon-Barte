@@ -1,6 +1,6 @@
 # Histórico de uso da IA
 
-Este diretório preserva os pedidos e resumos que já estavam no repositório e acrescenta exports das conversas locais recuperáveis, conforme as [instruções oficiais](../demo/back/docs/01_instrucoes_participantes.docx). Os [três momentos selecionados](MOMENTOS.md) apontam para pedidos, respostas e intervenções humanas reais; os resumos antigos não substituem os transcripts.
+Este diretório preserva os pedidos e resumos que já estavam no repositório e acrescenta exports das conversas locais recuperáveis, conforme as [instruções oficiais](../demo/back/docs/01_instrucoes_participantes.docx). Os [quatro momentos selecionados](MOMENTOS.md) apontam para pedidos, respostas e intervenções humanas reais; os resumos antigos não substituem os transcripts.
 
 ## Cobertura recuperada
 
