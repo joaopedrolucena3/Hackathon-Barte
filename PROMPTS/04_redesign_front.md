@@ -36,3 +36,11 @@ Depois: "Faça perguntas sobre as mudanças do front e confirmações que você 
 - `back/src/store.py` aponta `FRONT` para `front/dist`; `back/src/app.py` devolve `index.html` para rotas do SPA e 503 explicativo se o front não foi compilado.
 - `back/run.sh` compila o front quando `dist/` falta ou está mais velho que o código (`./run.sh front` só compila).
 - Verificação: `npm run build` ok; 10 testes de front (decimal exato, formatação pt-BR, reducer de eventos SSE); 55 testes do back ok; `/`, `/runs/R-0001` e `/pipeline` respondem o SPA; `/assets/inexistente.js` e `/api/inexistente` respondem 404.
+
+### Fase 1 — Fechamento visual
+
+- Rota `/competencias/:comp` é a casa do fechamento: progresso (segmentos por tarefa + etapas Importar → Concluir), valor em pendências (barra empilhada bloqueante/alerta/decididas), último run, quatro cartões, pendências abertas por tipo, relatório e saídas, checklist por área (A2) com tarefas manuais editáveis e atualização otimista.
+- Comissões e Divergências saíram da navegação: abrem como painel lateral pelos cartões (`?painel=comissoes|divergencias`), com gráfico, tabela e rastro inline (`GET /api/trace`).
+- Botão **Rodar fechamento** (B3): painel curto com data pack, envio de arquivos com SHA-256 ou pasta no servidor; trata 409.
+- Gráficos seguem a skill de dataviz: paleta validada (`#2a78d6`/`#eb6834` séries; vermelho/âmbar/verde de estado com rótulo sempre visível), barras ≤ 24px, rótulo na ponta, tooltip por marca.
+- Verificação no navegador (porta 8777, banco separado): números do case conferem (checkout R$ 207.039,73; remessa R$ 39.543,45; divergências R$ 22.173,57; notas R$ 246.588,68; 304 pendências); painéis e rastro abrem; sem erros no console. Corrigido rótulo da maior barra que vazava do cartão e o foco que rolava o painel.

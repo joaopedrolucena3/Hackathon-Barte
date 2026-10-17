@@ -5,7 +5,7 @@ import { Icon } from './Icon';
 // Only the top-most overlay reacts to Escape (a modal opened from a sheet closes first).
 const stack: symbol[] = [];
 
-function useOverlay(onClose: () => void) {
+function useOverlay(onClose: () => void, focusFirstField = true) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -18,8 +18,11 @@ function useOverlay(onClose: () => void) {
     };
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
-    const first = ref.current?.querySelector<HTMLElement>('[autofocus], input:not([type=hidden]), select, textarea');
-    (first || ref.current)?.focus();
+    // Sheets keep their scroll at the top: focus the panel itself unless a field asks for autofocus.
+    if (!ref.current?.contains(document.activeElement)) {
+      const first = focusFirstField ? ref.current?.querySelector<HTMLElement>('input:not([type=hidden]), select, textarea') : null;
+      (first || ref.current)?.focus({ preventScroll: true });
+    }
     return () => {
       stack.splice(stack.indexOf(id), 1);
       document.removeEventListener('keydown', onKey);
@@ -42,7 +45,7 @@ interface OverlayProps {
 
 /** Side panel: drill-downs (Comissões, Divergências), editors and details without leaving the page. */
 export function Sheet({ title, sub, eyebrow, onClose, children, footer, headerExtra, narrow }: OverlayProps & { narrow?: boolean }) {
-  const ref = useOverlay(onClose);
+  const ref = useOverlay(onClose, false);
   return createPortal(
     <>
       <div className="overlay" onClick={onClose} />
