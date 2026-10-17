@@ -110,7 +110,7 @@ export function StepsTab({ run }: { run: Run }) {
 
   if (!step) return <Empty title="Este run não tem passos" />;
   return (
-    <div className={`wb ${run.status === 'awaiting_approval' ? 'has-banner' : ''}`}>
+    <div className="wb">
       <aside className="wb-side">
         <div className="card wb-steps">
           <div className="run-col-head"><span>Passos</span><span className="muted num">{run.steps.length}</span></div>

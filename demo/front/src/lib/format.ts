@@ -123,6 +123,19 @@ export function shortHash(hash: string | null | undefined, size = 6) {
   return hash ? `${hash.slice(0, size)}…` : '—';
 }
 
+/** run-c2ada3efe4dd… → #c2ada3ef: enough to tell runs apart on screen; the full id stays one click away. */
+export function shortRunId(id: string) {
+  return `#${id.replace(/^run-/, '').slice(0, 8)}`;
+}
+
+/** Step titles are infinitives ("Conferir MDR"); the agent's live line uses the gerund ("Conferindo MDR"). */
+export function gerund(title: string) {
+  const [verb, ...rest] = title.split(' ');
+  const match = /^(.*)([aei])r$/i.exec(verb);
+  if (!match) return title;
+  return [`${match[1]}${{ a: 'ando', e: 'endo', i: 'indo' }[match[2].toLowerCase() as 'a' | 'e' | 'i']}`, ...rest].join(' ');
+}
+
 export function plural(n: number, one: string, many: string) {
   return `${count(n)} ${n === 1 ? one : many}`;
 }
@@ -138,6 +151,14 @@ export const issueNames: Record<string, string> = {
   DIVERGENCIA_TAXA: 'Taxa cobrada diferente da contratada', DUPLICIDADE: 'Operação duplicada', SPREAD_NEGATIVO: 'Spread negativo',
   TRANSFERENCIA_EM_TRANSITO: 'Transferência em trânsito', TAXA_NAO_ENCONTRADA: 'Taxa não encontrada',
   CONTRATO_AUSENTE: 'Contrato ausente', CONFERIR_REPASSE_PONTE: 'Conferir repasse da Ponte',
+  TAXA_SOBREPOSTA: 'Vigências de taxa sobrepostas', TAXA_AUSENTE: 'Taxa ausente', TAXA_INVALIDA: 'Taxa inválida',
+  CADASTRO_AUSENTE: 'Lojista sem cadastro', CADASTRO_AMBIGUO: 'Cadastro ambíguo',
+  CLASSIFICACAO_PENDENTE: 'Classificação bancária pendente', CONTA_NAO_ANALITICA: 'Conta contábil não analítica',
+  CHECKOUT_INVALIDO: 'Transação de checkout inválida', LINHA_INVALIDA: 'Linha ilegível no arquivo',
+  DUPLICIDADE_CONFLITANTE: 'Duplicidade com valores diferentes', DUPLICIDADE_INVALIDA: 'Duplicidade inválida',
+  ORBE_CAMPOS_INVALIDOS: 'Campos inválidos no relatório da Orbe', COMPLIANCE_NAO_AUTORIZADO: 'Operação sem autorização de compliance',
+  MAPA_CONTABIL_A_CONFIRMAR: 'Mapa contábil a confirmar', REMESSA_INVALIDA: 'Remessa inválida',
+  SALDO_DIVERGENTE: 'Saldo bancário divergente', VALOR_INVALIDO: 'Valor inválido', BANCO_INVALIDO: 'Lançamento bancário inválido',
 };
 
 export function readable(code: string | null | undefined) {

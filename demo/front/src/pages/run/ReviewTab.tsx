@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Overlay';
 import { RunLauncher } from '../../components/RunLauncher';
 import { useToast } from '../../components/Toast';
-import { Badge, Callout, Empty, Field, HashChip, Loading, Money, ReasonInput, Segmented, Tip } from '../../components/ui';
+import { Badge, Callout, Count, Empty, Field, HashChip, Loading, Money, ReasonInput, Segmented, Tip } from '../../components/ui';
 import { count, dateBR, dateTimeBR, moneyShort, plural, readable } from '../../lib/format';
 import { keys, useApprovalSummary, useExceptions } from '../../state/queries';
 import { useAction } from '../../state/useAction';
@@ -24,27 +24,27 @@ function Summary({ run }: { run: Run }) {
     <div className="review-summary">
       <div className="kpi">
         <span className="kpi-label">Exceções decididas</span>
-        <span className="kpi-value num">{count(s.decided)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.total)}</small></span>
+        <span className="kpi-value num"><Count value={s.decided} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.total)}</small></span>
         <div className="meter"><span style={{ flexGrow: s.decided, background: 'var(--st-good)' }} /><span style={{ flexGrow: s.total - s.decided, background: 'var(--surface-3)' }} /></div>
       </div>
       <div className={`kpi ${s.open_blocking ? 'attention' : ''}`}>
         <span className="kpi-label">Bloqueantes abertas <Badge tone="critical" dot>Bloqueante</Badge></span>
-        <span className="kpi-value num">{count(s.open_blocking)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.blocking)}</small></span>
+        <span className="kpi-value num"><Count value={s.open_blocking} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.blocking)}</small></span>
         <span className="kpi-detail">{s.open_blocking ? 'Decida uma a uma antes de aprovar' : 'Nenhuma bloqueia a aprovação'}</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Alertas abertos <Badge tone="warning" dot>Alerta</Badge></span>
-        <span className="kpi-value num">{count(s.open_alerts)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.alerts)}</small></span>
+        <span className="kpi-value num"><Count value={s.open_alerts} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.alerts)}</small></span>
         <span className="kpi-detail">Podem ser aceitos em lote</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Impacto em aberto</span>
-        <span className="kpi-value"><Money value={s.open_impact_brl} /></span>
+        <span className="kpi-value"><Money value={s.open_impact_brl} animate /></span>
         <span className="kpi-detail">de {moneyShort(s.impact_brl)} em exceções (valores absolutos)</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Lote a exportar {s.batch.balanced && <Badge tone="good" dot>Balanceado</Badge>}</span>
-        <span className="kpi-value num">{count(s.batch.entries)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> lançamentos</small></span>
+        <span className="kpi-value num"><Count value={s.batch.entries} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> lançamentos</small></span>
         <span className="kpi-detail">Débitos {moneyShort(s.batch.debit_brl)} = créditos {moneyShort(s.batch.credit_brl)}{s.batch.excluded ? ` · ${s.batch.excluded} excluídos` : ''}</span>
       </div>
     </div>
