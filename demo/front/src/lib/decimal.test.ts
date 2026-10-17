@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cents, diffPercent, fromCents, sumMoney, toUnits } from './decimal';
-import { money, moneyShort, percent, pp, periodShort, dateBR, cnpj } from './format';
+import { money, moneyShort, percent, pp, periodShort, dateBR, cnpj, gerund, readable, shortRunId } from './format';
 
 describe('decimal (mock backend arithmetic)', () => {
   it('keeps cents exact where floats drift', () => {
@@ -45,5 +45,15 @@ describe('pt-BR formatting', () => {
     expect(dateBR('2026-09-01')).toBe('01/09/2026');
     expect(periodShort('2026-09')).toBe('09/2026');
     expect(cnpj('00520815000100')).toBe('00.520.815/0001-00');
+  });
+  it('speaks for the agent: gerund of the step, short run id, accented issue names', () => {
+    expect(gerund('Conferir MDR')).toBe('Conferindo MDR');
+    expect(gerund('Ler arquivos')).toBe('Lendo arquivos');
+    expect(gerund('Normalizar Orbe')).toBe('Normalizando Orbe');
+    expect(gerund('Aprovação humana')).toBe('Aprovação humana');
+    expect(shortRunId('run-c2ada3efe4dd456199d767999a709fc3')).toBe('#c2ada3ef');
+    expect(shortRunId('R-0001')).toBe('#R-0001');
+    expect(readable('TRANSFERENCIA_EM_TRANSITO')).toBe('Transferência em trânsito');
+    expect(readable('TAXA_SOBREPOSTA')).toBe('Vigências de taxa sobrepostas');
   });
 });

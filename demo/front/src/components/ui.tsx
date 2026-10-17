@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import type { Status } from '../api/agent';
-import { count, dateBR, money, percent, pp, shortHash } from '../lib/format';
+import { count, dateBR, money, percent, pp, shortHash, shortRunId } from '../lib/format';
 import { Icon, type IconName } from './Icon';
+import { NumberTicker } from './motion';
 
 type Tone = 'neutral' | 'good' | 'warning' | 'critical' | 'info' | 'gate' | 'accent';
 
@@ -38,15 +39,21 @@ export function SeverityBadge({ severity }: { severity: string }) {
   return <Badge tone="warning" dot>{severity === 'atencao' ? 'Atenção' : 'Alerta'}</Badge>;
 }
 
-export function Money({ value, className = '' }: { value: string | number | null | undefined; className?: string }) {
+const finite = (value: string | number | null | undefined) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+
+/** `animate` counts up on first view (headline figures only); the resting text is always the exact value. */
+export function Money({ value, className = '', animate }: { value: string | number | null | undefined; className?: string; animate?: boolean }) {
   const negative = Number(value) < 0;
-  return <span className={`num nowrap ${negative ? 'neg' : ''} ${className}`}>{money(value)}</span>;
+  const classes = `nowrap ${negative ? 'neg' : ''} ${className}`;
+  if (animate && finite(value)) return <NumberTicker value={Number(value)} format={money} className={classes} />;
+  return <span className={`num ${classes}`}>{money(value)}</span>;
 }
 
 export const Percent = ({ value }: { value: string | number | null | undefined }) => <span className="num">{percent(value)}</span>;
 export const PP = ({ value }: { value: string | number | null | undefined }) => <span className="num">{pp(value)}</span>;
 export const DateBR = ({ value }: { value: string | null | undefined }) => <span className="num">{dateBR(value)}</span>;
-export const Count = ({ value }: { value: number | null | undefined }) => <span className="num">{count(value)}</span>;
+export const Count = ({ value, animate }: { value: number | null | undefined; animate?: boolean }) =>
+  animate && finite(value) ? <NumberTicker value={value!} format={n => count(Math.round(n))} /> : <span className="num">{count(value)}</span>;
 
 export function HashChip({ hash, size = 6 }: { hash?: string | null; size?: number }) {
   const [copied, setCopied] = useState(false);
@@ -63,6 +70,22 @@ export function HashChip({ hash, size = 6 }: { hash?: string | null; size?: numb
     >
       <Icon name={copied ? 'check' : 'hash'} />
       {copied ? 'copiado' : shortHash(hash, size)}
+    </button>
+  );
+}
+
+/** Short run id that copies the full one: UUIDs are for audit, not for reading. */
+export function RunId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button type="button" className="hash-chip run-id" title={`${id} · clique para copiar`}
+      onClick={event => {
+        event.stopPropagation();
+        event.preventDefault();
+        void navigator.clipboard?.writeText(id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1400); });
+      }}>
+      <Icon name={copied ? 'check' : 'hash'} />
+      {copied ? 'copiado' : shortRunId(id).slice(1)}
     </button>
   );
 }

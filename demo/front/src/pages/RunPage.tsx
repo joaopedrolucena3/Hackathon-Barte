@@ -1,11 +1,11 @@
-// /runs/:runId — header with live progress, tabs Passos · Revisão · Auditoria, approval banner and seal.
+// /runs/:runId — the agent's header (live line, step track, next action), tabs Passos · Revisão · Auditoria and seal.
 import { lazy, Suspense } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
+import { AgentHeader } from '../components/AgentHeader';
 import { Icon } from '../components/Icon';
 import { TopbarSlot } from '../components/TopbarSlot';
-import { Badge, Callout, Empty, Loading, StatusBadge } from '../components/ui';
-import { capitalize, dateTimeBR, duration, periodLong, periodShort, plural } from '../lib/format';
-import { progressOf } from '../state/runEvents';
+import { Empty, Loading, RunId } from '../components/ui';
+import { periodShort, plural } from '../lib/format';
 import { useApprovalSummary, useElapsed, useRun, useRunEvents } from '../state/queries';
 import { StepsTab } from './run/StepsTab';
 
@@ -24,7 +24,6 @@ export default function RunPage({ tab }: { tab: 'passos' | 'revisao' | 'auditori
 
   if (isLoading) return <Loading page label="Carregando o run…" />;
   if (error || !run) return <Empty icon="alert" title="Run não encontrado">{error?.message} <Link className="link" to="/">Voltar ao fechamento</Link></Empty>;
-  const progress = progressOf(run);
   const open = summary ? summary.total - summary.decided : 0;
 
   return (
@@ -32,38 +31,10 @@ export default function RunPage({ tab }: { tab: 'passos' | 'revisao' | 'auditori
       <TopbarSlot>
         <Link to={`/competencias/${run.comp}`} className="row link-plain" style={{ gap: 6 }}><Icon name="arrowLeft" />Fechamento {periodShort(run.comp)}</Link>
         <span className="muted">/</span>
-        <strong className="mono">{run.id}</strong>
+        <RunId id={run.id} />
       </TopbarSlot>
 
-      <div className="run-head">
-        <div className="row between wrap" style={{ gap: 12 }}>
-          <div>
-            <p className="eyebrow">Execução do agente{run.draft ? ' · teste' : ''}</p>
-            <h1 className="page-title row" style={{ gap: 12 }}>Run <span className="mono" style={{ fontSize: 22 }}>{run.id}</span> · {capitalize(periodLong(run.comp))}</h1>
-          </div>
-          <div className="row wrap">
-            {run.draft && <Badge tone="gate">Rascunho de teste · não exporta</Badge>}
-            <StatusBadge status={run.status} size="lg" />
-          </div>
-        </div>
-        <div className="run-progress">
-          <div className="progress" style={{ height: 8 }}><span style={{ width: `${progress.ratio * 100}%`, background: run.status === 'failed' || run.status === 'rejected' ? 'var(--st-critical)' : undefined }} /></div>
-          <div className="row wrap muted" style={{ gap: 16, fontSize: 12.5, marginTop: 8 }}>
-            <span className="num"><strong className="text-2">{progress.done} de {progress.total}</strong> passos concluídos</span>
-            <span className="num"><Icon name="clock" size={13} /> {run.finished_at || gateAt ? `processamento ${duration(run.steps.filter(step => step.kind !== 'gate').reduce((sum, step) => sum + (step.duration_ms || 0), 0))}` : `${duration(elapsed)} decorridos`}</span>
-            <span>Iniciado por {run.created_by} · {dateTimeBR(run.created_at)}</span>
-          </div>
-        </div>
-      </div>
-
-      {run.status === 'awaiting_approval' && tab !== 'revisao' && (
-        <div className="banner" role="status">
-          <Icon name="pause" />
-          <p><strong>O agente terminou.</strong> {summary ? `${plural(open, 'exceção aguarda', 'exceções aguardam')} sua revisão${summary.open_blocking ? `, ${summary.open_blocking} bloqueantes` : ''}.` : 'As exceções aguardam sua revisão.'}</p>
-          <Link className="btn primary" to={`/runs/${run.id}/revisao`}>Revisar</Link>
-        </div>
-      )}
-      {run.status === 'failed' && <div style={{ marginBottom: 14 }}><Callout tone="critical" icon="alert"><strong>O run falhou.</strong> {run.steps.find(step => step.status === 'failed')?.error} <Link className="link" to={`/competencias/${run.comp}`}>Voltar e rodar de novo</Link></Callout></div>}
+      <AgentHeader run={run} summary={summary} elapsed={elapsed} gateAt={gateAt} />
 
       <nav className="tabs" aria-label="Seções do run">
         <NavLink end to={`/runs/${run.id}`} className={() => `tab ${tab === 'passos' ? 'active' : ''}`}><Icon name="run" />Passos</NavLink>

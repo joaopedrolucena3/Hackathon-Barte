@@ -5,7 +5,7 @@ import { agent, type AuditEntry, type Run, type RunComparison } from '../../api/
 import { downloads, OFFICIAL_EXPORTS } from '../../api/core';
 import { Icon, type IconName } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
-import { Badge, Callout, Empty, HashChip, Loading, Segmented, StatusBadge } from '../../components/ui';
+import { Badge, Callout, Empty, HashChip, Loading, RunId, Segmented, StatusBadge } from '../../components/ui';
 import { count, dateTimeBR, duration, plural, readable, timeBR } from '../../lib/format';
 import { useAppState, useAudit, useCatalog, useRuns } from '../../state/queries';
 
@@ -223,7 +223,7 @@ export default function AuditTab({ run }: { run: Run }) {
     <div className="audit-layout">
       <section className="card">
         <div className="card-head">
-          <div><h3 className="card-title">Trilha de auditoria do {run.id}</h3><p className="card-sub">Arquivos, pipeline, passos, decisões, aprovação e exportação · mais recente embaixo</p></div>
+          <div><h3 className="card-title row" style={{ gap: 8 }}>Trilha de auditoria <RunId id={run.id} /></h3><p className="card-sub">Arquivos, pipeline, passos, decisões, aprovação e exportação · mais recente embaixo</p></div>
           <button className="btn sm" onClick={() => agent.downloadExport(run.id, 'auditoria.json').catch(toast.error)}><Icon name="download" />Baixar trilha (JSON)</button>
         </div>
         <div className="card-body"><Timeline run={run} /></div>
