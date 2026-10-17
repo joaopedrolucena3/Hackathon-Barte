@@ -11,7 +11,7 @@ from src.importer import load_data
 from src.engine import calculate
 
 ROOT = Path(__file__).resolve().parents[1]
-PACK = ROOT.parent
+PACK = ROOT / 'data' / 'case'
 D = Decimal
 CNPJ = '22224579000109'
 EC = '1075624862'

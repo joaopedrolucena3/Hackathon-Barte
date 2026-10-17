@@ -2,11 +2,21 @@
 
 Plataforma local para apurar setembro de 2026 a partir dos arquivos originais da Tarvo. Calcula comissões, diferenças de taxa, notas propostas e contrapartidas bancárias; mantém pendências e decisões humanas, rastros, relatórios e e-mails em simulação. O analista trabalha pela interface, sem abrir planilhas.
 
+## Estrutura: front e back
+
+A demo está dividida em duas pastas para que os integrantes do time trabalhem em paralelo, sem conflito de arquivos:
+
+- `front/`: interface HTML/CSS/JavaScript (`index.html`, `app.js`, `styles.css`). Consome a API em `/api/*`; contrato em `back/docs/CONTRACT.md`.
+- `back/`: servidor Python, motor de cálculo, importador, SQLite, testes, dados do case (`data/case/`), `docs/`, `saida/`, `run.sh` e `requirements.txt`. Serve os arquivos de `front/`.
+
+Todos os comandos abaixo rodam a partir de `demo/back/`.
+
 ## Rodar
 
 Pré-requisito: Python 3.10 ou superior com venv e acesso ao PyPI na primeira execução. Nenhuma chave de API é necessária.
 
 ```sh
+cd back
 ./run.sh
 ```
 
@@ -66,7 +76,7 @@ Python + SQLite + interface HTML/CSS/JavaScript sem compilação. Uma dependênc
 - `src/engine.py`: funções determinísticas com Decimal; seis tabelas oficiais e detalhes de cálculo.
 - `src/store.py`: SQLite com cadastros, taxas e histórico, importações imutáveis, cálculos versionados, decisões por evidência, avisos, e-mails e auditoria.
 - `src/app.py`: servidor limitado a 127.0.0.1, validação de origem para mutações e agenda local de avisos.
-- `web/`: interface responsiva, filtros, cadastros, rastros e aprovações.
+- `front/`: interface responsiva, filtros, cadastros, rastros e aprovações.
 
 Recalcular ou alterar referências reabre o mês. A decisão só permanece válida se a evidência do item não mudou. A aprovação de e-mail se vincula ao destinatário, assunto, corpo e versão do cálculo. Cada envio simulado registra conteúdo, responsável e horário; os alertas internos respeitam as preferências e dispensam aprovação.
 
@@ -90,5 +100,5 @@ O SQLite arquiva importações e execuções anteriores. A interface apresenta o
 - Identificações sem chave confirmada, contratos ausentes, negativos e dados inválidos permanecem em revisão. Exceções podem ser aceitas como ressalvas com autoria e motivo.
 - Reversão parcial e mudança de formatos exigem regra adicional; não são inventadas pelo motor. Regras bancárias conhecidas são explícitas; novos históricos desconhecidos geram pendência.
 - Não há conciliação parcelada Orbe sem agenda de recebíveis nem confirmação do TED de outubro sem extrato, conforme esclarecimento do financeiro.
-- Histórico de preparação anterior a esta sessão deve ser complementado pelo time em PROMPTS; não é fabricado. A exportação desta sessão exclui raciocínio interno e instruções de sistema.
+- Histórico de preparação anterior a esta sessão deve ser complementado pelo time em /PROMPTS (raiz do repositório); não é fabricado. A exportação desta sessão exclui raciocínio interno e instruções de sistema.
 - Não houve publicação do site, push de repositório ou envio formal à organização.

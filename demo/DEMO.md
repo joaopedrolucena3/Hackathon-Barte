@@ -1,6 +1,6 @@
 # Roteiro de demonstração
 
-Duração sugerida: cinco a sete minutos. Rode `./run.sh serve --db data/demo.sqlite3` para demonstrar sem alterar o banco principal. Use apenas endereços do domínio reservado example.com: nenhum e-mail sai do sandbox.
+Duração sugerida: cinco a sete minutos. Rode, dentro de `demo/back/`, `./run.sh serve --db data/demo.sqlite3` para demonstrar sem alterar o banco principal. Use apenas endereços do domínio reservado example.com: nenhum e-mail sai do sandbox.
 
 1. **Abra o Resumo e informe o analista.** Explique que os arquivos chegam em formatos diferentes e que a plataforma mantém contrato, vigência e origem junto de cada número. Mostre checkout R$ 207.039,73, remessa R$ 39.543,45 e os valores provisórios, devido às pendências.
 2. **Mostre uma regra de negócio.** Em Divergências, procure o CNPJ 00520815000100. Abra Ver rastro de TX88410932: bruto 608,88, aplicada 2,69%, contratada 0%, diferença 16,38. A Casa tem isenção, mas a Orbe cobrou. A soma das 118 diferenças da Casa é 15.397,42. A diferença é pela fórmula contratada, não apenas pelo campo truncado da Orbe.

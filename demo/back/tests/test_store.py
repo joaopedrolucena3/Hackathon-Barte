@@ -11,7 +11,7 @@ from zipfile import ZipFile
 from src.store import Store
 
 ROOT = Path(__file__).resolve().parents[1]
-PACK = ROOT.parent
+PACK = ROOT / 'data' / 'case'
 ACTOR = 'Analista de teste'
 
 

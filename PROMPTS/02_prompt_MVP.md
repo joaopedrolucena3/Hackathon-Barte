@@ -109,8 +109,8 @@ Um analista que nunca viu a plataforma consegue fechar o mês do case sem tocar 
 
 ## Resultado
 
-(a preencher após a execução)
+Criação de um MVP inicial e basico, com alguns problemas a serem analisados
 
 ## Verificação
 
-(a preencher)
+Observar o funcionamento e indentificar pontos de melhoria

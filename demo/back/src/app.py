@@ -8,7 +8,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
-from .store import Store, ConflictError, EXPORTS, ROOT
+from .store import Store, ConflictError, EXPORTS, ROOT, FRONT
 
 
 def main():
@@ -63,8 +63,8 @@ def main():
                 if url.path=='/api/export.zip': return self.respond(200,store.export_zip(),'application/zip','tarvo-fechamento.zip')
                 if url.path=='/api/health': return self.respond(200,{'ok':True,'mode':'simulation'})
                 name='index.html' if url.path=='/' else url.path.lstrip('/')
-                path=(ROOT/'web'/name).resolve()
-                if not path.is_relative_to((ROOT/'web').resolve()) or not path.is_file(): return self.respond(404,{'error':'Página não encontrada.'})
+                path=(FRONT/name).resolve()
+                if not path.is_relative_to((FRONT).resolve()) or not path.is_file(): return self.respond(404,{'error':'Página não encontrada.'})
                 return self.respond(200,path.read_bytes(),mimetypes.guess_type(path.name)[0] or 'application/octet-stream')
             except ValueError as e: return self.respond(400,{'error':str(e)})
 
