@@ -1,0 +1,2 @@
+# Preserve the exports byte for byte (CRLF, cp1252), as each source system writes them.
+* -text
