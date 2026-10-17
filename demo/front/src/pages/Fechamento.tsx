@@ -1,5 +1,5 @@
 // Home of the closing (A2 + visual summary + B3): progress, value in pendencies, last run, KPIs and checklist.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/http';
 import type { ChecklistTask, Run, Status } from '../api/agent';
@@ -27,7 +27,7 @@ const LEGEND: { status: Status[]; label: string; color: string }[] = [
   { status: ['done', 'approved'], label: 'Concluídas', color: STATUS_COLORS.done },
   { status: ['exceptions'], label: 'Com exceções', color: STATUS_COLORS.exceptions },
   { status: ['awaiting_approval'], label: 'Aguardando aprovação', color: STATUS_COLORS.awaiting_approval },
-  { status: ['running'], label: 'Rodando', color: STATUS_COLORS.running },
+  { status: ['running'], label: 'Em andamento', color: STATUS_COLORS.running },
   { status: ['failed', 'rejected'], label: 'Falhou ou reprovada', color: STATUS_COLORS.failed },
   { status: ['pending', 'skipped'], label: 'Pendentes', color: '#e2dbdb' },
 ];
@@ -42,7 +42,7 @@ function Stages({ run, closed, reviewDone }: { run?: Run; closed: boolean; revie
     { label: 'Revisar', done: reviewDone || run?.approval?.status === 'approved' },
     { label: 'Aprovar', done: run?.approval?.status === 'approved' },
     { label: 'Exportar', done: finished('exportar_erp') },
-    { label: 'Concluir', done: closed },
+    { label: 'Encerrar', done: closed },
   ];
   const current = stages.findIndex(stage => !stage.done);
   return (
@@ -57,16 +57,17 @@ function Stages({ run, closed, reviewDone }: { run?: Run; closed: boolean; revie
   );
 }
 
-function LastRunCard({ run, onRun }: { run?: Run; onRun: () => void }) {
+function LastRunCard({ run, onRun, selector }: { run?: Run; onRun: () => void; selector?: ReactNode }) {
   const elapsed = useElapsed(run?.created_at, run?.finished_at);
   const { data: summary } = useApprovalSummary(run?.id || '', run?.status === 'awaiting_approval');
   if (!run) {
     return (
       <div className="card fill">
-        <div className="card-head"><div><h3 className="card-title">Execução selecionada</h3><p className="card-sub">O agente ainda não rodou nesta competência</p></div></div>
+        <div className="card-head"><h3 className="card-title">Execução</h3></div>
         <div className="card-body">
-          <Empty icon="play" title="Nenhum run ainda">As tarefas do agente ficam pendentes até o primeiro run.</Empty>
-          <button className="btn primary" style={{ width: '100%' }} onClick={onRun}><Icon name="play" />Rodar fechamento</button>
+          {selector}
+          <Empty icon="play" title="Nenhuma execução selecionada" />
+          <button className="btn primary" style={{ width: '100%' }} onClick={onRun}><Icon name="play" />Calcular fechamento</button>
         </div>
       </div>
     );
@@ -85,6 +86,7 @@ function LastRunCard({ run, onRun }: { run?: Run; onRun: () => void }) {
         <StatusBadge status={run.status} />
       </div>
       <div className="card-body stack" style={{ gap: 12 }}>
+        {selector}
         <StepTrack run={run} link />
         <div className="row between muted" style={{ fontSize: 12.5 }}>
           <span className="num">{progress.done} de {progress.total} passos</span>
@@ -96,7 +98,7 @@ function LastRunCard({ run, onRun }: { run?: Run; onRun: () => void }) {
           </Callout>
         )}
         <div className="row wrap">
-          <Link className="btn sm" to={`/runs/${run.id}`}><Icon name="run" />Abrir run</Link>
+          <Link className="btn sm" to={`/runs/${run.id}`}><Icon name="run" />Ver execução</Link>
           {['awaiting_approval', 'approved', 'rejected'].includes(run.status) && <Link className="btn sm" to={`/runs/${run.id}/revisao`}><Icon name="alert" />Revisão</Link>}
           <Link className="btn sm ghost" to={`/runs/${run.id}/auditoria`}><Icon name="audit" />Auditoria</Link>
         </div>
@@ -154,13 +156,13 @@ export default function Fechamento() {
   const p = insights?.pendencias;
   const incompleteStates = !!p?.by_state.some(item => item.brl === null);
   const incompleteTypes = !!p?.by_type.some(item => item.brl === null);
+  const runSelector = <select className="select sm" aria-label="Execução do fechamento" style={{ width: '100%' }} value={selectedId || ''} onChange={event => setParams(current => updateSearch(current, { run_id: event.target.value || null, painel: null, linha: null }))}><option value="" disabled={!!runs?.length}>Conferência do mês</option>{runs?.map(run => <option key={run.id} value={run.id}>{dateTimeBR(run.created_at)} · {shortRunId(run.id)}{run.draft ? ' · teste' : ''}</option>)}</select>;
 
   return (
     <>
       <TopbarSlot>
         {monthSelector}
-        <select className="select sm" aria-label="Execução do fechamento" style={{ maxWidth: 255 }} value={selectedId || ''} onChange={event => setParams(current => updateSearch(current, { run_id: event.target.value || null, painel: null, linha: null }))}><option value="" disabled={!!runs?.length}>Conferência da competência</option>{runs?.map(run => <option key={run.id} value={run.id}>{shortRunId(run.id)} · {dateTimeBR(run.created_at)}{run.draft ? ' · teste' : ''}</option>)}</select>
-        {!hasData ? <Badge tone="neutral" dot>Sem dados</Badge> : closed ? <Badge tone="good" dot>Mês concluído</Badge> : <Badge tone="warning" dot>Em revisão</Badge>}
+        {!hasData ? <Badge tone="neutral" dot>Sem dados</Badge> : closed ? <Badge tone="good" dot>Mês encerrado</Badge> : <Badge tone="warning" dot>Em revisão</Badge>}
       </TopbarSlot>
 
       <PageHead
@@ -171,22 +173,19 @@ export default function Fechamento() {
           {deadline && hasData && <> · prazo {dateBR(deadline)}{daysLeft !== null && <span className={daysLeft <= 1 ? 'deadline-hot' : ''}> ({daysLeft < 0 ? `${-daysLeft} dias atrasado` : daysLeft === 0 ? 'hoje' : `em ${plural(daysLeft, 'dia', 'dias')}`})</span>}</>}
         </>}
         actions={<>
-          {hasData && !selectedId && !state.read_only && (closed
-            ? <button className="btn" onClick={() => setClosing('reopen')}><Icon name="refresh" />Reabrir mês</button>
-            : <button className="btn" onClick={() => setClosing('close')}><Icon name="lock" />Concluir fechamento</button>)}
-          <button className="btn" onClick={() => setConfigure(true)}><Icon name="calendar" />Prazo do mês</button>
           {latest && !latest.draft && <button className="btn" onClick={() => setComplement(true)}><Icon name="plus" />Adicionar complemento</button>}
-          <button className={`btn primary lg ${!latestRef ? 'pulse' : ''}`} onClick={() => setLaunch(true)}><Icon name="play" />Rodar fechamento</button>
+          <button className={`btn primary lg ${!latestRef ? 'pulse' : ''}`} onClick={() => setLaunch(true)}><Icon name="play" />Calcular fechamento</button>
         </>}
       />
 
-      {params.get('sem-run') && !latestRef && <div style={{ marginBottom: 16 }}><Callout tone="info">Ainda não há run em {periodShort(comp)}. Clique em <strong>Rodar fechamento</strong> para o agente executar os passos.</Callout></div>}
-      {!hasData && <div style={{ marginBottom: 16 }}><Callout tone="info" icon="info">{monthInfo?.has_pack ? `O pack de ${periodShort(comp)} está disponível. Rode o fechamento para gerar os resultados desta competência.` : 'Ainda não há resultados disponíveis nesta seleção. Envie as fontes ou indique uma pasta para rodar o fechamento.'}</Callout></div>}
+      {params.get('sem-run') && !latestRef && <div style={{ marginBottom: 16 }}><Callout tone="info">Nenhuma execução em {periodShort(comp)}. Clique em <strong>Calcular fechamento</strong> para começar.</Callout></div>}
+      {!hasData && <div style={{ marginBottom: 16 }}><Callout tone="info" icon="info">{monthInfo?.has_pack ? `Arquivos de ${periodShort(comp)} disponíveis. Calcule o fechamento para ver os resultados.` : 'Sem resultados. Envie arquivos ou indique uma pasta para calcular o fechamento.'}</Callout></div>}
       {stateFetching && <p className="help" role="status">Atualizando esta execução…</p>}
 
       <div className="summary-grid">
+        <LastRunCard run={latest} onRun={() => setLaunch(true)} selector={runSelector} />
         <div className="card fill">
-          <div className="card-head"><div><h3 className="card-title">Progresso do fechamento</h3><p className="card-sub">Tarefas do checklist por situação</p></div></div>
+          <div className="card-head"><h3 className="card-title">Progresso do fechamento</h3></div>
           <div className="card-body stack" style={{ gap: 16 }}>
             <div className="hero-num num"><Count value={taskStats.done} animate /><small>de {taskStats.total} tarefas</small></div>
             {tasks ? (
@@ -217,13 +216,12 @@ export default function Fechamento() {
                   }))} />
                 {latest && ['awaiting_approval', 'approved'].includes(latest.status)
                   ? <Link className="btn sm" to={`/runs/${latest.id}/revisao`}><Icon name="arrowRight" />Revisar exceções</Link>
-                  : <p className="help">A revisão abre quando o run chega à aprovação humana.</p>}
+                  : <p className="help">A revisão fica disponível após o processamento.</p>}
               </>
             ) : hasData ? <div className="skeleton" style={{ height: 160 }} /> : <Empty icon="info" title="Sem dados nesta competência" />}
           </div>
         </div>
 
-        <LastRunCard run={latest} onRun={() => setLaunch(true)} />
       </div>
 
       {hasData && (
@@ -250,13 +248,12 @@ export default function Fechamento() {
           </Link>
         </div>
       )}
-      {hasData && <p className="help" style={{ marginTop: 8 }}>Resultados da competência e execução selecionadas. Cada execução preserva seus próprios cálculos e decisões; consulte a Revisão para o lote ERP. Comissões, divergências e pendências são visões das mesmas operações: não some os cartões.</p>}
+      {hasData && <p className="help" style={{ marginTop: 8 }}>{selectedId ? 'Resultados da execução selecionada.' : 'Resultados do mês.'} Os valores se sobrepõem; não some os cartões.</p>}
 
       {hasData && (
-        <div className="grid section" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)' }}>
-          <div className="card">
+          <div className="card section">
             <div className="card-head">
-              <div><h3 className="card-title">Pendências abertas por tipo</h3><p className="card-sub">{incompleteTypes ? 'Quantidade de pendências · valores incompletos' : 'Exposição em R$'} · cor indica a severidade · clique para revisar</p></div>
+              <div><h3 className="card-title">Pendências abertas por tipo</h3><p className="card-sub">{incompleteTypes ? 'Quantidade de pendências · valores incompletos' : 'Exposição em R$ (valores absolutos)'}</p></div>
             </div>
             <div className="card-body">
               <HBarChart ariaLabel="Pendências abertas por tipo" labelWidth={240}
@@ -269,29 +266,34 @@ export default function Fechamento() {
                 empty={<Empty icon="check" title="Nenhuma pendência aberta" />} />
             </div>
           </div>
-          <div className="card">
-            <div className="card-head"><div><h3 className="card-title">Relatório de conferência</h3><p className="card-sub">Seleção atual · {state.sources.filter(src => !src.embedded).length} arquivos de origem com SHA-256. O pacote ERP fica na Revisão do run aprovado.</p></div></div>
-            <div className="card-body stack" style={{ gap: 8 }}>
-              <a className="btn" href={downloads.report(scope)} target="_blank" rel="noopener"><Icon name="file" />Abrir relatório imprimível</a>
-              <a className="btn" href={downloads.zip(scope)} download><Icon name="download" />Baixar pacote (6 CSVs + relatório)</a>
-              <button className="btn" disabled={!!busy || !!selectedId || state.read_only} title={selectedId ? 'O e-mail de relatório legado está disponível apenas na conferência atual. Baixe o relatório desta execução.' : undefined} onClick={async () => {
-                const result = await act('report', () => core.draftEmail({ report: true }), { success: 'Rascunho do relatório preparado.', invalidate: [keys.state] });
-                const id = result?.id || result?.email?.id;
-                if (result) navigate(`/comunicacoes${id ? `?email=${id}` : ''}`);
-              }}><Icon name="mail" />Preparar e-mail do relatório</button>
-              {latest && <Link className="link" to={`/runs/${latest.id}/auditoria`} style={{ marginTop: 6 }}>Trilha de auditoria do run {shortRunId(latest.id)} <Icon name="arrowRight" /></Link>}
-            </div>
-          </div>
-        </div>
       )}
 
       <div className="section">
-        <div className="row between" style={{ marginBottom: 12 }}>
-          <h2 className="section-title" style={{ margin: 0 }}>Checklist do fechamento</h2>
-          <span className="muted" style={{ fontSize: 12.5 }}>Tarefas do agente seguem a execução selecionada; tarefas manuais pertencem à competência.</span>
+        <div className="row between wrap" style={{ marginBottom: 12 }}>
+          <div><h2 className="section-title" style={{ margin: 0 }}>Tarefas do fechamento</h2><p className="help">Automáticas: execução selecionada. Manuais: mês.</p></div>
+          <button className="btn sm" onClick={() => setConfigure(true)}><Icon name="calendar" />Prazo do mês</button>
         </div>
         {tasks ? <Checklist tasks={tasks} comp={comp} /> : <Loading />}
+        {hasData && !selectedId && !state.read_only && <div className="actions" style={{ justifyContent: 'flex-end', marginTop: 16 }}>{closed
+          ? <button className="btn" onClick={() => setClosing('reopen')}><Icon name="refresh" />Reabrir mês</button>
+          : <button className="btn" onClick={() => setClosing('close')}><Icon name="lock" />Encerrar mês</button>}</div>}
       </div>
+
+      {hasData && <div className="card section">
+        <div className="card-head"><div><h3 className="card-title">Relatório de conferência</h3><p className="card-sub">O pacote ERP fica na Revisão da execução aprovada.</p></div></div>
+        <div className="card-body">
+          <div className="actions">
+            <a className="btn" href={downloads.report(scope)} target="_blank" rel="noopener"><Icon name="file" />Abrir relatório</a>
+            <a className="btn" href={downloads.zip(scope)} download><Icon name="download" />Baixar relatório e CSVs</a>
+            <button className="btn" disabled={!!busy || !!selectedId || state.read_only} title={selectedId ? 'Disponível na conferência atual. Baixe o relatório desta execução.' : undefined} onClick={async () => {
+              const result = await act('report', () => core.draftEmail({ report: true }), { success: 'Rascunho do relatório preparado.', invalidate: [keys.state] });
+              const id = result?.id || result?.email?.id;
+              if (result) navigate(`/comunicacoes${id ? `?email=${id}` : ''}`);
+            }}><Icon name="mail" />Preparar e-mail (simulado)</button>
+            {latest && <Link className="btn ghost" to={`/runs/${latest.id}/auditoria`}><Icon name="audit" />Ver auditoria</Link>}
+          </div>
+        </div>
+      </div>}
 
       {panel === 'comissoes' && <CommissionsPanel state={state} line={params.get('linha') || undefined} onClose={closePanel} />}
       {panel === 'divergencias' && <DivergencesPanel state={state} insights={insights} run={latestRef && ['awaiting_approval', 'approved'].includes(latestRef.status) ? latestRef : undefined} onClose={closePanel} />}

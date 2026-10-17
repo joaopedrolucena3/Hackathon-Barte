@@ -18,10 +18,10 @@ function agentLine(run: Run, summary: Summary): string {
     return `${gerund(current.title)}…${progress ? ` ${count(progress.done)} de ${count(progress.total)}` : ''}`;
   }
   if (run.status === 'awaiting_approval') {
-    if (!summary) return 'O agente terminou os cálculos e parou antes do ERP.';
+    if (!summary) return 'Cálculos concluídos. Aguardando sua aprovação para exportar.';
     const open = summary.total - summary.decided;
     if (!open) return 'Todas as exceções foram decididas. O lote está pronto para sua aprovação.';
-    return `O agente terminou os cálculos e parou antes do ERP: ${plural(open, 'exceção aguarda', 'exceções aguardam')} sua revisão${summary.open_blocking ? `, ${count(summary.open_blocking)} bloqueantes` : ''}.`;
+    return `${plural(open, 'exceção aguarda', 'exceções aguardam')} sua revisão${summary.open_blocking ? `, ${count(summary.open_blocking)} bloqueantes` : ''}.`;
   }
   if (run.status === 'failed') return `O agente parou em “${failed?.title || 'um passo'}”${failed?.error ? `: ${failed.error}` : '.'}`;
   if (run.status === 'rejected') return `Lote reprovado por ${run.approval?.actor || 'revisor'}${run.approval?.comment ? `: “${run.approval.comment}”` : '.'}`;
@@ -32,7 +32,7 @@ function agentLine(run: Run, summary: Summary): string {
 /** One segment per step: the whole run at a glance, colored by state, the running one animated. */
 export function StepTrack({ run, link }: { run: Run; link?: boolean }) {
   return (
-    <ol className="step-track" aria-label="Passos do run">
+    <ol className="step-track" aria-label="Passos da execução">
       {run.steps.map((step: StepRun, index) => {
         const label = `${index + 1}. ${step.title}: ${STATUS[step.status].label}`;
         const segment = <span className={`seg ${step.status} ${step.kind}`} />;
@@ -68,8 +68,8 @@ export function AgentHeader({ run, summary, elapsed, gateAt }: { run: Run; summa
             <StatusBadge status={run.status} size="lg" />
           </div>
           {run.status === 'awaiting_approval' && !run.draft && <Link className="btn primary" to={`/runs/${run.id}/revisao`}><Icon name="alert" />Revisar exceções</Link>}
-          {run.status === 'awaiting_approval' && !run.draft && <Link className="btn" to={`/runs/${run.id}/hipoteses`}><Icon name="origin" />Seguir sugestões do agente</Link>}
-          {run.status === 'failed' && <Link className="btn" to={`/competencias/${run.comp}`}><Icon name="refresh" />Rodar de novo</Link>}
+          {run.status === 'awaiting_approval' && !run.draft && <Link className="btn" to={`/runs/${run.id}/hipoteses`}><Icon name="origin" />Ver sugestões</Link>}
+          {run.status === 'failed' && <Link className="btn" to={`/competencias/${run.comp}`}><Icon name="refresh" />Voltar ao fechamento</Link>}
           {reviewable && run.status !== 'awaiting_approval' && <Link className="btn" to={`/runs/${run.id}/auditoria`}><Icon name="audit" />Auditoria</Link>}
         </div>
       </div>

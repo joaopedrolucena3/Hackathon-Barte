@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { agent } from '../api/agent';
 import { useActor } from '../lib/actor';
-import { CODE_VERSION } from '../lib/queryClient';
 import { useAppState, useDataScope, useRun } from '../state/queries';
 import { scopedUrl } from '../lib/scope';
 import { Icon, type IconName } from './Icon';
@@ -35,18 +34,18 @@ export function Shell({ children }: { children: ReactNode }) {
         <NavLink to={closingPath} className="brand" aria-label="Tarvo, fechamento">
           <span className="brand-mark" aria-hidden>t</span>tarvo<span className="brand-dot">.</span>
         </NavLink>
-        <p className="nav-label">Fechamento</p>
+        <p className="nav-label">Operação</p>
         <nav className="nav">
           <NavItem to={closingPath} match="/competencias" icon="overview" label="Fechamento" />
           <NavItem to={scopedUrl('/runs', scope)} match="/runs" icon="run" label="Execução" count={open} />
           <NavItem to={scopedUrl('/notas-bancos', scope)} match="/notas-bancos" icon="invoice" label="Notas e bancos" />
-          <NavItem to="/cadastros" icon="records" label="Cadastros" />
-          <NavItem to={scopedUrl('/pipeline', scope)} match="/pipeline" icon="pipeline" label="Pipeline" />
           <NavItem to="/comunicacoes" icon="mail" label="Comunicações" />
+          <p className="nav-label nav-group">Configuração</p>
+          <NavItem to="/cadastros" icon="records" label="Cadastros" />
+          <NavItem to={scopedUrl('/pipeline', scope)} match="/pipeline" icon="pipeline" label="Etapas e regras" />
         </nav>
         <div className="sidebar-footer">
-          <strong><span className="live-dot" /> Ambiente local</strong>
-          Dados sintéticos do case. Conecte o Gmail em Comunicações para enviar mensagens e receber avisos de runs e testes. Cobranças do fluxo antigo são simuladas.{agent.mode === 'mock' && <><br />Agente em modo demonstração.</>}
+          Dados de demonstração
         </div>
       </aside>
       <div className="workspace">
@@ -62,10 +61,6 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="main" id="main" tabIndex={-1}>{children}</main>
-        <footer className="footer-seal">
-          <span>Tarvo · cada número tem uma origem.</span>
-          <span className="mono">código {CODE_VERSION}{agent.mode === 'mock' ? ' · agente: demonstração no navegador' : ' · execuções persistidas'}</span>
-        </footer>
       </div>
     </div>
   );

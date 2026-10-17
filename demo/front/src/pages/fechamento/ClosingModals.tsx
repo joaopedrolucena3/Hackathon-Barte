@@ -13,19 +13,19 @@ export function CloseMonthModal({ period, openIssues, onClose }: { period: strin
   const { run, busy } = useAction();
   const submit = async () => {
     const done = await run('close', () => core.close(accept, reason), {
-      success: 'Fechamento concluído e registrado na auditoria.', invalidate: [keys.state, ['checklist'], ['insights']],
+      success: 'Mês encerrado e registrado na auditoria.', invalidate: [keys.state, ['checklist'], ['insights']],
     });
     if (done) onClose();
   };
   return (
     <Modal
-      eyebrow="Concluir fechamento"
-      title={`Concluir ${periodLong(period)}`}
-      sub="O registro preserva quem assumiu o fechamento e em que condições."
+      eyebrow="Encerrar mês"
+      title={`Encerrar ${periodLong(period)}`}
+      sub="O responsável e a justificativa ficam registrados."
       onClose={onClose}
       footer={<>
         <button className="btn ghost" onClick={onClose}>Cancelar</button>
-        <button className="btn primary" disabled={!!busy || !reason.trim() || (openIssues > 0 && !accept)} onClick={submit}>Confirmar conclusão</button>
+        <button className="btn primary" disabled={!!busy || !reason.trim() || (openIssues > 0 && !accept)} onClick={submit}>Confirmar encerramento</button>
       </>}
     >
       <div className="stack-lg">
@@ -34,11 +34,11 @@ export function CloseMonthModal({ period, openIssues, onClose }: { period: strin
             <Callout tone="warning" icon="alert"><strong>{count(openIssues)} pendências continuam abertas.</strong> Elas seguem visíveis no relatório como ressalvas.</Callout>
             <label className="check">
               <input type="checkbox" checked={accept} onChange={event => setAccept(event.target.checked)} />
-              <span>Aceito concluir o mês com {count(openIssues)} pendências abertas e assumo o encaminhamento descrito abaixo.</span>
+              <span>Aceito encerrar o mês com {count(openIssues)} pendências abertas e assumo o encaminhamento descrito abaixo.</span>
             </label>
           </>
         ) : <Callout tone="good" icon="check">Nenhuma pendência aberta nesta competência.</Callout>}
-        <Field label="Justificativa da conclusão" required>
+        <Field label="Justificativa do encerramento" required>
           <ReasonInput value={reason} onChange={setReason} suggestions={['Pendências com responsável definido', 'Atlas aguarda contrato comercial', 'Revisão completa']} />
         </Field>
       </div>
@@ -50,7 +50,7 @@ export function ReopenModal({ onClose }: { onClose: () => void }) {
   const [reason, setReason] = useState('');
   const { run, busy } = useAction();
   return (
-    <Modal title="Reabrir fechamento" sub="O mês volta para revisão. A conclusão anterior fica no histórico." onClose={onClose}
+    <Modal title="Reabrir mês" sub="O mês volta para revisão. O encerramento anterior fica no histórico." onClose={onClose}
       footer={<>
         <button className="btn ghost" onClick={onClose}>Cancelar</button>
         <button className="btn primary" disabled={!!busy || !reason.trim()} onClick={async () => {

@@ -19,17 +19,17 @@ describe('competência reconhecida sem cálculo', () => {
     expect(html).toContain('aria-label="Competência"');
     expect(html).toContain('value="2026-10" selected=""');
     expect(html).toContain('Outubro de 2026');
-    expect(html).toContain('Rodar fechamento');
+    expect(html).toContain('Calcular fechamento');
     expect(html).toContain('Prazo do mês');
     expect(html).toContain('05/11/2026');
-    expect(html).toContain('pack disponível');
-    expect(html).toContain('enviar arquivos ou selecionar uma pasta');
+    expect(html).toContain('arquivos disponíveis');
+    expect(html).toContain('enviar arquivos ou indicar uma pasta');
     expect(html).not.toContain('R$');
     expect(html).not.toContain('Não foi possível');
   });
   it('allows upload/folder even when the server has not recognized a pack yet', () => {
     const html = renderToStaticMarkup(createElement(UnstartedMonth, { comp: '2027-01', onLaunch() {}, onConfigure() {} }));
-    expect(html).toContain('enviar as fontes desta competência ou indicar uma pasta');
+    expect(html).toContain('Envie os arquivos do mês ou indique uma pasta');
     expect(html).not.toContain('foi reconhecido');
   });
 });

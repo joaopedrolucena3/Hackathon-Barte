@@ -30,12 +30,12 @@ function SortableStep({ step, item, index, selected, issues, readOnly, onSelect,
         <span className="builder-index num">{index + 1}</span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="step-title">{item?.title || step.type}</span>
-          <span className="step-meta">{item?.area}{item?.kind === 'gate' ? ' · portão humano' : item?.kind === 'export' ? ' · exportação' : ''}{!step.enabled ? ' · desligado' : ''}</span>
+          <span className="step-meta">{item?.area}{item?.kind === 'gate' ? ' · aprovação humana' : item?.kind === 'export' ? ' · exportação' : ''}{!step.enabled ? ' · desligado' : ''}</span>
           {issues.map(issue => <span key={issue.message} className="step-error">{issue.message}</span>)}
         </span>
       </button>
       {locked ? (
-        <Tip text={item?.kind === 'export' ? 'A exportação é obrigatória no pipeline e só ocorre após aprovação. Execuções de teste não exportam.' : 'A aprovação humana é obrigatória: não pode ser removida, desligada nem ir para depois da exportação ao ERP.'}><Icon name="lock" className="muted" /></Tip>
+        <Tip text={item?.kind === 'export' ? 'A exportação é obrigatória no fluxo e só ocorre após aprovação. Execuções de teste não exportam.' : 'A aprovação humana é obrigatória: não pode ser removida, desligada nem ir para depois da exportação ao ERP.'}><Icon name="lock" className="muted" /></Tip>
       ) : !readOnly && (
         <span className="row" style={{ gap: 2 }}>
           <Toggle checked={step.enabled} onChange={onToggle} label={`Ligar ${item?.title}`} />
@@ -132,8 +132,8 @@ export default function PipelinePage() {
     <>
       <PageHead
         eyebrow="Construtor do agente"
-        title={<span className="row" style={{ gap: 12 }}>Pipeline {base.name} <Badge tone={readOnly ? 'neutral' : 'accent'}>v{base.version}{readOnly ? ' · só leitura' : ''}</Badge>{dirty && <Badge tone="warning" dot>Alterações não salvas</Badge>}</span>}
-        sub={`Monte e ajuste o agente com passos prontos. Salvar cria uma nova versão; runs antigos continuam apontando para a versão que usaram. Última: v${latest.version} por ${latest.author} em ${dateTimeBR(latest.updated_at)}.`}
+        title={<span className="row" style={{ gap: 12 }}>Etapas e regras · {base.name} <Badge tone={readOnly ? 'neutral' : 'accent'}>v{base.version}{readOnly ? ' · só leitura' : ''}</Badge>{dirty && <Badge tone="warning" dot>Alterações não salvas</Badge>}</span>}
+        sub="Salvar cria uma nova versão, sem alterar execuções anteriores."
         actions={<>
           <button className="btn" onClick={() => setModal('versions')}><Icon name="clock" />Versões</button>
           {!readOnly && <button className="btn" disabled={issues.length > 0} onClick={() => setModal('test')}><Icon name="play" />Testar</button>}
@@ -162,13 +162,13 @@ export default function PipelinePage() {
 
         <section className="card run-preview">
           <div className="run-col-head">
-            <div className="row" style={{ gap: 8, minWidth: 0 }}><strong style={{ fontSize: 14 }}>{item?.title}</strong><span className="muted" style={{ fontWeight: 500 }}>amostra do {sampleRun ? sampleRun.id : 'último run'}</span></div>
+            <div className="row" style={{ gap: 8, minWidth: 0 }}><strong style={{ fontSize: 14 }}>{item?.title}</strong><span className="muted" style={{ fontWeight: 500 }}>amostra da execução {sampleRun ? sampleRun.id : 'mais recente'}</span></div>
           </div>
           {!step ? <Empty title="Selecione um passo" /> : item?.kind === 'gate' ? (
-            <div className="card-body"><Callout tone="gate" icon="lock">Portão de aprovação: não transforma dados. Aqui o run para até um responsável decidir as exceções e aprovar o lote.</Callout></div>
+            <div className="card-body"><Callout tone="gate" icon="lock">Aprovação: não altera dados. A execução aguarda um responsável decidir as exceções e aprovar o lote.</Callout></div>
           ) : sampleRun ? (
             <DataPreview runId={sampleRun.id} stepId={step.type} pageSize={50}
-              header={<p className="help">Dados preservados do {sampleRun.id}. Use Testar para calcular uma nova prévia com os parâmetros desta tela.</p>} />
+              header={<p className="help">Dados preservados da execução {sampleRun.id}. Use Testar para calcular uma nova prévia com os parâmetros desta tela.</p>} />
           ) : <Empty icon="play" title="Sem amostra ainda">Rode o fechamento uma vez para ver aqui o efeito de cada passo.</Empty>}
         </section>
 
@@ -212,7 +212,7 @@ export default function PipelinePage() {
                   setSelected(created.id);
                   setModal(null);
                 }}>
-                  <span className="row between"><strong>{entry.title}</strong>{present ? <Badge tone="good">No pipeline</Badge> : <Badge tone="outline">{entry.area}</Badge>}</span>
+                  <span className="row between"><strong>{entry.title}</strong>{present ? <Badge tone="good">No fluxo</Badge> : <Badge tone="outline">{entry.area}</Badge>}</span>
                   <span className="text-2" style={{ fontSize: 12.5 }}>{entry.description}</span>
                 </button>
               );
@@ -221,7 +221,7 @@ export default function PipelinePage() {
         </Modal>
       )}
       {modal === 'versions' && (
-        <Sheet narrow eyebrow="Histórico do pipeline" title="Versões" sub="Abrir uma versão antiga é só leitura." onClose={() => setModal(null)}>
+        <Sheet narrow eyebrow="Histórico do fluxo" title="Versões" sub="Versões anteriores são somente para consulta." onClose={() => setModal(null)}>
           <ol className="version-list">
             {(versions || []).map(version => (
               <li key={version.version} className={`card version-item ${version.version === base.version ? 'current' : ''}`}>

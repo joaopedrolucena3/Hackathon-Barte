@@ -80,7 +80,7 @@ function TaskRow({ task, comp }: { task: ChecklistTask; comp: string }) {
                 <Icon name="alert" />{plural(task.exceptions, 'exceção', 'exceções')}
               </Link>
             )}
-            {runLink && <Link className="icon-btn" to={runLink} aria-label={`Abrir ${task.title} no run`}><Icon name="chevronRight" /></Link>}
+            {runLink && <Link className="icon-btn" to={runLink} aria-label={`Abrir ${task.title} na execução`}><Icon name="chevronRight" /></Link>}
           </>
         )}
       </div>

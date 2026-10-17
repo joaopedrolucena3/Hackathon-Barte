@@ -9,11 +9,11 @@ export function RunSummaryCard({ run }: { run: Run }) {
     <div className="card wb-summary">
       <p className="eyebrow">Resumo da execução</p>
       <dl className="wb-facts">
-        <div><dt>Rodado por</dt><dd>{run.created_by}</dd></div>
+        <div><dt>Executado por</dt><dd>{run.created_by}</dd></div>
         <div><dt>Quando</dt><dd>{dateTimeBR(run.created_at)}</dd></div>
         <div><dt>Processamento</dt><dd className="num">{duration(processing)}</dd></div>
         <div><dt>Passos</dt><dd className="num">{done} de {run.steps.length} concluídos</dd></div>
-        <div><dt>Pipeline</dt><dd>v{run.pipeline.version} · {plural(run.files.filter(file => !file.name.includes('::')).length, 'arquivo', 'arquivos')}</dd></div>
+        <div><dt>Fluxo</dt><dd>v{run.pipeline.version} · {plural(run.files.filter(file => !file.name.includes('::')).length, 'arquivo', 'arquivos')}</dd></div>
         <div><dt>Código</dt><dd className="mono" title={run.code_version}>{shortHash(run.code_version, 10)}</dd></div>
       </dl>
     </div>

@@ -32,7 +32,7 @@ function Summary({ run }: { run: Run }) {
       <div className={`kpi ${s.open_blocking ? 'attention' : ''}`}>
         <span className="kpi-label">Bloqueantes abertas <Badge tone="critical" dot>Bloqueante</Badge></span>
         <span className="kpi-value num"><Count value={s.open_blocking} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.blocking)}</small></span>
-        <span className="kpi-detail">{s.open_blocking ? 'Decida uma a uma antes de aprovar' : 'Nenhuma bloqueia a aprovação'}</span>
+        <span className="kpi-detail">{s.open_blocking ? 'Decida todas antes de aprovar' : 'Nenhuma bloqueia a aprovação'}</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Alertas abertos <Badge tone="warning" dot>Alerta</Badge></span>
@@ -85,10 +85,10 @@ function RejectModal({ run, onClose }: { run: Run; onClose: () => void }) {
   const [comment, setComment] = useState('');
   const { run: act, busy } = useAction();
   return (
-    <Modal title="Reprovar o run" sub="Nada é exportado. O run fica reprovado e você pode rodar de novo." onClose={onClose}
+    <Modal title="Reprovar a execução" sub="Nada será exportado. Você poderá iniciar outra execução." onClose={onClose}
       footer={<><button className="btn ghost" onClick={onClose}>Cancelar</button>
         <button className="btn danger" disabled={!!busy || !comment.trim()} onClick={async () => {
-          if (await act('reject', () => agent.reject(run.id, comment), { success: 'Run reprovado.', invalidate: [keys.run(run.id), ['checklist'], ['runs']] })) onClose();
+          if (await act('reject', () => agent.reject(run.id, comment), { success: 'Execução reprovada.', invalidate: [keys.run(run.id), ['checklist'], ['runs']] })) onClose();
         }}>Reprovar</button></>}>
       <Field label="Motivo da reprovação" required><ReasonInput value={comment} onChange={setComment} suggestions={['Taxa precisa ser corrigida no cadastro', 'Arquivo de origem incorreto', 'Aguardar resposta do parceiro']} /></Field>
     </Modal>
@@ -151,7 +151,7 @@ export default function ReviewTab({ run }: { run: Run }) {
   useEffect(() => { setSelected(new Set()); }, [status, severity, tipo, term]);
 
   if (!['awaiting_approval', 'approved', 'rejected'].includes(run.status) && !(run.draft && run.status === 'done')) {
-    return <div className="card"><Empty icon="lock" title="A revisão abre quando o agente chega à aprovação">{run.status === 'failed' ? 'Este run falhou antes do portão.' : 'Acompanhe os passos na aba Passos.'}</Empty></div>;
+    return <div className="card"><Empty icon="lock" title="Revisão indisponível">{run.status === 'failed' ? 'O processamento falhou antes da revisão.' : 'Acompanhe o processamento na aba Passos.'}</Empty></div>;
   }
   if (error) return <Callout tone="critical" icon="alert">{error.message}</Callout>;
   if (isLoading || !exceptions) return <Loading label="Carregando exceções…" />;
@@ -199,15 +199,15 @@ export default function ReviewTab({ run }: { run: Run }) {
   return (
     <>
       <Summary run={run} />
-      <div className="row between wrap" style={{ marginBottom: 16 }}><p className="help">Confira os fatos, as regras e o efeito previsto antes de registrar sua decisão. Pendências de cadastro agrupadas contam como uma exceção por empresa e competência; as operações aparecem no detalhe.</p><Link className="btn" to={`/runs/${run.id}/hipoteses`}><Icon name="origin" />Seguir sugestões do agente</Link></div>
-      <div className="row wrap" style={{ marginBottom: 16 }}><Link className="btn" to={`/comunicacoes?aba=gmail&run_id=${encodeURIComponent(run.id)}`}><Icon name="mail" />Revisar sugestões de contestação</Link><span className="muted">Toda mensagem precisa da sua permissão antes de enviar.</span></div>
+      <div className="row between wrap" style={{ marginBottom: 16 }}><p className="help">Pendências de cadastro agrupadas contam como uma exceção por empresa e competência. Veja as operações no detalhe.</p><Link className="btn" to={`/runs/${run.id}/hipoteses`}><Icon name="origin" />Ver sugestões</Link></div>
+      <div className="row wrap" style={{ marginBottom: 16 }}><Link className="btn" to={`/comunicacoes?aba=gmail&run_id=${encodeURIComponent(run.id)}`}><Icon name="mail" />Revisar contestações</Link><span className="muted">O envio de cada mensagem exige sua autorização.</span></div>
       {run.status === 'approved' && <Downloads run={run} />}
       {run.status === 'rejected' && (
         <div style={{ marginBottom: 16 }}>
           <Callout tone="critical" icon="x"><strong>Reprovado por {run.approval?.actor}</strong> em {dateTimeBR(run.approval?.at)}: “{run.approval?.comment}”. <button className="link" onClick={() => setModal('rerun')}>Rodar de novo</button></Callout>
         </div>
       )}
-      {run.draft && <div style={{ marginBottom: 16 }}><Callout tone="gate" icon="lock">Run de teste do construtor: mostra as exceções, mas não aceita decisões nem exportação.</Callout></div>}
+      {run.draft && <div style={{ marginBottom: 16 }}><Callout tone="gate" icon="lock">Execução de teste: permite consultar exceções, sem decisões ou exportação.</Callout></div>}
 
       <div className="review-layout">
         <section className="card review-list">
@@ -307,7 +307,7 @@ export default function ReviewTab({ run }: { run: Run }) {
 
       {editable && (
         <div className="approval-bar">
-          <span className="grow">{blocking ? <><strong>{plural(blocking, 'bloqueante sem decisão', 'bloqueantes sem decisão')}.</strong> A aprovação libera quando todas forem decididas.</> : <><strong>Nenhuma bloqueante aberta.</strong> O lote pode seguir para o ERP.</>}</span>
+          <span className="grow">{blocking ? <><strong>{plural(blocking, 'bloqueante sem decisão', 'bloqueantes sem decisão')}.</strong> Decida todas para liberar a aprovação.</> : <><strong>Nenhuma bloqueante aberta.</strong> O lote pode seguir para o ERP.</>}</span>
           <button className="btn danger" onClick={() => setModal('reject')}>Reprovar</button>
           {blocking ? (
             <Tip text={`Faltam ${blocking} bloqueantes`}><button className="btn success" disabled><Icon name="lock" />Aprovar e exportar</button></Tip>

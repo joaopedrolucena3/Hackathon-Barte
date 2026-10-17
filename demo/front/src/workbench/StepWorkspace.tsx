@@ -30,7 +30,7 @@ function NotReady({ step }: { step: StepRun }) {
     );
   }
   if (step.status === 'failed') return <div className="preview-state"><Callout tone="critical" icon="alert"><strong>O passo falhou.</strong> {step.error}</Callout></div>;
-  if (step.status === 'skipped') return <Empty icon="minus" title="Passo pulado: um passo anterior falhou ou o run foi reprovado." />;
+  if (step.status === 'skipped') return <Empty icon="minus" title="Passo pulado: um passo anterior falhou ou a execução foi reprovada." />;
   return <Empty icon="clock" title={step.kind === 'export' ? 'A exportação roda depois da aprovação humana.' : 'Este passo ainda não rodou.'} />;
 }
 

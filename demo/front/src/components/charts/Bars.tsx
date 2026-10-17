@@ -46,7 +46,7 @@ export function HBarChart({ data, onSelect, color = 'var(--series-1)', labelWidt
   return (
     <div className="chart" role="list" aria-label={ariaLabel} onMouseLeave={hide}>
       {legend && <div className="legend" style={{ marginBottom: 12 }}>{legend}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: `minmax(0, ${labelWidth}px) minmax(0, 1fr)`, rowGap: 6, columnGap: 12, alignItems: 'center' }}>
+      <div className="hbar-grid" style={{ '--bar-label-width': `${labelWidth}px` } as CSSProperties}>
         {data.map(item => {
           // The value label sits at the bar tip, so the longest bar leaves room for it inside the row.
           const width = `max(3px, calc((100% - ${item.sub ? 150 : 90}px) * ${(Math.abs(item.value) / max).toFixed(4)}))`;
@@ -59,7 +59,7 @@ export function HBarChart({ data, onSelect, color = 'var(--series-1)', labelWidt
           };
           return (
             <div key={item.key} role="listitem" style={{ display: 'contents' }}>
-              <span className="text-2" title={item.label} style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+              <span className="bar-label text-2" title={item.label}>{item.label}</span>
               <Tag
                 type={onSelect ? 'button' : undefined}
                 onClick={onSelect ? () => onSelect(item.key) : undefined}

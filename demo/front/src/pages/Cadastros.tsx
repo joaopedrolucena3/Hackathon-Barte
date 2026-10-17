@@ -299,11 +299,11 @@ function Prazos({ state }: { state: AppState }) {
         </div>
       </div>
       <div className="card">
-        <div className="card-head"><div><h3 className="card-title">Parâmetros de cálculo</h3><p className="card-sub">Agora configurados nos passos do pipeline</p></div></div>
+        <div className="card-head"><h3 className="card-title">Parâmetros de cálculo</h3></div>
         <div className="card-body stack" style={{ gap: 10 }}>
           <div className="row between"><span className="text-2">Tolerância de divergência de spread</span><strong className="num">{state.parameters.remittance_tolerance_pp ?? '—'} p.p.</strong></div>
           <div className="row between"><span className="text-2">Participação no spread da Ponte</span><strong className="num">{state.parameters.remittance_share_pct ?? '—'}%</strong></div>
-          <Link className="btn sm" to="/pipeline" style={{ alignSelf: 'flex-start', marginTop: 6 }}><Icon name="pipeline" />Ajustar no construtor</Link>
+          <Link className="btn sm" to="/pipeline" style={{ alignSelf: 'flex-start', marginTop: 6 }}><Icon name="pipeline" />Abrir etapas e regras</Link>
         </div>
       </div>
     </div>

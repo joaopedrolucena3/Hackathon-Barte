@@ -150,7 +150,7 @@ export function ExceptionDetail({ exception, run, editable, onClose, onDecided }
           </div>
         </div>
       )}
-      {!editable && !decided && <Callout tone="gate" icon="lock">Decisões são registradas na aba Revisão enquanto o run aguarda aprovação.</Callout>}
+      {!editable && !decided && <Callout tone="gate" icon="lock">Decisões são registradas na aba Revisão enquanto a execução aguarda aprovação.</Callout>}
 
       <Link className="btn sm" style={{ alignSelf: 'flex-start' }} to={`/comunicacoes?aba=gmail&run_id=${encodeURIComponent(run.id)}&pendencia=${encodeURIComponent(exception.id)}`}><Icon name="mail" />Revisar sugestões desta execução</Link>
 

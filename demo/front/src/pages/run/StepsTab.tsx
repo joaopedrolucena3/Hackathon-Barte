@@ -49,7 +49,7 @@ function StepDetail({ run, step, onException }: { run: Run; step: StepRun; onExc
             const shown = field.type === 'boolean' ? (value ? 'Sim' : 'Não') : field.type === 'select' ? field.options?.find(option => option.value === value)?.label || String(value) : `${String(value).replace('.', ',')}${field.unit ? ` ${field.unit}` : ''}`;
             return <div key={field.key} className="row between" style={{ fontSize: 12.5 }}><span className="text-2">{field.label}</span><strong className="num">{shown}</strong></div>;
           })}
-          <Link className="link" to="/pipeline" style={{ fontSize: 12.5, marginTop: 4 }}>Ajustar no construtor <Icon name="arrowRight" /></Link>
+          <Link className="link" to="/pipeline" style={{ fontSize: 12.5, marginTop: 4 }}>Ajustar etapas e regras <Icon name="arrowRight" /></Link>
         </div>
       </div>
       {list.length > 0 && (
@@ -76,10 +76,10 @@ function GateView({ run, step }: { run: Run; step: StepRun }) {
     <div className="card-body stack-lg">
       <div className="row" style={{ gap: 10 }}><strong style={{ fontSize: 14 }}>{step.title}</strong><StatusBadge status={step.status} /></div>
       {step.status === 'awaiting_approval' || run.status === 'awaiting_approval' ? (
-        <Callout tone="gate" icon="pause">O agente parou antes do ERP. {plural(step.metrics.exceptions || 0, 'exceção aguarda', 'exceções aguardam')} decisão humana{step.metrics.blocking ? `, ${count(step.metrics.blocking)} bloqueantes` : ''}.</Callout>
+        <Callout tone="gate" icon="pause">Exportação aguardando aprovação. {plural(step.metrics.exceptions || 0, 'exceção aguarda', 'exceções aguardam')} sua decisão{step.metrics.blocking ? `, ${count(step.metrics.blocking)} bloqueantes` : ''}.</Callout>
       ) : step.status === 'approved' ? <Callout tone="good" icon="check">Lote aprovado por {run.approval?.actor} em {dateTimeBR(run.approval?.at)}.{run.approval?.comment && ` “${run.approval.comment}”`}</Callout>
         : step.status === 'rejected' ? <Callout tone="critical" icon="x">Reprovado por {run.approval?.actor}: “{run.approval?.comment}”.</Callout>
-          : <Empty icon="lock" title="O portão de aprovação ainda não foi alcançado" />}
+          : <Empty icon="lock" title="A etapa de aprovação ainda não começou" />}
       {['awaiting_approval', 'approved', 'rejected'].includes(run.status) && <Link className="btn primary" style={{ alignSelf: 'flex-start' }} to={`/runs/${run.id}/revisao`}><Icon name="arrowRight" />Abrir a revisão</Link>}
     </div>
   );
@@ -109,7 +109,7 @@ export function StepsTab({ run }: { run: Run }) {
   const exception = exceptions?.find(item => item.id === exceptionId);
   const filters = useMemo(() => (ref ? [{ column: 'id', op: 'eq' as const, value: ref }] : undefined), [ref]);
 
-  if (!step) return <Empty title="Este run não tem passos" />;
+  if (!step) return <Empty title="Esta execução não tem passos" />;
   return (
     <div className="wb">
       <aside className="wb-side">

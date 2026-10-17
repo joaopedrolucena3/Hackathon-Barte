@@ -93,7 +93,7 @@ function Timeline({ run }: { run: Run }) {
             );
           case 'pipeline':
             return (
-              <Entry key="pipeline" icon="pipeline" at={entry.at} title={<>Pipeline <Link className="link" to={`/pipeline?versao=${entry.pipeline.version}`}>{entry.pipeline.name} v{entry.pipeline.version}</Link></>}>
+              <Entry key="pipeline" icon="pipeline" at={entry.at} title={<>Fluxo <Link className="link" to={`/pipeline?versao=${entry.pipeline.version}`}>{entry.pipeline.name} v{entry.pipeline.version}</Link></>}>
                 <p className="muted" style={{ fontSize: 12.5 }}>Iniciado por {entry.actor} · código <span className="mono">{entry.code_version}</span></p>
               </Entry>
             );
@@ -128,12 +128,12 @@ function Compare({ run }: { run: Run }) {
   const options = (runs || []).filter(item => item.id !== run.id);
   return (
     <div className="card">
-      <div className="card-head"><div><h3 className="card-title row"><Icon name="compare" />Comparar runs</h3><p className="card-sub">Equivalência dos resultados e identidade dos arquivos são verificadas separadamente</p></div></div>
+      <div className="card-head"><div><h3 className="card-title row"><Icon name="compare" />Comparar execuções</h3><p className="card-sub">Equivalência dos resultados e identidade dos arquivos são verificadas separadamente</p></div></div>
       <div className="card-body stack" style={{ gap: 12 }}>
         {options.length ? (
           <div className="row wrap">
-            <select className="select sm" style={{ width: 'auto', minWidth: 220 }} value={other} onChange={event => { setOther(event.target.value); setResult(null); }} aria-label="Run para comparar">
-              <option value="">Escolha outro run de {run.comp.split('-').reverse().join('/')}</option>
+            <select className="select sm" style={{ width: 'auto', minWidth: 220 }} value={other} onChange={event => { setOther(event.target.value); setResult(null); }} aria-label="Execução para comparar">
+              <option value="">Escolha outra execução de {run.comp.split('-').reverse().join('/')}</option>
               {options.map(item => <option key={item.id} value={item.id}>{item.id} · {dateTimeBR(item.created_at)}{item.draft ? ' · teste' : ''}</option>)}
             </select>
             <button className="btn sm" disabled={!other || busy} onClick={async () => {
@@ -217,7 +217,7 @@ export default function AuditTab({ run }: { run: Run }) {
     <div className="audit-layout">
       <section className="card">
         <div className="card-head">
-          <div><h3 className="card-title row" style={{ gap: 8 }}>Trilha de auditoria <RunId id={run.id} /></h3><p className="card-sub">Arquivos, pipeline, passos, decisões, aprovação e exportação · mais recente embaixo</p></div>
+          <div><h3 className="card-title row" style={{ gap: 8 }}>Trilha de auditoria <RunId id={run.id} /></h3><p className="card-sub">Arquivos, fluxo, passos, decisões, aprovação e exportação · mais recentes ao final</p></div>
           <button className="btn sm" onClick={() => agent.downloadExport(run.id, 'auditoria.json').catch(toast.error)}><Icon name="download" />Baixar trilha (JSON)</button>
         </div>
         <div className="card-body"><IngestionSummary counts={run.ingestion_counts} /><Timeline run={run} /></div>

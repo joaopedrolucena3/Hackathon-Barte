@@ -165,7 +165,7 @@ function BancosTab({ state, onTrace }: { state: AppState; onTrace: (id: string, 
       {bankIssues.length > 0 && (
         <div className="card attention-card">
           <div className="card-head"><div><h3 className="card-title row"><Icon name="alert" />Precisa de você</h3><p className="card-sub">Lançamentos que as regras não classificam sozinhas</p></div>
-            {reviewRun && <Link className="btn sm" to={`/runs/${reviewRun.id}/revisao?passo=classificar_bancos`}>Revisar no run <Icon name="arrowRight" /></Link>}</div>
+            {reviewRun && <Link className="btn sm" to={`/runs/${reviewRun.id}/revisao?passo=classificar_bancos`}>Revisar na execução <Icon name="arrowRight" /></Link>}</div>
           <div className="card-body stack" style={{ gap: 0 }}>
             {bankIssues.map(p => {
               const line = issueLine(p);

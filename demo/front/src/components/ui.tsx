@@ -8,7 +8,7 @@ type Tone = 'neutral' | 'good' | 'warning' | 'critical' | 'info' | 'gate' | 'acc
 
 export const STATUS: Record<Status, { label: string; tone: Tone; icon: IconName }> = {
   pending: { label: 'Pendente', tone: 'neutral', icon: 'circle' },
-  running: { label: 'Rodando', tone: 'info', icon: 'refresh' },
+  running: { label: 'Em andamento', tone: 'info', icon: 'refresh' },
   done: { label: 'Concluído', tone: 'good', icon: 'check' },
   exceptions: { label: 'Com exceções', tone: 'warning', icon: 'alert' },
   failed: { label: 'Falhou', tone: 'critical', icon: 'x' },

@@ -149,7 +149,7 @@ function RunNotifications({ account }: { account?: MailAccount }) {
   const dirty = !saved.data || needsReconnect || saved.data.enabled !== settings.enabled || saved.data.recipient !== settings.recipient;
 
   return <section className="card">
-    <div className="card-head"><div className="gmail-step-title"><span className="gmail-step-number">2</span><div><h3 className="card-title">Avisos internos de runs e testes</h3><p className="card-sub">Ative os avisos e confirme a conexão com um e-mail de teste.</p></div></div><Badge tone={saved.data?.enabled && !needsReconnect ? 'good' : 'neutral'}>{needsReconnect ? 'Confirmação pendente' : saved.data?.enabled ? 'Avisos ativados' : 'Avisos desativados'}</Badge></div>
+    <div className="card-head"><div className="gmail-step-title"><span className="gmail-step-number">2</span><div><h3 className="card-title">Avisos internos de execuções e testes</h3><p className="card-sub">Ative os avisos e confirme a conexão com um e-mail de teste.</p></div></div><Badge tone={saved.data?.enabled && !needsReconnect ? 'good' : 'neutral'}>{needsReconnect ? 'Confirmação pendente' : saved.data?.enabled ? 'Avisos ativados' : 'Avisos desativados'}</Badge></div>
     <form className="card-body stack" onSubmit={event => {
       event.preventDefault();
       void run(async () => {
@@ -175,7 +175,7 @@ function RunNotifications({ account }: { account?: MailAccount }) {
       {testUnconfirmed && <Callout tone="warning">Não foi possível confirmar a resposta do teste. Confira o histórico e a caixa de e-mail antes de iniciar outro teste.</Callout>}
       {error && <div role="alert"><Callout tone="critical">{error}</Callout></div>}
       {(saved.error || history.error) && <Callout tone="warning">{errorMessage(saved.error || history.error)}</Callout>}
-      <DeliveryHistory deliveries={history.data || []} empty="Os avisos das runs e os e-mails de teste aparecerão aqui." />
+      <DeliveryHistory deliveries={history.data || []} empty="Os avisos das execuções e os e-mails de teste aparecerão aqui." />
     </form>
   </section>;
 }
@@ -193,7 +193,7 @@ function DeliveryFeedback({ delivery }: { delivery: MailDelivery }) {
 function DeliveryHistory({ deliveries, empty }: { deliveries: MailDelivery[]; empty: string }) {
   return <details className="gmail-advanced gmail-deliveries"><summary>Histórico de envios <span className="muted">({deliveries.length})</span></summary>{!deliveries.length ? <p className="muted">{empty}</p> : <ol className="gmail-history">{[...deliveries].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 20).map(delivery => <li key={delivery.id}>
     <div className="row wrap"><strong>{delivery.subject}</strong><Badge tone={delivery.status === 'accepted' ? 'good' : delivery.status === 'failed' ? 'critical' : delivery.status === 'sending' ? 'info' : 'warning'}>{deliveryLabel(delivery)}</Badge></div>
-    <p>{delivery.recipient} · {dateTimeBR(delivery.created_at)}{delivery.run_id && ` · Run ${delivery.run_id}`}</p>
+    <p>{delivery.recipient} · {dateTimeBR(delivery.created_at)}{delivery.run_id && ` · Execução ${delivery.run_id}`}</p>
     {delivery.error && <p>{typeof delivery.error === 'string' ? delivery.error : delivery.error.message}</p>}
   </li>)}</ol>}</details>;
 }

@@ -114,7 +114,7 @@ export default function RecommendationsTab({ run }: { run: Run }) {
   }, [confirmation, preview]);
 
   if (agent.mode !== 'http') return <div className="card"><Empty icon="info" title="Sugestões indisponíveis na demonstração">As hipóteses e sugestões precisam das evidências preservadas de uma execução no servidor.</Empty></div>;
-  if (query.isLoading) return <Loading label="Consultando hipóteses e sugestões desta execução…" />;
+  if (query.isLoading) return <Loading label="Carregando hipóteses e sugestões…" />;
   if (query.error || !preview) return <Callout tone="warning" icon="alert">{query.error?.message || 'A prévia ainda não está disponível.'} <button className="link" onClick={() => void query.refetch()}>Tentar novamente</button></Callout>;
 
   const ready = canApplyRecommendations(preview) && run.status === 'awaiting_approval' && !run.draft;
@@ -149,7 +149,7 @@ export default function RecommendationsTab({ run }: { run: Run }) {
         <div><h2 className="card-title">Hipóteses e sugestões</h2><p className="card-sub">Base da decisão nesta execução · política {preview.policy_version || 'não capturada'}</p></div>
         <div className="row wrap">
           <button className="btn sm" disabled={query.isFetching || busy} onClick={() => void query.refetch()}><Icon name="refresh" />Atualizar prévia</button>
-          <button className="btn primary" disabled={!ready || query.isFetching || busy} onClick={() => { setNotice(''); setConfirmation(preview); }}><Icon name="check" />Seguir sugestões do agente</button>
+          <button className="btn primary" disabled={!ready || query.isFetching || busy} onClick={() => { setNotice(''); setConfirmation(preview); }}><Icon name="check" />Aplicar sugestões</button>
         </div>
       </div>
       <div className="card-body stack-lg">
