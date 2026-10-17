@@ -10,7 +10,7 @@ import { StepList } from '../../components/StepList';
 import { Callout, Empty, HashChip, StatusBadge } from '../../components/ui';
 import { count, dateTimeBR, duration, plural, readable } from '../../lib/format';
 import { useCatalog, useExceptions, useRunEvents } from '../../state/queries';
-import { ChatSlot } from '../../workbench/ChatSlot';
+import { ChatDock } from '../../chat/ChatDock';
 import { RunSummaryCard } from '../../workbench/RunSummaryCard';
 import { StepWorkspace } from '../../workbench/StepWorkspace';
 
@@ -120,7 +120,7 @@ export function StepsTab({ run }: { run: Run }) {
       </aside>
       <section className="card wb-card">
         {step.kind === 'gate' ? <GateView run={run} step={step} />
-          : <StepWorkspace run={run} step={step} initialFilters={filters} onException={setExceptionId} onDetails={() => setDetails(true)} chat={<ChatSlot />} />}
+          : <StepWorkspace run={run} step={step} initialFilters={filters} onException={setExceptionId} onDetails={() => setDetails(true)} chat={(table, synthetic) => <ChatDock run={run} step={step} table={table} synthetic={synthetic} />} />}
       </section>
       {exception ? (
         <Sheet eyebrow="Exceção" title={readable(exception.kind)} sub={`${exception.merchant} · ${exception.ref_origem}`} onClose={() => setExceptionId(null)}

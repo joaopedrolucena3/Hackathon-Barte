@@ -20,6 +20,10 @@ Abra http://127.0.0.1:8765. A interface React integrada está em `../front/`; o 
 
 Windows: crie o ambiente com `python -m venv .venv`, instale as dependências usando `.venv\Scripts\python -m pip install -r requirements.lock.txt`, compile o front com `cd ..\front && npm ci && npm run build`, volte para `back` e rode `.venv\Scripts\python -m src.app`.
 
+## Chat de consulta
+
+Na aba **Passos** de um run, o chat abaixo da planilha responde perguntas sobre os dados do passo, somente leitura: o Claude monta consultas SQL e cada número da resposta vem de uma delas, conferido pelo servidor. Precisa de uma credencial da Anthropic no servidor; veja **[Conectar o chat à API](docs/CHAT_API.md)**. Sem ela, o resto da plataforma funciona normalmente.
+
 ## E-mails de pendências pelo Gmail
 
 Em **Comunicações → Gmail · pendências**, selecione a pendência e use **Gerar e-mail**. A mensagem tem texto editável, contraparte identificada pelas fontes e anexos restritos às evidências relacionadas. **Gmail · pendências** reúne os rascunhos, o histórico, os contatos Orbe/Ponte e a conexão da conta de teste.

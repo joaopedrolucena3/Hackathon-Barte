@@ -56,12 +56,12 @@ export function DayBars({ days, height = 150, ariaLabel }: { days: { date: strin
 }
 
 /** Column growing up from the baseline with a 4px rounded data end. */
-function roundedUp(x: number, base: number, w: number, h: number) {
+export function roundedUp(x: number, base: number, w: number, h: number) {
   const r = Math.min(4, w / 2, h);
   return `M${x},${base} V${base - h + r} Q${x},${base - h} ${x + r},${base - h} H${x + w - r} Q${x + w},${base - h} ${x + w},${base - h + r} V${base} Z`;
 }
 
-function roundedDown(x: number, base: number, w: number, h: number) {
+export function roundedDown(x: number, base: number, w: number, h: number) {
   const r = Math.min(4, w / 2, h);
   return `M${x},${base} V${base + h - r} Q${x},${base + h} ${x + r},${base + h} H${x + w - r} Q${x + w},${base + h} ${x + w},${base + h - r} V${base} Z`;
 }

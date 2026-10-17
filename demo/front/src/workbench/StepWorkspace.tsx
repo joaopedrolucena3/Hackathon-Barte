@@ -2,7 +2,7 @@
 // Everything here only reads the step's immutable output.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { agent, type DataColumn, type ReviewException, type Run, type StepRun } from '../api/agent';
+import { agent, type DataColumn, type ReviewException, type Run, type StepRun, type StepTable } from '../api/agent';
 import { Icon } from '../components/Icon';
 import { Callout, Empty, Loading, StatusBadge, Toggle } from '../components/ui';
 import { count, plural, readable } from '../lib/format';
@@ -69,7 +69,9 @@ function FilterBuilder({ columns, draft, setDraft, onApply }: {
 }
 
 export function StepWorkspace({ run, step, onException, onDetails, chat, initialFilters }: {
-  run: Run; step: StepRun; onException: (id: string) => void; onDetails: () => void; chat?: ReactNode;
+  run: Run; step: StepRun; onException: (id: string) => void; onDetails: () => void;
+  /** The chat dock under the status bar, given the table on screen (synthetic: `?volume=` mode rows). */
+  chat?: (table: StepTable, synthetic: boolean) => ReactNode;
   /** Deep links (e.g. `?ref=` from a divergence) open the table already filtered. */
   initialFilters?: GridFilter[];
 }) {
@@ -97,7 +99,10 @@ export function StepWorkspace({ run, step, onException, onDetails, chat, initial
   const options = useMemo(() => ({ filters: current ? wb.filters : [], sort: current ? wb.sort : null, onlyExceptions: current && wb.onlyExceptions, rids: chatRows }),
     [current, wb.filters, wb.sort, wb.onlyExceptions, chatRows]);
   const rids = useMemo(() => (view ? viewRids(view, options) : []), [view, options]);
-  useEffect(() => { if (view && current) workbench.setView(view.rows.length, rids.length); }, [view, rids, current]);
+  const synthetic = !!table && volume > table.rows.length;
+  useEffect(() => {
+    if (view && current) workbench.setView(view.rows.length, rids.length, rids.length < view.rows.length && !synthetic ? rids : null);
+  }, [view, rids, current, synthetic]);
 
   const byId = useMemo(() => new Map((exceptions || []).map(item => [item.id, item] as [string, ReviewException])), [exceptions]);
   const realRows = table?.rows.length || 1;
@@ -150,7 +155,6 @@ export function StepWorkspace({ run, step, onException, onDetails, chat, initial
   const keyColumn = KEY_COLUMNS.find(name => index.has(name));
   const rowLabel = (rid: Rid) => (keyColumn ? String(view.rows[rid][index.get(keyColumn)!] ?? '') : '') || `linha ${count(rid + 1)}`;
   const filters = current ? wb.filters : [];
-  const synthetic = volume > table.rows.length;
 
   const cellItems = (target: CellMenuTarget): MenuItem[] => {
     const at = index.get(target.column.name)!;
@@ -247,7 +251,7 @@ export function StepWorkspace({ run, step, onException, onDetails, chat, initial
       </div>
 
       <GridFooter table={table} view={view} rids={rids} flagged={flagged} selection={current ? wb.selection : null} />
-      {chat}
+      {chat?.(table, synthetic)}
 
       {cellMenu && <Menu x={cellMenu.x} y={cellMenu.y} title={`${cellMenu.column.label} · ${rowLabel(cellMenu.rid % realRows)}`} items={cellItems(cellMenu)} onClose={closeCell} />}
       {headerMenu && <Menu x={headerMenu.x} y={headerMenu.y} title={headerMenu.column.label} items={headerItems(headerMenu)} onClose={closeHeader}>

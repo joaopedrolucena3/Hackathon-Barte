@@ -636,6 +636,22 @@ class PipelineService:
         return {'run_id': ident, 'step': steps[index], 'meta': meta, 'datasets': [{'name': m['name'], 'rows': m['rows']} for m in step['outputs']],
                 'rows': rows, 'steps': steps, 'rows_of': rows_of}
 
+    def run_outputs(self, ident):
+        """Every immutable output of a run, hash-checked, for the query chat. Read-only, like `step_rows`."""
+        with self.lock:
+            run = self._run(ident)
+            titles = {c['type']: c['title'] for c in self.catalog()}
+            steps = [{'id': s['id'], 'number': i + 1, 'type': s['type'], 'title': titles.get(s['type'], s['type']), 'status': s.get('status'),
+                      'metrics': s.get('metrics', {}), 'datasets': [m['name'] for m in s.get('outputs', [])]} for i, s in enumerate(run['steps'])]
+            outputs = [{**m, 'step_id': s['id']} for s in run['steps'] for m in s.get('outputs', [])]
+            for meta in outputs: self._rows(meta)
+            produced = {m['name']: m for m in outputs}
+
+        def rows_of(name):
+            with self.lock: return self._rows(produced[name], verify=False)
+        return {'run': {'id': run['id'], 'competencia': run['competencia'], 'status': run['status'], 'pipeline_id': run.get('pipeline_id'),
+                        'pipeline_version': run.get('pipeline_version')}, 'steps': steps, 'outputs': outputs, 'rows_of': rows_of}
+
     def exceptions(self, ident, query=None):
         with self.lock:
             run = self._run(ident)

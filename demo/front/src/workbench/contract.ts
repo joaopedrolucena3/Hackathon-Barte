@@ -49,6 +49,8 @@ export interface WorkbenchState {
   /** A question raised from the grid ("Por quê?", selection) waiting for the chat to take it. */
   pendingAsk: AskRequest | null;
   view: { total: number; shown: number };
+  /** Rows on screen when the view is narrowed (filters, exceptions, chat filter); null when every row shows. */
+  viewRids: Rid[] | null;
 }
 
 /** What the chat sends to the backend as context of a question. */
@@ -60,6 +62,7 @@ export interface ChatContext {
   sort: SortSpec | null;
   only_exceptions: boolean;
   chat_filter_rids: Rid[] | null;
+  view_rids: Rid[] | null;
   selection: SelectionContext | null;
   focus: WorkbenchState['focus'];
   view: WorkbenchState['view'];
