@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172f3b">
+  <meta name="description" content="Tarvo: fechamento financeiro com rastreabilidade, revisão humana e controle de cobranças.">
+  <title>Tarvo · Central de fechamento</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir para o conteúdo</a>
+  <aside class="sidebar" aria-label="Navegação principal">
+    <a href="#overview" class="brand" aria-label="Tarvo, visão geral"><span class="brand-symbol" aria-hidden="true">t</span>tarvo<span class="brand-dot">.</span></a>
+    <p class="workspace-label">OPERAÇÃO FINANCEIRA</p>
+    <nav id="navigation"></nav>
+    <div class="sidebar-bottom"><div class="workspace-status"><span class="status-dot"></span> Ambiente local</div><p>Dados sintéticos do case.<br>E-mails em modo simulação.</p><span class="version">CENTRAL DE FECHAMENTO · MVP</span></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div class="breadcrumb">Financeiro <span>/</span> <strong>Fechamento mensal</strong></div><div class="topbar-controls"><label class="actor-control"><span>Analista responsável</span><input id="actor" type="text" autocomplete="name" placeholder="Seu nome" aria-label="Nome do analista responsável" maxlength="100"></label><span class="simulation-label"><span class="status-dot"></span> Simulação</span></div></header>
+    <main id="main" tabindex="-1"><div id="app"><div class="loading"><div class="spinner"></div><h1>Preparando o fechamento</h1><p>Conectando às fontes e ao histórico de decisões.</p></div></div></main>
+    <footer class="workspace-footer"><span>Tarvo · Cada número tem uma origem.</span><span>Sem login: o responsável é declarado e registrado em cada ação.</span></footer>
+  </div>
+  <dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-header"><div><p class="eyebrow" id="dialog-eyebrow">CENTRAL DE FECHAMENTO</p><h2 id="dialog-title"></h2></div><button class="icon-button" data-action="close-dialog" aria-label="Fechar janela">×</button></div><div id="dialog-body"></div></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

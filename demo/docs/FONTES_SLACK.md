@@ -1,0 +1,24 @@
+# Respostas do financeiro consultadas
+
+Leitura realizada no canal `duvidas-hackathon-ai`, em 16/10/2026 (horário de São Paulo), antes de implementar as regras. As respostas abaixo são de manuel.freitas, falando como Helena, financeiro da Tarvo. Este arquivo é uma síntese com links; não é transcrição literal nem validação dos números feita pela organização.
+
+| Horário | Regra esclarecida | Fonte |
+|---|---|---|
+| 19h59 | Perguntas de Tarvo e logística são recebidas neste canal, identificando o assunto. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792191557825119) |
+| 20h05 | Checkout é faturado pela taxa contratada, por linha; diferença da taxa aplicada gera divergência. Devolução e cobrança da Orbe dependem de Helena. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792191952289259) |
+| 20h06 | Estorno abate no mês do estorno, inclusive venda de agosto; usa taxa vigente na data da venda original. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792192019611209) |
+| 20h13 | Entrega em um repositório por time, contendo todas as partes; organização menciona envio do link por e-mail, divergindo do canal indicado no DOCX. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792192415046529) |
+| 20h24 | EC 1043300981 é Novo Horizonte; 1043396662 é Horizonte Viagens; 1038867654 é Kiwi. Atlas não tem contrato vigente confirmado e não pode ser faturada até o comercial confirmar. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792193059964329) |
+| 20h47 | Uma NF mensal por lojista no checkout, incluindo antecipação e reversão. Zero/negativo não emite; negativo é pendência, sem transporte automático. Remessa tem uma NF para Ponte. Texto simples com serviço e competência basta. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792194465573829) |
+| 20h48 | Remessa: 50% do spread realizado, padrão/em branco = 1,5% PTAX; Mundo Aberto = 1,2%. Negativos por trava vencida fora da comissão e NF e contestados; número de operação único; ressalva compliance não altera; competência pela contratação. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792194515838639) |
+| 20h49 | Rota não alterou contrato. Casa do Estudante isenta de MDR e antecipação de setembro a dezembro; remessa normal. Folha/tributos agosto e repasse Ponte de 04/09 já provisionados. Pix7350 não é receita identificada, devolução12400 é repasse devolvido, transferência30/09 cai01/10. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792194576391779) |
+| 20h58 | Divergência Mundo Aberto é valor cheio, não participação de 50%. Tolerância deve ser declarada com motivo, evitando ruído de centavos. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792195101083859) |
+| 21h13 | HALF_UP por linha, inclusive negativos afastando de zero; somar depois. Divergência checkout = bruto × (taxa aplicada − contratada). Truncamento isolado da Orbe não é divergência. Participação remessa arredondada por operação. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792196013836169) |
+| 21h14 | Classificar a contrapartida do banco, baixando provisões anteriores; tarifas/aluguel/cloud/assinaturas/serviços não provisionados são despesas do mês. Declare premissas quando o extrato não esclarece. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792196067326279) |
+| 21h45 | NF remessa inclui o realizado da Mundo Aberto, mesmo com excesso contestável. Ajuste da participação ocorre no mês de eventual devolução. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792197913743739) |
+| 22h33 | Financeiro não valida totais propostos. Não presumir descontos no TED; conferência futura do recebimento é pendência de Helena. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792200816394409) |
+| 22h34 | Nada foi contestado. Considerar prazo em aberto no cenário do case; manter operações e valores contestáveis. Duplicada conta uma vez e também deve ser comunicada à Ponte. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792200848816529) |
+| 22h34 | Orbe deposita tudo no Aurora; saldo negativo é conta garantida. Não é necessário conciliar parcela por parcela sem agenda de recebíveis; classificar os créditos é suficiente. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792200869514179) |
+| 22h34 | Reitera comissão checkout inteira, sem custo Orbe, pela taxa contratada; estornos de agosto entram; antecipação e reversão compõem mesma NF. | [Mensagem](https://bartehackathonai.slack.com/archives/C0CA0S5D37B/p1792200888817559) |
+
+Nenhuma mensagem foi enviada ao Slack por esta implementação. A origem dos arquivos é preservada por SHA256. Mudanças posteriores nas respostas devem ser reconciliadas com as hipóteses antes de recalcular.

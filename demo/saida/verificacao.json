@@ -1,0 +1,79 @@
+{
+  "period": "2026-09",
+  "summary": {
+    "bank_count": 184,
+    "checkout_brl": "207039.73",
+    "checkout_count": 1943,
+    "divergencias_abs_brl": "22173.57",
+    "divergencias_brl": "14826.55",
+    "divergencias_count": 237,
+    "notas_brl": "246588.68",
+    "notas_count": 21,
+    "pendencias_count": 304,
+    "period": "2026-09",
+    "remessa_brl": "39543.45",
+    "remessa_count": 232,
+    "remittance_tolerance_pp": "0.002",
+    "open_issues": 304,
+    "resolved_issues": 0,
+    "blocking_issues": 57
+  },
+  "validation": {
+    "errors": [],
+    "warnings": [],
+    "trace_ok": true,
+    "source_count": 7
+  },
+  "sources": [
+    {
+      "encoding": "utf-8-sig",
+      "name": "01_orbe_relatorio_comissoes_set2026.csv",
+      "path": "/Users/joaopedro/Downloads/Tarvo_Data_Pack_set2026/tarvo-mvp/data/case/01_orbe_relatorio_comissoes_set2026.csv",
+      "rows": 1943,
+      "sha256": "fdbc2bad2dd38dde8bf3af9d5c1f21116f0eae8d71d6a5a16b0dfd82de3cc7ec"
+    },
+    {
+      "name": "02_tabela_taxas_contratadas.xlsx",
+      "path": "/Users/joaopedro/Downloads/Tarvo_Data_Pack_set2026/tarvo-mvp/data/case/02_tabela_taxas_contratadas.xlsx",
+      "rows": 25,
+      "sha256": "d0c7d2b13ac41c2a036a40362eb26c341666feef74d7199284742c255885dfc4",
+      "sheets": [
+        "Taxas vigentes",
+        "ANTIGO 2025 - nao usar"
+      ]
+    },
+    {
+      "embedded": true,
+      "name": "03_email_ponte_cambio_relatorio_set2026.eml::PonteCambio_Relatorio_TARVO_092026.xlsx",
+      "rows": 233,
+      "sha256": "c7d4e137fe7ee00ae5838cc229bfed87b34aca3e3495518921f6bc19c607fc26"
+    },
+    {
+      "name": "03_email_ponte_cambio_relatorio_set2026.eml",
+      "path": "/Users/joaopedro/Downloads/Tarvo_Data_Pack_set2026/tarvo-mvp/data/case/03_email_ponte_cambio_relatorio_set2026.eml",
+      "rows": 233,
+      "sha256": "e36808cab907df4b598d0022ae92af99c9b7c281a5d619d91e64d163f42e6f8f"
+    },
+    {
+      "encoding": "cp1252",
+      "name": "04_plano_de_contas_fenix_erp.csv",
+      "path": "/Users/joaopedro/Downloads/Tarvo_Data_Pack_set2026/tarvo-mvp/data/case/04_plano_de_contas_fenix_erp.csv",
+      "rows": 52,
+      "sha256": "fb99c63b151c2a029c86475eb2551e4af7722a055dc24137244a2411e7876d72"
+    },
+    {
+      "encoding": "utf-8-sig",
+      "name": "05a_extrato_banco_aurora_cc4471_set2026.csv",
+      "path": "/Users/joaopedro/Downloads/Tarvo_Data_Pack_set2026/tarvo-mvp/data/case/05a_extrato_banco_aurora_cc4471_set2026.csv",
+      "rows": 84,
+      "sha256": "7303b72fa76d227a863279a36726411605d93fb63237f0cae638c111a70d2d92"
+    },
+    {
+      "encoding": "cp1252",
+      "name": "05b_extrato_banco_meridiano_cc90233_set2026.ofx",
+      "path": "/Users/joaopedro/Downloads/Tarvo_Data_Pack_set2026/tarvo-mvp/data/case/05b_extrato_banco_meridiano_cc90233_set2026.ofx",
+      "rows": 100,
+      "sha256": "27f11fae20c1fb69e2ca47885f6082690fe5db5cd13ddf3e407ef3cb29e33283"
+    }
+  ]
+}
