@@ -1,0 +1,69 @@
+# Tarvo · vídeo demonstrativo (120 s, narrado)
+
+## Respostas do planejamento
+- **O que é:** plataforma de fechamento mensal da Tarvo. Lê as fontes nos formatos conhecidos, calcula por regras fixas, aponta exceções com origem e para antes do ERP até o financeiro decidir.
+- **Para quem:** time financeiro e CFO da Tarvo.
+- **Tese:** cada valor do fechamento precisa estar ligado ao contrato certo, à competência certa e à evidência que permite aprová-lo.
+- **Gancho:** R$ 15.397,42 de divergências da Casa do Estudante; a isenção não chegou à Orbe.
+- **Tom:** `polished`, uma conversa com o financeiro, sem jargão de tecnologia.
+- **Formato:** 1920×1080, 30 fps, 122.7 s. O pedido mudou de 6 min para 120 s durante a produção.
+- **Voz:** Kokoro `pf_dora`, pt-BR, velocidade natural (1,0), gerada frase a frase. As siglas MDR, ERP e IA foram escritas foneticamente para a voz.
+- **Música:** happy-beats-business-moves-vol-12 (ende.app), em loop com crossfade, volume 0,11 sob a voz. O ritmo segue a narração, então as pistas de batida não guiaram os cortes. Não há tratamento reativo ao áudio (vídeo narrado e sóbrio).
+
+## Cobertura dos sete pontos exigidos
+| Ponto | Cenas |
+|---|---|
+| 1. O que está quebrado e a causa | s01–s03 (Casa do Estudante; acordo que não chegou à cobrança; fontes separadas) |
+| 2. O que a solução faz | s04, s07–s10 |
+| 3. Dinheiro em jogo | s01 (R$ 15.397,42), s05 (R$ 246.588,68 e R$ 22.173,57, sem somar), s06 (R$ 1.039,37 pela competência) |
+| 4. Uso em outubro | s07–s10 (cenário de teste: rodar, Vela, decisão, bloqueio, comunicação) |
+| 5. Onde a IA atua e onde não | s11 |
+| 6. Onde falha e o que acontece | s08 (contrato ambíguo), s09 (bloqueio), s12 (Atlas; Fênix sem homologação; sem NFS-e nem pagamentos) |
+| 7. Mais um mês | s13 |
+
+## Storyboard
+| Cena | Tempo | Narração (legenda) | Texto na tela | Ação visual | Fonte dos dados | Estado do produto |
+|---|---|---|---|---|---|---|
+| s01 | 00:00–00:09 (9.6 s) | R$ 15.397,42. A Casa do Estudante tinha isenção de MDR e antecipação. A Orbe continuou cobrando. | Base sintética — setembro/2026 · A isenção não chegou à cobrança | Cartão animado | ENGINE_NOTES.md (controles do pack de setembro); s8/divergencias da execução 61dbabc4 (118 op., R$ 15.397,42) | Cartão de abertura |
+| s02 | 00:09–00:20 (10.8 s) | Numa venda de R$ 608,88, a Orbe aplicou 2,69%. O contrato diz 0%. O acordo estava na planilha, mas não chegou à cobrança. | Base sintética — setembro/2026 · Uma venda mostra a falha: 0% contratado, 2,69% aplicado | Captura sep_tx_a, zoom e destaques | Revisão da execução 61dbabc4 (pack-base 09/2026): TX88410932, bruto R$ 608,88, aplicada 2,69%, contratada 0%, diferença R$ 16,38 | Revisão real, exceção aberta |
+| s03 | 00:20–00:29 (9.5 s) | Para ver isso, alguém precisa ligar contrato, vigência e operação em fontes separadas: Orbe, taxas, Ponte Câmbio, extratos e o plano de contas do Fênix. | Esquema · Contrato, vigência e operação estão em fontes separadas | Cartão animado | Arquivos do data pack de setembro | Esquema |
+| s04 | 00:29–00:37 (7.6 s) | A plataforma lê esses arquivos, calcula pelas regras definidas e para antes do ERP, esperando uma pessoa. | Base sintética — setembro/2026 · Regras calculam; a execução para antes do ERP | Gravação sep_run | Execução real do pack-base 09/2026 (mesmos totais) | Passos rodando até "Aprovação humana" |
+| s05 | 00:37–00:50 (12.7 s) | Em setembro, são R$ 246.588,68 de faturamento proposto, em 21 notas. E R$ 22.173,57 em divergências, em valor absoluto. Não é perda: é o que merece conferência. | Base sintética — setembro/2026 · Faturamento e divergências são medidas distintas | Cartão animado | ENGINE_NOTES.md (controles); s8/notas e s8/divergencias da execução 61dbabc4 | Cartão de números |
+| s06 | 00:50–00:59 (8.8 s) | Seis remessas contratadas em 30/09 foram liquidadas em 01/10. Pela liquidação, R$ 1.039,37 de comissão sairiam de setembro. | Base sintética — setembro/2026 · Competência pela contratação: R$ 1.039,37 ficam em setembro | Captura sep_cambio_footer, zoom e destaques | Passo 7 da execução 61dbabc4, filtro Liquidação > 30/09/2026: 6 linhas, Comissão · visão R$ 1.039,37 | Prévia real do passo com filtro |
+| s07 | 00:59–01:05 (6.5 s) | Em outubro, num pacote sintético de teste, a analista escolhe o mês, roda e confere as entradas. | Cenário de teste — outubro/2026 · Outubro roda com o pacote do mês | Gravação oct_run + captura oct_2_drawer | Execução c9f2a7d6 (pack sintético 10/2026, gerado para testar continuidade) | Gaveta "Rodar fechamento" e passos reais |
+| s08 | 01:05–01:14 (9.1 s) | A Vela tem dois contratos para a mesma data. A plataforma não escolhe: as operações ficam fora do faturamento, e a decisão vai para o Comercial. | Cenário de teste — outubro/2026 · Contrato ambíguo exige revisão | Captura oct_rev_vela, zoom e destaques | Revisão c9f2a7d6: vigências de taxa sobrepostas da Vela (22 operações, quem decide: Comercial) | Revisão real, bloqueante aberta |
+| s09 | 01:14–01:22 (7.9 s) | A analista registra a decisão, com justificativa. Com 63 bloqueantes abertas, a aprovação continua travada. | Cenário de teste — outubro/2026 · Bloqueante aberta impede aprovar | Gravação oct_decide + captura oct_dec_3 | Decisão real registrada na execução c9f2a7d6 (ambiente isolado); 63 bloqueantes sem decisão | Formulário de decisão → lote bloqueado |
+| s10 | 01:22–01:28 (5.7 s) | Contestações viram sugestões com evidências, e só saem com permissão do responsável. | Cenário de teste — outubro/2026 · Comunicação só sai com permissão | Captura com_2, zoom e destaques | Comunicações → sugestão de contestação da execução c9f2a7d6; Gmail não conectado; nada enviado | Sugestão aguardando permissão |
+| s11 | 01:28–01:38 (10.3 s) | A IA fica num chat de consulta, só de leitura. Ela ajuda a perguntar; as regras calculam; o financeiro decide. Nesta gravação, o chat não estava configurado. | Base sintética — setembro/2026 · IA consulta · Regras calculam · Financeiro decide | Captura sep_chat, zoom e destaques | agent.py (consulta somente leitura, números resolvidos pelo servidor); tela real com chat indisponível | Chat indisponível (sem credencial); nenhuma resposta mostrada |
+| s12 | 01:38–01:50 (12.1 s) | Onde falta informação, a solução para: a Atlas, sem contrato confirmado, fica fora do faturamento. O arquivo do Fênix ainda precisa de homologação, e não há emissão de nota nem pagamentos. | Base sintética — setembro/2026 · Contrato ausente exige revisão | Captura sep_rev_atlas, zoom e destaques | Revisão 61dbabc4: Atlas Idiomas, 57 operações, R$ 7.876,05; limites em demo/README.md e HIPOTESES.md | Revisão real, bloqueante aberta + cartão de limites |
+| s13 | 01:50–02:02 (12.0 s) | Com mais um mês: piloto acompanhado, homologação com o Fênix e uso em equipe. Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar, item por item. | Próximo passo: um ciclo acompanhado | Cartão animado | Plano proposto (futuro); frase central do pitch | Encerramento |
+
+## Roteiro final da narração (grafia das legendas)
+**s01** R$ 15.397,42. A Casa do Estudante tinha isenção de MDR e antecipação. A Orbe continuou cobrando.
+
+**s02** Numa venda de R$ 608,88, a Orbe aplicou 2,69%. O contrato diz 0%. O acordo estava na planilha, mas não chegou à cobrança.
+
+**s03** Para ver isso, alguém precisa ligar contrato, vigência e operação em fontes separadas: Orbe, taxas, Ponte Câmbio, extratos e o plano de contas do Fênix.
+
+**s04** A plataforma lê esses arquivos, calcula pelas regras definidas e para antes do ERP, esperando uma pessoa.
+
+**s05** Em setembro, são R$ 246.588,68 de faturamento proposto, em 21 notas. E R$ 22.173,57 em divergências, em valor absoluto. Não é perda: é o que merece conferência.
+
+**s06** Seis remessas contratadas em 30/09 foram liquidadas em 01/10. Pela liquidação, R$ 1.039,37 de comissão sairiam de setembro.
+
+**s07** Em outubro, num pacote sintético de teste, a analista escolhe o mês, roda e confere as entradas.
+
+**s08** A Vela tem dois contratos para a mesma data. A plataforma não escolhe: as operações ficam fora do faturamento, e a decisão vai para o Comercial.
+
+**s09** A analista registra a decisão, com justificativa. Com 63 bloqueantes abertas, a aprovação continua travada.
+
+**s10** Contestações viram sugestões com evidências, e só saem com permissão do responsável.
+
+**s11** A IA fica num chat de consulta, só de leitura. Ela ajuda a perguntar; as regras calculam; o financeiro decide. Nesta gravação, o chat não estava configurado.
+
+**s12** Onde falta informação, a solução para: a Atlas, sem contrato confirmado, fica fora do faturamento. O arquivo do Fênix ainda precisa de homologação, e não há emissão de nota nem pagamentos.
+
+**s13** Com mais um mês: piloto acompanhado, homologação com o Fênix e uso em equipe. Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar, item por item.
+
+## Ficou fora da versão de 120 s
+Estes trechos estão no roteiro de 6 minutos preservado em `work/script-6min.json` e `work/scenes-6min.mjs`: devolução bancária de R$ 12.400,00; detalhe das entradas de outubro (linha ilegível, duplicada e conflitantes); complemento gerando nova execução; mudança de taxa da EduAbroad; e-mail com resultado incerto.

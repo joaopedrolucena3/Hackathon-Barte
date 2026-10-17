@@ -1,0 +1,199 @@
+{
+ "total": 122.724,
+ "scenes": [
+  {
+   "id": "s01",
+   "chapter": "O problema",
+   "start": 0.0,
+   "duration": 9.555,
+   "lines": [
+    {
+     "start": 0.4,
+     "end": 3.472,
+     "text": "R$ 15.397,42."
+    },
+    {
+     "start": 3.772,
+     "end": 9.255,
+     "text": "A Casa do Estudante tinha isenção de MDR e antecipação. A Orbe continuou cobrando."
+    }
+   ]
+  },
+  {
+   "id": "s02",
+   "chapter": null,
+   "start": 9.555,
+   "duration": 10.827,
+   "lines": [
+    {
+     "start": 9.755,
+     "end": 16.603,
+     "text": "Numa venda de R$ 608,88, a Orbe aplicou 2,69%. O contrato diz 0%."
+    },
+    {
+     "start": 16.903,
+     "end": 20.081,
+     "text": "O acordo estava na planilha, mas não chegou à cobrança."
+    }
+   ]
+  },
+  {
+   "id": "s03",
+   "chapter": "A solução",
+   "start": 20.381,
+   "duration": 9.545,
+   "lines": [
+    {
+     "start": 20.581,
+     "end": 29.627,
+     "text": "Para ver isso, alguém precisa ligar contrato, vigência e operação em fontes separadas: Orbe, taxas, Ponte Câmbio, extratos e o plano de contas do Fênix."
+    }
+   ]
+  },
+  {
+   "id": "s04",
+   "chapter": null,
+   "start": 29.927,
+   "duration": 7.625,
+   "lines": [
+    {
+     "start": 30.127,
+     "end": 37.252,
+     "text": "A plataforma lê esses arquivos, calcula pelas regras definidas e para antes do ERP, esperando uma pessoa."
+    }
+   ]
+  },
+  {
+   "id": "s05",
+   "chapter": "O dinheiro em jogo",
+   "start": 37.552,
+   "duration": 12.725,
+   "lines": [
+    {
+     "start": 37.752,
+     "end": 43.704,
+     "text": "Em setembro, são R$ 246.588,68 de faturamento proposto, em 21 notas."
+    },
+    {
+     "start": 44.004,
+     "end": 49.977,
+     "text": "E R$ 22.173,57 em divergências, em valor absoluto. Não é perda: é o que merece conferência."
+    }
+   ]
+  },
+  {
+   "id": "s06",
+   "chapter": null,
+   "start": 50.277,
+   "duration": 8.799,
+   "lines": [
+    {
+     "start": 50.477,
+     "end": 58.776,
+     "text": "Seis remessas contratadas em 30/09 foram liquidadas em 01/10. Pela liquidação, R$ 1.039,37 de comissão sairiam de setembro."
+    }
+   ]
+  },
+  {
+   "id": "s07",
+   "chapter": "Outubro · cenário de teste",
+   "start": 59.076,
+   "duration": 6.467,
+   "lines": [
+    {
+     "start": 59.376,
+     "end": 65.243,
+     "text": "Em outubro, num pacote sintético de teste, a analista escolhe o mês, roda e confere as entradas."
+    }
+   ]
+  },
+  {
+   "id": "s08",
+   "chapter": null,
+   "start": 65.543,
+   "duration": 9.097,
+   "lines": [
+    {
+     "start": 65.743,
+     "end": 74.34,
+     "text": "A Vela tem dois contratos para a mesma data. A plataforma não escolhe: as operações ficam fora do faturamento, e a decisão vai para o Comercial."
+    }
+   ]
+  },
+  {
+   "id": "s09",
+   "chapter": null,
+   "start": 74.64,
+   "duration": 7.903,
+   "lines": [
+    {
+     "start": 74.84,
+     "end": 82.243,
+     "text": "A analista registra a decisão, com justificativa. Com 63 bloqueantes abertas, a aprovação continua travada."
+    }
+   ]
+  },
+  {
+   "id": "s10",
+   "chapter": null,
+   "start": 82.543,
+   "duration": 5.727,
+   "lines": [
+    {
+     "start": 82.743,
+     "end": 87.969,
+     "text": "Contestações viram sugestões com evidências, e só saem com permissão do responsável."
+    }
+   ]
+  },
+  {
+   "id": "s11",
+   "chapter": "O papel da IA",
+   "start": 88.269,
+   "duration": 10.264,
+   "lines": [
+    {
+     "start": 88.569,
+     "end": 98.233,
+     "text": "A IA fica num chat de consulta, só de leitura. Ela ajuda a perguntar; as regras calculam; o financeiro decide. Nesta gravação, o chat não estava configurado."
+    }
+   ]
+  },
+  {
+   "id": "s12",
+   "chapter": "Limites",
+   "start": 98.533,
+   "duration": 12.143,
+   "lines": [
+    {
+     "start": 98.833,
+     "end": 104.764,
+     "text": "Onde falta informação, a solução para: a Atlas, sem contrato confirmado, fica fora do faturamento."
+    },
+    {
+     "start": 105.064,
+     "end": 110.376,
+     "text": "O arquivo do Fênix ainda precisa de homologação, e não há emissão de nota nem pagamentos."
+    }
+   ]
+  },
+  {
+   "id": "s13",
+   "chapter": "Próximo passo",
+   "start": 110.676,
+   "duration": 12.048,
+   "lines": [
+    {
+     "start": 110.976,
+     "end": 115.371,
+     "text": "Com mais um mês: piloto acompanhado, homologação com o Fênix e uso em equipe."
+    },
+    {
+     "start": 115.671,
+     "end": 121.324,
+     "text": "Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar, item por item."
+    }
+   ]
+  }
+ ]
+}
