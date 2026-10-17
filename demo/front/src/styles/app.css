@@ -652,6 +652,7 @@ button.kpi:hover, a.kpi:hover { border-color: var(--border-strong); box-shadow: 
 .review-list { overflow: hidden; }
 .review-detail { position: sticky; top: 76px; max-height: calc(100vh - 160px); overflow: auto; }
 .bulk-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--st-good-wash); border-bottom: 1px solid #cfe6d8; font-size: 13px; }
+.bulk-bar.blocker { flex-wrap: wrap; background: var(--st-critical-wash); border-bottom-color: #ecc9c5; }
 .approval-bar { position: sticky; bottom: 12px; z-index: 12; display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg); font-size: 13px; }
 .download-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
 .download-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: border-color .15s; }

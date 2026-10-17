@@ -200,6 +200,17 @@ class WorkflowHTTPTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()['decided'], 2)
         self.assertEqual(self.client.get(f'/api/runs/{run_id}/approval-summary').json()['decided'], 2)
+        stored = {row['id']: row for row in self.app.state.workflow._exceptions(run_id)}
+        atlas = [row['id'] for row in rows if row['severidade'] == 'bloqueante' and stored[row['id']].get('tipo') == 'CADASTRO_NAO_CONFIRMADO']
+        other = next(row['id'] for row in rows if row['severidade'] == 'bloqueante' and stored[row['id']].get('tipo') != 'CADASTRO_NAO_CONFIRMADO')
+        self.assertGreater(len(atlas), 1)
+        mixed = self.client.post(f'/api/runs/{run_id}/exceptions/decisions', headers=self.user, json={'ids': [atlas[0], other], 'acao': 'excluir', 'justificativa': 'Teste'})
+        self.assertEqual(mixed.json()['error']['code'], 'BATCH_BLOCKER')
+        response = self.client.post(f'/api/runs/{run_id}/exceptions/decisions', headers=self.user, json={'ids': atlas, 'acao': 'excluir', 'justificativa': 'Atlas sem contrato vigente'})
+        self.assertEqual(response.status_code, 200, response.text)
+        summary = self.client.get(f'/api/runs/{run_id}/approval-summary').json()
+        self.assertEqual(summary['decided'], 2 + len(atlas))
+        self.assertEqual(summary['batch']['debit_brl'], summary['batch']['credit_brl'])
         self.assertTrue(any(row['postable'] for row in self.client.get(f'/api/runs/{run_id}/accounts').json()['accounts']))
         self.assertTrue(any(row.get('bank_line_id') and row.get('associated_entries') for row in rows))
         sale = next(row for row in rows if row.get('ref_origem') == 'TX88410932')

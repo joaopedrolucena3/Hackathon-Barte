@@ -173,9 +173,9 @@ export const httpAgent: AgentApi = {
     return adaptException(response, await getRun(runId));
   },
   async decideMany(runId, ids, decision, onProgress) {
-    if (!decision.note.trim()) throw new Error('Registre a justificativa para aceitar os alertas selecionados.');
+    if (!decision.note.trim()) throw new Error('Registre a justificativa da decisão em lote.');
     const result = await sendAuthorizedJSON<{ decided: number }>(`${runPath(runId)}/exceptions/decisions`, {
-      ids: [...new Set(ids)], acao: 'aceitar', justificativa: decision.note,
+      ids: [...new Set(ids)], acao: decision.action === 'exclude' ? 'excluir' : 'aceitar', justificativa: decision.note,
     });
     onProgress?.(result.decided);
     return result;
