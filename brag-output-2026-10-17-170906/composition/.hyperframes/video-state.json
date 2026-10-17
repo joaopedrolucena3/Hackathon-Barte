@@ -1,0 +1,843 @@
+{
+  "version": 1,
+  "historyId": "b2797987-5414-4c93-a759-07aed6668af5",
+  "currentRevision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1",
+  "pendingChanges": false,
+  "files": {
+    "AGENTS.md": {
+      "hash": "1d4f0c8ca2507b94fd7c9df709fff01416adbd51a0f922b9d6ed2f40129147d5",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\1d\\1d4f0c8ca2507b94fd7c9df709fff01416adbd51a0f922b9d6ed2f40129147d5"
+    },
+    "CLAUDE.md": {
+      "hash": "1d4f0c8ca2507b94fd7c9df709fff01416adbd51a0f922b9d6ed2f40129147d5",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\1d\\1d4f0c8ca2507b94fd7c9df709fff01416adbd51a0f922b9d6ed2f40129147d5"
+    },
+    "assets/clips/oct_decide.mp4": {
+      "hash": "3ff31e8e2b24fcb3872fb24f6e0ce01b40492fbd81e10588166f6b70894d2f61",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\3f\\3ff31e8e2b24fcb3872fb24f6e0ce01b40492fbd81e10588166f6b70894d2f61"
+    },
+    "assets/clips/oct_run.mp4": {
+      "hash": "9a9b67862d33e71de0a8d0d2ca8307f829fdc66b5a17744e7e7e09b13818768f",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\9a\\9a9b67862d33e71de0a8d0d2ca8307f829fdc66b5a17744e7e7e09b13818768f"
+    },
+    "assets/clips/sep_run.mp4": {
+      "hash": "a912273c3053badc2a1e18132723552d3ad6bf25f957b73b760d8deca73ab5b5",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\a9\\a912273c3053badc2a1e18132723552d3ad6bf25f957b73b760d8deca73ab5b5"
+    },
+    "assets/fonts/inter.woff2": {
+      "hash": "f052ee44c3728dfd23aba8a4567150bc314d23903026fbb6ad089422c2df56af",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\f0\\f052ee44c3728dfd23aba8a4567150bc314d23903026fbb6ad089422c2df56af"
+    },
+    "assets/gsap.min.js": {
+      "hash": "c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\c1\\c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280"
+    },
+    "assets/img/com_2.jpg": {
+      "hash": "0fd51c57937966207cf44f36884b6fab60c693821c05a88ad1ceed3735e77546",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\0f\\0fd51c57937966207cf44f36884b6fab60c693821c05a88ad1ceed3735e77546"
+    },
+    "assets/img/oct_2_drawer.jpg": {
+      "hash": "5292c1844b126a3e9e87c1b482c7895d74e6fef9c6c9c01f850f4d71fb8ff544",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\52\\5292c1844b126a3e9e87c1b482c7895d74e6fef9c6c9c01f850f4d71fb8ff544"
+    },
+    "assets/img/oct_aud.jpg": {
+      "hash": "e5437439a4faa8bc35c2352d82b57a62350af81e080780783b3f4cb10007b541",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\e5\\e5437439a4faa8bc35c2352d82b57a62350af81e080780783b3f4cb10007b541"
+    },
+    "assets/img/oct_compl.jpg": {
+      "hash": "b4a5db1c6c472c26f26763b49800532d4118fb6fbe0786443bd11e133b65852f",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\b4\\b4a5db1c6c472c26f26763b49800532d4118fb6fbe0786443bd11e133b65852f"
+    },
+    "assets/img/oct_dec_3.jpg": {
+      "hash": "473f85c23f0dd64317543d99dd0466def49307599d9ee641f420c83e1611ee6e",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\47\\473f85c23f0dd64317543d99dd0466def49307599d9ee641f420c83e1611ee6e"
+    },
+    "assets/img/oct_rev_banco.jpg": {
+      "hash": "fc899063d37b6b9656edba8c4ec3ff31d53874df50c7c530c4e348963b1deb6c",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\fc\\fc899063d37b6b9656edba8c4ec3ff31d53874df50c7c530c4e348963b1deb6c"
+    },
+    "assets/img/oct_rev_linha.jpg": {
+      "hash": "a52b74bf7eb01b14e2e627ed73d1f1d4e6b216ee63eceebfea6693e16ddcd950",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\a5\\a52b74bf7eb01b14e2e627ed73d1f1d4e6b216ee63eceebfea6693e16ddcd950"
+    },
+    "assets/img/oct_rev_vela.jpg": {
+      "hash": "6dba40ad743b14ecdc976a9537eae20398ae1c4525d6fcb1a3bbfa205875dbbb",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\6d\\6dba40ad743b14ecdc976a9537eae20398ae1c4525d6fcb1a3bbfa205875dbbb"
+    },
+    "assets/img/sep_cambio_footer.jpg": {
+      "hash": "017cd002ff1dbce6c25dacf63c523ffe2808300c5a8e7a563e1b6077da45ec0d",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\01\\017cd002ff1dbce6c25dacf63c523ffe2808300c5a8e7a563e1b6077da45ec0d"
+    },
+    "assets/img/sep_chat.jpg": {
+      "hash": "017cd002ff1dbce6c25dacf63c523ffe2808300c5a8e7a563e1b6077da45ec0d",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\01\\017cd002ff1dbce6c25dacf63c523ffe2808300c5a8e7a563e1b6077da45ec0d"
+    },
+    "assets/img/sep_rev_atlas.jpg": {
+      "hash": "b19ce469bb03f389a95e2d3705e5a2ba0c438ce82969791ccc3e8beeecbabede",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\b1\\b19ce469bb03f389a95e2d3705e5a2ba0c438ce82969791ccc3e8beeecbabede"
+    },
+    "assets/img/sep_rev_dev.jpg": {
+      "hash": "348851ff2340a60c5493d6a0ddaeded7f2017d2fdb7a3fade097a6792ff40e8c",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\34\\348851ff2340a60c5493d6a0ddaeded7f2017d2fdb7a3fade097a6792ff40e8c"
+    },
+    "assets/img/sep_tx_a.jpg": {
+      "hash": "ea8888354506c0447f9ed06a77e6ad9f8fdfe6b0d4855debe505638984fc1c82",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\ea\\ea8888354506c0447f9ed06a77e6ad9f8fdfe6b0d4855debe505638984fc1c82"
+    },
+    "assets/img/sep_tx_b.jpg": {
+      "hash": "68dd80f5e140f55acc2869bc2804fd026edcb3b3ccb7d92637214e7ef8a4593d",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\68\\68dd80f5e140f55acc2869bc2804fd026edcb3b3ccb7d92637214e7ef8a4593d"
+    },
+    "assets/sfx/drop_001.ogg": {
+      "hash": "692ee3a6f1821402ca649ff735bee9591dc4846c8098fc7d6a90fd15fa57c1af",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\69\\692ee3a6f1821402ca649ff735bee9591dc4846c8098fc7d6a90fd15fa57c1af"
+    },
+    "assets/sfx/mouseclick1.ogg": {
+      "hash": "ece1210c62ccae6c9ea4f4c59466d9d453d6b357c7d4b1a6c31196e5e6fea1bf",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\ec\\ece1210c62ccae6c9ea4f4c59466d9d453d6b357c7d4b1a6c31196e5e6fea1bf"
+    },
+    "assets/vo/s01.wav": {
+      "hash": "280b3678b3fd399b918657856d53751dc5d0392f22504bb075da3e21cce0849e",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\28\\280b3678b3fd399b918657856d53751dc5d0392f22504bb075da3e21cce0849e"
+    },
+    "assets/vo/s02.wav": {
+      "hash": "f22c35b5f83652b36ac5b2f8ebf6e25b00d9423f3be76b2f12dd8e09c23862d0",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\f2\\f22c35b5f83652b36ac5b2f8ebf6e25b00d9423f3be76b2f12dd8e09c23862d0"
+    },
+    "assets/vo/s03.wav": {
+      "hash": "40dd9cbaf6b184d33a3f4baf18496afa077413f87d90cfecf857408c7b1c002b",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\40\\40dd9cbaf6b184d33a3f4baf18496afa077413f87d90cfecf857408c7b1c002b"
+    },
+    "assets/vo/s04.wav": {
+      "hash": "e1d3daf049ce1e0db19d6203aa354410b1df0d2e8dc8e099bcec41f912fa7e3d",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\e1\\e1d3daf049ce1e0db19d6203aa354410b1df0d2e8dc8e099bcec41f912fa7e3d"
+    },
+    "assets/vo/s05.wav": {
+      "hash": "c445531255bdf96c2a220e34a448d0422d383b3b0653e80d09aead1d9e8e6454",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\c4\\c445531255bdf96c2a220e34a448d0422d383b3b0653e80d09aead1d9e8e6454"
+    },
+    "assets/vo/s06.wav": {
+      "hash": "9ba90222e15ce8726378d90a6e30a597cc7a8ce9596c4fc0d8730bb0b7757085",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\9b\\9ba90222e15ce8726378d90a6e30a597cc7a8ce9596c4fc0d8730bb0b7757085"
+    },
+    "assets/vo/s07.wav": {
+      "hash": "4e4b1417977d4047a66667bcf859b66bc8281e60deeaece06706fc870fb690c0",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\4e\\4e4b1417977d4047a66667bcf859b66bc8281e60deeaece06706fc870fb690c0"
+    },
+    "assets/vo/s08.wav": {
+      "hash": "682288af7b688682a31605ed29f5dccaf8edd5da81e5a0de6dc06a374e845ab6",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\68\\682288af7b688682a31605ed29f5dccaf8edd5da81e5a0de6dc06a374e845ab6"
+    },
+    "assets/vo/s09.wav": {
+      "hash": "cff70956aed7c102ed8468ac51cc5b46b13a11919675c3fa263becbfd3c5f8ad",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\cf\\cff70956aed7c102ed8468ac51cc5b46b13a11919675c3fa263becbfd3c5f8ad"
+    },
+    "assets/vo/s10.wav": {
+      "hash": "6467c73971b4622fb7ece80e84ce72f96ea3c67bef123a38833c3662a855ad41",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\64\\6467c73971b4622fb7ece80e84ce72f96ea3c67bef123a38833c3662a855ad41"
+    },
+    "assets/vo/s11.wav": {
+      "hash": "341bcba4ca50f5704cfdf6d5dc684b385a9935401eb63ee3b0683f9493095d34",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\34\\341bcba4ca50f5704cfdf6d5dc684b385a9935401eb63ee3b0683f9493095d34"
+    },
+    "assets/vo/s12.wav": {
+      "hash": "386ac4190c08fdf4bfb5d0b5fdee94bd81107e5b90f3d7a834281b80e47fdaef",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\38\\386ac4190c08fdf4bfb5d0b5fdee94bd81107e5b90f3d7a834281b80e47fdaef"
+    },
+    "assets/vo/s13.wav": {
+      "hash": "2cbc8a4ea2a2622d37cd271e90bcb416ceb628e1f82719cb2ef0a666aecb05c5",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\2c\\2cbc8a4ea2a2622d37cd271e90bcb416ceb628e1f82719cb2ef0a666aecb05c5"
+    },
+    "assets/vo/s14.wav": {
+      "hash": "0830ba9d8d5a49626751f6a8963b480da64e8f76d65c0f4b0721a880f5e28eb3",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\08\\0830ba9d8d5a49626751f6a8963b480da64e8f76d65c0f4b0721a880f5e28eb3"
+    },
+    "assets/vo/s15.wav": {
+      "hash": "babbf4140e30ccd7eeb23feaed5e5e668baaa3dd51e402be4740ed2408fcf497",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\ba\\babbf4140e30ccd7eeb23feaed5e5e668baaa3dd51e402be4740ed2408fcf497"
+    },
+    "assets/vo/s16.wav": {
+      "hash": "a044dd6a5eccbf74ec27c5516e972b428a06fc3152e358cb72722ad05926bf32",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\a0\\a044dd6a5eccbf74ec27c5516e972b428a06fc3152e358cb72722ad05926bf32"
+    },
+    "assets/vo/s17.wav": {
+      "hash": "1fc96f9231ac02b80756987eba6e9085efa62f67b71a44be62975ec08b9f3c0f",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\1f\\1fc96f9231ac02b80756987eba6e9085efa62f67b71a44be62975ec08b9f3c0f"
+    },
+    "assets/vo/s18.wav": {
+      "hash": "6f059e58f81c24c3526736108b4da78fa424bd51780e18d5032122f9918d1d5b",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\6f\\6f059e58f81c24c3526736108b4da78fa424bd51780e18d5032122f9918d1d5b"
+    },
+    "assets/vo/s19.wav": {
+      "hash": "b80e1092432438b2bf8debde475af913d1a12538a2a6043dfc347351935d6279",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\b8\\b80e1092432438b2bf8debde475af913d1a12538a2a6043dfc347351935d6279"
+    },
+    "assets/vo/s20.wav": {
+      "hash": "63bafea9f7c3b511ec39f9b54bb36d5fdc6baeea0c2f827ac20b06322116aed6",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\63\\63bafea9f7c3b511ec39f9b54bb36d5fdc6baeea0c2f827ac20b06322116aed6"
+    },
+    "assets/vo/s21.wav": {
+      "hash": "1fccd7f9786a19e308907394e3ad2ec66490d16c0247ab98daecc97676d892ba",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\1f\\1fccd7f9786a19e308907394e3ad2ec66490d16c0247ab98daecc97676d892ba"
+    },
+    "assets/vo/s22.wav": {
+      "hash": "3a2fd477633e161da9770277276a7a41926b072b192d33a17b83e2871a8d34ee",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\3a\\3a2fd477633e161da9770277276a7a41926b072b192d33a17b83e2871a8d34ee"
+    },
+    "assets/vo/s23.wav": {
+      "hash": "1cae070c15198aad35b9074977e42012b65ce2cd8adb6e9d60be5db3f39b8cb6",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\1c\\1cae070c15198aad35b9074977e42012b65ce2cd8adb6e9d60be5db3f39b8cb6"
+    },
+    "assets/vo/s24.wav": {
+      "hash": "7ec9efa8272eb455ad0a1755bb7d92dc77f16697b4634fcc20a8d8023782197d",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\7e\\7ec9efa8272eb455ad0a1755bb7d92dc77f16697b4634fcc20a8d8023782197d"
+    },
+    "assets/vo/s25.wav": {
+      "hash": "50e62fb31550669ed06b034b46bdfe06e94881e2aa11a2462c84b2bd39bb930e",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\50\\50e62fb31550669ed06b034b46bdfe06e94881e2aa11a2462c84b2bd39bb930e"
+    },
+    "hyperframes.json": {
+      "hash": "53dbce1e19aa713cbb12ee0bc4d206143b45ab15e6ffbfcaa8f69572d4d24d50",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\53\\53dbce1e19aa713cbb12ee0bc4d206143b45ab15e6ffbfcaa8f69572d4d24d50"
+    },
+    "index.html": {
+      "hash": "6c64684cc962e0b312e007ac6425cad915c9d4e410a0b7e3334ed85d482bd45f",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\6c\\6c64684cc962e0b312e007ac6425cad915c9d4e410a0b7e3334ed85d482bd45f"
+    },
+    "meta.json": {
+      "hash": "599bc71890056fb2682c583db758c9a9146e50c2d110ea95aded680c1d209cdc",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\59\\599bc71890056fb2682c583db758c9a9146e50c2d110ea95aded680c1d209cdc"
+    },
+    "package.json": {
+      "hash": "ef13cb7392d208cc110d00507ce3bea715b050901de23b867af395d5c1cedd7d",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\ef\\ef13cb7392d208cc110d00507ce3bea715b050901de23b867af395d5c1cedd7d"
+    },
+    "assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3": {
+      "hash": "5888d4bd2ba0119b87a94e502ae2cc401c08192945cc5e5c2f8e8a33aa47a0a1",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\58\\5888d4bd2ba0119b87a94e502ae2cc401c08192945cc5e5c2f8e8a33aa47a0a1"
+    },
+    "assets/vo/voiceover.wav": {
+      "hash": "800b5742c93a196733ad268980d97c94c41794719e49552b38d65c1523ee7a63",
+      "content": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\80\\800b5742c93a196733ad268980d97c94c41794719e49552b38d65c1523ee7a63"
+    }
+  },
+  "revisions": {
+    "8919abf2-bf27-48f3-a1aa-fcab56b5f5dd": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792269442831,
+      "endedAt": 1792269442832,
+      "files": {
+        "index.html": {
+          "before": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\10\\103f53492aaaed486f7bbf0ed98379b9b70a46e39be2bf0dd53bf0f8f1044fb2",
+          "after": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\92\\928a8f2ff124708ed1532b088b8613edb3447f7f852be025a80067a3330937c7"
+        }
+      }
+    },
+    "5eb3c111-4f99-43e8-9343-73adad84cacd": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792269497068,
+      "endedAt": 1792269497070,
+      "files": {
+        "index.html": {
+          "before": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\92\\928a8f2ff124708ed1532b088b8613edb3447f7f852be025a80067a3330937c7",
+          "after": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\3e\\3ed19a0cd4a8c01c7a86e06f82ce32a4ff5cdc923eea4ed2d8992177de31facd"
+        }
+      }
+    },
+    "9644b54d-823c-46f9-b6d2-57d3831c4ab1": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792269576246,
+      "endedAt": 1792269576247,
+      "files": {
+        "index.html": {
+          "before": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\3e\\3ed19a0cd4a8c01c7a86e06f82ce32a4ff5cdc923eea4ed2d8992177de31facd",
+          "after": "C:\\Users\\Leonardo\\.cache\\hyperframes\\history\\b2797987-5414-4c93-a759-07aed6668af5\\blobs\\6c\\6c64684cc962e0b312e007ac6425cad915c9d4e410a0b7e3334ed85d482bd45f"
+        }
+      }
+    }
+  },
+  "checks": {
+    "latest": {
+      "revision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1",
+      "id": "70100c0c-ea9f-4343-9274-9b7ff6c7035b"
+    },
+    "revisions": {
+      "8919abf2-bf27-48f3-a1aa-fcab56b5f5dd": [
+        {
+          "id": "9272ca26-e7d7-45bf-b356-297ff7a79e5f",
+          "scope": "project",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792269454417,
+          "contentHash": "5126bb6311de6ab3acdaa8f1cc24a5ee4ddb6d72d672a3f27ef637366da60c59",
+          "revision": "8919abf2-bf27-48f3-a1aa-fcab56b5f5dd",
+          "inputFingerprint": "0c187acf3f925a125c65ff75764f0999c651323bdbd7d76a27f000a49da55175",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision",
+          "status": "cleaned",
+          "cleanedAfterRender": "8ba083d5-c34f-4d55-ac66-c8dfd036af6a"
+        }
+      ],
+      "5eb3c111-4f99-43e8-9343-73adad84cacd": [
+        {
+          "id": "c2f23d63-f782-450a-95e9-2c2692d506b7",
+          "scope": "project",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792269508360,
+          "contentHash": "1b90c1086c992ffbf0f694099eeae737a64466a634907b4cdbded01d09e51158",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision",
+          "status": "cleaned",
+          "cleanedAfterRender": "8ba083d5-c34f-4d55-ac66-c8dfd036af6a"
+        }
+      ],
+      "9644b54d-823c-46f9-b6d2-57d3831c4ab1": [
+        {
+          "id": "70100c0c-ea9f-4343-9274-9b7ff6c7035b",
+          "scope": "project",
+          "report": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\.hyperframes\\artifacts\\checks\\70100c0c-ea9f-4343-9274-9b7ff6c7035b.json",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792269586524,
+          "contentHash": "1b90c1086c992ffbf0f694099eeae737a64466a634907b4cdbded01d09e51158",
+          "revision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1",
+          "inputFingerprint": "66bd2bee0d21ede85b5c3f6b7d23c47c15f3cec31352ecb197f91274bc2877f5",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        }
+      ]
+    },
+    "unversioned": [
+      {
+        "id": "32f5a6be-3805-4c7e-93b6-003424a687cc",
+        "scope": "project",
+        "report": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\composition\\.hyperframes\\artifacts\\checks\\32f5a6be-3805-4c7e-93b6-003424a687cc.json",
+        "metadata": {
+          "ok": false,
+          "browserSkipped": true,
+          "options": {
+            "samples": 9,
+            "atTransitions": false,
+            "maxIssues": 80,
+            "collapseStatic": true,
+            "tolerance": 2,
+            "timeout": 3000,
+            "contrast": true,
+            "strict": false,
+            "snapshots": false,
+            "browserGpuMode": "auto"
+          }
+        },
+        "createdAt": 1792269415007,
+        "contentHash": "f138b72889253215afed252019377e3c7734da984bf84828a6bb3d1131c4b1b7",
+        "revision": null,
+        "inputFingerprint": "d6a66beec4860fb4f8fbc36599570a296960fb29553949b4645f7948a01f42fa",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      }
+    ]
+  },
+  "snapshots": {
+    "latest": {
+      "revision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1",
+      "id": "7224783d-b377-4e05-960d-f1f2be1a6e31-2"
+    },
+    "revisions": {
+      "5eb3c111-4f99-43e8-9343-73adad84cacd": [
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-0",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-00-at-6s.png",
+          "time": 6,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533039,
+          "contentHash": "43ab85c5c2b238f4e76cd6393baaf15b3271acfdcb263533d23fd74acb313aee",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-1",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-01-at-12.5s.png",
+          "time": 12.5,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533039,
+          "contentHash": "507e28ec041b19015f234aba0a3cfb923ce59541e22333f0d33fae442a33a134",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-2",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-02-at-18s.png",
+          "time": 18,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533039,
+          "contentHash": "6785a7ce8759623a57c0d413a73923fce92dec83a586ba627ae649080bc21303",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-3",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-03-at-27s.png",
+          "time": 27,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533039,
+          "contentHash": "29a18c1bac13c6900ed94110c2f2f24a3ca7dfd12449b057726b14e84425290d",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-4",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-04-at-34s.png",
+          "time": 34,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533039,
+          "contentHash": "b3c82af7f10522309cbd45ebc285ce8d9cf4d05e769f849ea9ffc7f567b11e9d",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-5",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-05-at-48.5s.png",
+          "time": 48.5,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533040,
+          "contentHash": "7ea58750b8207e2480a2b8afb8d20d0d8ad8f029a505a678da9d1c886c1bbc5e",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-6",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-06-at-56s.png",
+          "time": 56,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533040,
+          "contentHash": "6e4d87c72fe51c190b7d4f3fdc126222dd98aa4cfddb764b906c6bf0d0e99ba9",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-7",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-07-at-60.4s.png",
+          "time": 60.4,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533040,
+          "contentHash": "d51b5aa4ad14f2841209e76269589af1ea85f110fd65460b2922dcb2e5d4627f",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-8",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-08-at-64s.png",
+          "time": 64,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533040,
+          "contentHash": "7baecbf2cbd219f8cec8502f7025616f4bf42063c267fd56908253df27a4b07a",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-9",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-09-at-71s.png",
+          "time": 71,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533041,
+          "contentHash": "3bc7a80936c632e3174acf41e657b51f4721d74b7d6f88cb0e0a2f9c8d08431b",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-10",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-10-at-77s.png",
+          "time": 77,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533041,
+          "contentHash": "000c8fdca6510c73cce0300e89b7a51863c12b1d7b5e5d7dc33dc7bc9ddf750a",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-11",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-11-at-81.5s.png",
+          "time": 81.5,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533042,
+          "contentHash": "19a9e274466ffaf68332a49403f8c0b7a1b0a1818355ad9004662c0d2d20068f",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-12",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-12-at-86.5s.png",
+          "time": 86.5,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533043,
+          "contentHash": "71295d8e014dcccd84867935d69e92c9be93a293accd60f676ff2ca37b136f4f",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-13",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-13-at-92s.png",
+          "time": 92,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533043,
+          "contentHash": "570625231c51a1c92a48f7ff3e8f99791a8153f4ffc7d2ba49e15cb43f8f389b",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-14",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-14-at-97.5s.png",
+          "time": 97.5,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533044,
+          "contentHash": "872da2ddb000a04758890d6512d27066ecd39f25d8a82cd10f96cbc025513158",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-15",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-15-at-102s.png",
+          "time": 102,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533044,
+          "contentHash": "802ef3625c97556a150b8a12a654b8f78dfe08cdecb9b5902062118d8de7d4a7",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-16",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-16-at-107s.png",
+          "time": 107,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533045,
+          "contentHash": "46935917e8d39e72b9cb75a4187b7d70c582c6e321b361bf1c6c98f2a306edb2",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "98f53619-0e9a-4f0a-a618-fe1a429c320b-17",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps\\frame-17-at-119s.png",
+          "time": 119,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269533046,
+          "contentHash": "ec9abbff37742d3580353e2e59cc472f0f8d6f7112aec32f06ffaec9eb5f0337",
+          "revision": "5eb3c111-4f99-43e8-9343-73adad84cacd",
+          "inputFingerprint": "4b06cecf4e6520eb8470a8538294d352931652d5dbadb0862976521695703ab9",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        }
+      ],
+      "9644b54d-823c-46f9-b6d2-57d3831c4ab1": [
+        {
+          "scope": "full",
+          "id": "7224783d-b377-4e05-960d-f1f2be1a6e31-0",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps2\\frame-00-at-56s.png",
+          "time": 56,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269593396,
+          "contentHash": "47f1b50318777646472287db7791b91412818f308042f38d261ad89f16c5bbc6",
+          "revision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1",
+          "inputFingerprint": "66bd2bee0d21ede85b5c3f6b7d23c47c15f3cec31352ecb197f91274bc2877f5",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "7224783d-b377-4e05-960d-f1f2be1a6e31-1",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps2\\frame-01-at-81.5s.png",
+          "time": 81.5,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269593397,
+          "contentHash": "744084bae38835d1082e56f804738ddd320f8268034192024261adb3d03670f4",
+          "revision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1",
+          "inputFingerprint": "66bd2bee0d21ede85b5c3f6b7d23c47c15f3cec31352ecb197f91274bc2877f5",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "7224783d-b377-4e05-960d-f1f2be1a6e31-2",
+          "image": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\snaps2\\frame-02-at-95s.png",
+          "time": 95,
+          "metadata": {
+            "width": 1920,
+            "height": 1080,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792269593398,
+          "contentHash": "da8e223aa9c64e836ba98d5a02b2e9c7af5902100ef0f96d318d47f148cd4934",
+          "revision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1",
+          "inputFingerprint": "66bd2bee0d21ede85b5c3f6b7d23c47c15f3cec31352ecb197f91274bc2877f5",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        }
+      ]
+    },
+    "unversioned": []
+  },
+  "renders": {
+    "latest": {
+      "id": "8ba083d5-c34f-4d55-ac66-c8dfd036af6a",
+      "completedAt": 1792269825249,
+      "output": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\brag-output-2026-10-17-170906\\work\\render.mp4",
+      "status": "completed",
+      "revision": "9644b54d-823c-46f9-b6d2-57d3831c4ab1"
+    },
+    "retainedRevisions": [
+      "9644b54d-823c-46f9-b6d2-57d3831c4ab1"
+    ]
+  },
+  "pendingArtifactCleanup": []
+}

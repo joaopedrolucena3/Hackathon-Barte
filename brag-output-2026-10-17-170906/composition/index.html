@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="pt-BR" data-resolution="landscape">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="assets/gsap.min.js"></script>
+<style>
+@font-face { font-family: Inter; src: url(assets/fonts/inter.woff2) format('woff2'); font-weight: 100 900; }
+:root {
+  --ink-950: #14040a; --ink-900: #22060f; --ink-800: #430117;
+  --accent: #de325d; --side-accent: #ff7a9c; --side-strong: #f6e9ec; --side-muted: #b08d96;
+  --good: #1f8a5b; --warn: #d08700;
+  --brand-gradient: linear-gradient(135deg, #de325d 0%, #b40037 55%, #5a021f 100%);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--ink-950); }
+#root { position: relative; width: 1920px; height: 1080px; overflow: hidden; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+.bg { position: absolute; inset: 0; background: radial-gradient(90% 70% at 12% 0%, #de325d30, transparent 60%), radial-gradient(70% 60% at 100% 100%, #5a021f66, transparent 70%), linear-gradient(180deg, var(--ink-900), var(--ink-950)); }
+
+.scene { position: absolute; inset: 0; }
+.stage { position: absolute; left: 0; top: 0; width: 1920px; height: 900px; overflow: hidden; }
+.cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+.cam .shot, .cam .vid { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; object-fit: cover; }
+.sublayer { position: absolute; inset: 0; }
+.hl { position: absolute; border: 4px solid var(--accent); border-radius: 10px; opacity: 0; box-shadow: 0 0 22px #de325d99, 0 0 0 4000px rgba(20, 4, 10, var(--dim)); }
+.cursor { position: absolute; left: 0; top: 0; width: 44px; height: 44px; opacity: 0; filter: drop-shadow(0 6px 10px #0006); transform-origin: 4px 2px; }
+
+/* top strip: scenario badge + conclusion title */
+.top { position: absolute; left: 32px; top: 26px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; max-width: 1400px; }
+.badge { padding: 7px 16px; border-radius: 999px; background: #14040ae6; border: 1px solid #ffffff2a; color: #f2d5dd; font-size: 22px; font-weight: 600; letter-spacing: 0.2px; }
+.title { padding: 12px 22px; border-radius: 14px; background: #1a0510ee; border: 1px solid #ffffff1c; color: #fff; font-size: 34px; font-weight: 700; letter-spacing: -0.8px; box-shadow: 0 16px 50px #00000060; }
+
+/* bottom band: chapter + captions */
+.band { position: absolute; left: 0; top: 900px; width: 1920px; height: 180px; background: linear-gradient(180deg, #1c0610, #12030a); border-top: 1px solid #ffffff14; }
+.chapter { position: absolute; left: 40px; top: 30px; width: 300px; color: var(--side-accent); font-size: 21px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; line-height: 1.3; }
+.caption { position: absolute; left: 360px; top: 918px; width: 1520px; height: 144px; display: flex; align-items: center; }
+.caption span { color: #fff; font-size: 38px; font-weight: 600; line-height: 1.3; letter-spacing: -0.4px; }
+
+/* html cards */
+.card-stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 60px; }
+.acc { color: var(--side-accent); }
+.hero { text-align: center; }
+.hero-k { font-size: 32px; color: var(--side-muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.hero-v { font-size: 200px; font-weight: 800; letter-spacing: -8px; margin-top: 10px; background: linear-gradient(100deg, #ff7a9c, #de325d 60%); -webkit-background-clip: text; background-clip: text; color: transparent; font-variant-numeric: tabular-nums; }
+.hero-s { font-size: 34px; color: var(--side-strong); font-weight: 500; margin-top: 6px; }
+.hero-q { font-size: 56px; font-weight: 700; letter-spacing: -1.6px; margin-top: 44px; }
+
+.sources { display: grid; grid-template-columns: repeat(5, 320px); gap: 22px; }
+.src { padding: 30px 26px; border-radius: 22px; background: #ffffff0d; border: 1px solid #ffffff1f; min-height: 220px; display: flex; flex-direction: column; gap: 16px; }
+.src b { font-size: 31px; font-weight: 700; letter-spacing: -0.6px; }
+.src span { font-size: 19px; color: var(--side-muted); font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+
+.nums { display: flex; gap: 40px; }
+.num { width: 760px; padding: 44px 46px; border-radius: 30px; background: #ffffff0d; border: 1px solid #ffffff1f; }
+.num .v { font-size: 92px; font-weight: 800; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
+.num .l { font-size: 38px; font-weight: 700; margin-top: 10px; color: var(--side-strong); }
+.num .d { font-size: 28px; color: var(--side-muted); margin-top: 8px; }
+.num .split { display: flex; flex-direction: column; gap: 8px; margin-top: 26px; padding-top: 22px; border-top: 1px solid #ffffff1f; font-size: 27px; color: #ecd7dd; }
+.foot { margin-top: 34px; font-size: 30px; color: var(--side-accent); font-weight: 700; letter-spacing: 0.4px; }
+
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; opacity: 0; background: #14040acc; padding-top: 70px; }
+.cols { display: flex; gap: 28px; }
+.col { width: 480px; padding: 34px 34px; border-radius: 26px; background: #ffffff10; border: 1px solid #ffffff22; }
+.ck { font-size: 26px; font-weight: 800; color: var(--side-accent); letter-spacing: 1.2px; text-transform: uppercase; }
+.ct { font-size: 42px; font-weight: 700; margin-top: 12px; letter-spacing: -1px; }
+.cd { font-size: 26px; color: #e3c9d0; margin-top: 12px; line-height: 1.35; }
+.nots { font-size: 30px; color: var(--side-strong); font-weight: 600; max-width: 1500px; text-align: center; line-height: 1.4; }
+.limits { display: flex; flex-direction: column; gap: 18px; }
+.limits div { font-size: 40px; font-weight: 650; padding: 20px 34px; border-radius: 18px; background: #ffffff10; border: 1px solid #ffffff22; }
+
+.close { display: flex; flex-direction: column; align-items: center; gap: 40px; text-align: center; max-width: 1640px; }
+.prio-row { display: flex; gap: 22px; }
+.prio-row span { padding: 18px 28px; border-radius: 16px; background: #ffffff10; border: 1px solid #ffffff22; font-size: 32px; font-weight: 650; }
+.cl-p { font-size: 40px; color: var(--side-strong); font-weight: 550; line-height: 1.35; }
+.cl-t { font-size: 52px; font-weight: 750; letter-spacing: -1.4px; line-height: 1.25; }
+.brand { display: flex; align-items: center; font-size: 64px; font-weight: 750; letter-spacing: -2.6px; }
+.brand-mark { display: inline-grid; place-items: center; width: 76px; height: 76px; border-radius: 22px; background: var(--brand-gradient); font-size: 48px; font-weight: 800; letter-spacing: 0; margin-right: 18px; box-shadow: 0 12px 40px #de325d66; }
+.brand-dot { color: var(--side-accent); }
+.motto { font-size: 30px; font-weight: 500; color: var(--side-muted); letter-spacing: 0; margin-left: 26px; }
+.vstage { position: absolute; left: 0; top: 0; width: 1920px; height: 900px; overflow: hidden; }
+
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="122.8" data-width="1920" data-height="1080">
+  <div class="bg"></div>
+  <div class="vstage"><div class="cam" id="sc-s04-vcam"><video class="clip vid" id="sc-s04-video" data-start="30.027" data-duration="7.2" data-track-index="4" muted playsinline src="assets/clips/sep_run.mp4"></video></div></div>
+  <div class="vstage"><div class="cam" id="sc-s07-vcam"><video class="clip vid" id="sc-s07-video" data-start="61.076" data-duration="4.467" data-track-index="4" muted playsinline src="assets/clips/oct_run.mp4"></video></div></div>
+  <div class="vstage"><div class="cam" id="sc-s09-vcam"><video class="clip vid" id="sc-s09-video" data-start="74.74" data-duration="3.4" data-track-index="4" muted playsinline src="assets/clips/oct_decide.mp4"></video></div></div>
+  <section class="clip scene" id="sc-s01" data-start="0" data-duration="9.555" data-track-index="1">
+    <div class="stage"><div class="card-stage">
+    <div class="hero">
+      <div class="hero-k">Casa do Estudante · divergências líquidas</div>
+      <div class="hero-v" data-at="0.4">R$ 15.397,42</div>
+      <div class="hero-s" data-at="1.6">118 operações em setembro · sujeitas a contestação/devolução</div>
+      <div class="hero-q" data-at="3.8">A Casa tinha isenção. <span class="acc">A cobrança continuou.</span></div>
+    </div></div></div>
+    <div class="top"><div class="badge">Base sintética — setembro/2026</div><div class="title">A isenção não chegou à cobrança</div></div>
+    <div class="band"><div class="chapter">O problema</div></div>
+  </section>
+  <section class="clip scene" id="sc-s02" data-start="9.555" data-duration="10.827" data-track-index="1">
+    <div class="stage"><div class="cam" id="sc-s02-cam"><img class="shot" src="assets/img/sep_tx_a.jpg" alt=""><div class="hl" id="sc-s02-cam-b0" style="left:372px;top:798px;width:998px;height:54px;--dim:0.28"></div><div class="hl" id="sc-s02-cam-b1" style="left:1190px;top:806px;width:80px;height:38px;--dim:0"></div><div class="hl" id="sc-s02-cam-b2" style="left:1400px;top:734px;width:372px;height:58px;--dim:0"></div></div></div>
+    <div class="top"><div class="badge">Base sintética — setembro/2026</div><div class="title">Uma venda mostra a falha: 0% contratado, 2,69% aplicado</div></div>
+    <div class="band"><div class="chapter">O problema</div></div>
+  </section>
+  <section class="clip scene" id="sc-s03" data-start="20.381" data-duration="9.545" data-track-index="1">
+    <div class="stage"><div class="card-stage">
+    <div class="sources">
+      <div class="src" data-at="2.6"><b>Orbe</b><span>01_orbe_relatorio_comissoes_set2026.csv</span></div>
+      <div class="src" data-at="3.6"><b>Contratos e taxas</b><span>02_tabela_taxas_contratadas.xlsx</span></div>
+      <div class="src" data-at="4.6"><b>Ponte Câmbio · e-mail</b><span>03_email_ponte_cambio_relatorio_set2026.eml</span></div>
+      <div class="src" data-at="5.6"><b>Extratos Aurora e Meridiano</b><span>05a_…aurora….csv · 05b_…meridiano….ofx</span></div>
+      <div class="src" data-at="6.8"><b>Plano de contas Fênix</b><span>04_plano_de_contas_fenix_erp.csv</span></div>
+    </div></div></div>
+    <div class="top"><div class="badge">Esquema</div><div class="title">Contrato, vigência e operação estão em fontes separadas</div></div>
+    <div class="band"><div class="chapter">A solução</div></div>
+  </section>
+  <section class="clip scene" id="sc-s04" data-start="29.927" data-duration="7.625" data-track-index="1">
+    <div class="stage"></div>
+    <div class="top"><div class="badge">Base sintética — setembro/2026</div><div class="title">Regras calculam; a execução para antes do ERP</div></div>
+    <div class="band"><div class="chapter">A solução</div></div>
+  </section>
+  <section class="clip scene" id="sc-s05" data-start="37.552" data-duration="12.725" data-track-index="1">
+    <div class="stage"><div class="card-stage">
+    <div class="nums">
+      <div class="num" data-at="0.3"><div class="v">R$ 246.588,68</div><div class="l">Faturamento proposto</div>
+        <div class="d">21 notas a preparar, sujeitas à revisão</div>
+        <div class="split"><span>20 de checkout · R$ 207.045,23</span><span>1 para a Ponte · R$ 39.543,45</span></div></div>
+      <div class="num" data-at="6.5"><div class="v">R$ 22.173,57</div><div class="l">237 divergências de taxa</div>
+        <div class="d">soma dos valores absolutos · não é perda</div>
+        <div class="split"><span>inclui a Casa do Estudante · R$ 15.397,42</span></div></div>
+    </div>
+    <div class="foot" data-at="8.5">Medidas diferentes · não se somam</div></div></div>
+    <div class="top"><div class="badge">Base sintética — setembro/2026</div><div class="title">Faturamento e divergências são medidas distintas</div></div>
+    <div class="band"><div class="chapter">O dinheiro em jogo</div></div>
+  </section>
+  <section class="clip scene" id="sc-s06" data-start="50.277" data-duration="8.799" data-track-index="1">
+    <div class="stage"><div class="cam" id="sc-s06-cam"><img class="shot" src="assets/img/sep_cambio_footer.jpg" alt=""><div class="hl" id="sc-s06-cam-b0" style="left:800px;top:318px;width:270px;height:176px;--dim:0.2"></div><div class="hl" id="sc-s06-cam-b1" style="left:1276px;top:826px;width:256px;height:28px;--dim:0"></div></div></div>
+    <div class="top"><div class="badge">Base sintética — setembro/2026</div><div class="title">Competência pela contratação: R$ 1.039,37 ficam em setembro</div></div>
+    <div class="band"><div class="chapter">O dinheiro em jogo</div></div>
+  </section>
+  <section class="clip scene" id="sc-s07" data-start="59.076" data-duration="6.467" data-track-index="1">
+    <div class="stage"><div class="sublayer" id="sc-s07-dl"><div class="cam" id="sc-s07-cam"><img class="shot" src="assets/img/oct_2_drawer.jpg" alt=""></div></div><svg class="cursor" id="sc-s07-cur" viewBox="0 0 24 24"><path d="M4 2 L4 20 L9 15.5 L12.5 22 L15.5 20.6 L12.2 14.3 L19 14 Z" fill="#fff" stroke="#14040a" stroke-width="1.4" stroke-linejoin="round"/></svg></div>
+    <div class="top"><div class="badge">Cenário de teste — outubro/2026</div><div class="title">Outubro roda com o pacote do mês</div></div>
+    <div class="band"><div class="chapter">Outubro · cenário de teste</div></div>
+  </section>
+  <section class="clip scene" id="sc-s08" data-start="65.543" data-duration="9.097" data-track-index="1">
+    <div class="stage"><div class="cam" id="sc-s08-cam"><img class="shot" src="assets/img/oct_rev_vela.jpg" alt=""><div class="hl" id="sc-s08-cam-b0" style="left:372px;top:762px;width:998px;height:92px;--dim:0.28"></div><div class="hl" id="sc-s08-cam-b1" style="left:1400px;top:726px;width:380px;height:84px;--dim:0"></div></div></div>
+    <div class="top"><div class="badge">Cenário de teste — outubro/2026</div><div class="title">Contrato ambíguo exige revisão</div></div>
+    <div class="band"><div class="chapter">Outubro · cenário de teste</div></div>
+  </section>
+  <section class="clip scene" id="sc-s09" data-start="74.64" data-duration="7.903" data-track-index="1">
+    <div class="stage"><div class="sublayer" id="sc-s09-sl"><div class="cam" id="sc-s09-cam"><img class="shot" src="assets/img/oct_dec_3.jpg" alt=""><div class="hl" id="sc-s09-cam-b0" style="left:1400px;top:530px;width:372px;height:126px;--dim:0.2"></div><div class="hl" id="sc-s09-cam-b1" style="left:380px;top:894px;width:200px;height:30px;--dim:0"></div><div class="hl" id="sc-s09-cam-b2" style="left:1594px;top:890px;width:182px;height:40px;--dim:0"></div></div></div></div>
+    <div class="top"><div class="badge">Cenário de teste — outubro/2026</div><div class="title">Bloqueante aberta impede aprovar</div></div>
+    <div class="band"><div class="chapter">Outubro · cenário de teste</div></div>
+  </section>
+  <section class="clip scene" id="sc-s10" data-start="82.543" data-duration="5.727" data-track-index="1">
+    <div class="stage"><div class="cam" id="sc-s10-cam"><img class="shot" src="assets/img/com_2.jpg" alt=""><div class="hl" id="sc-s10-cam-b0" style="left:900px;top:296px;width:1000px;height:112px;--dim:0.28"></div><div class="hl" id="sc-s10-cam-b1" style="left:900px;top:478px;width:1000px;height:70px;--dim:0"></div></div></div>
+    <div class="top"><div class="badge">Cenário de teste — outubro/2026</div><div class="title">Comunicação só sai com permissão</div></div>
+    <div class="band"><div class="chapter">Outubro · cenário de teste</div></div>
+  </section>
+  <section class="clip scene" id="sc-s11" data-start="88.269" data-duration="10.264" data-track-index="1">
+    <div class="stage"><div class="cam" id="sc-s11-cam"><img class="shot" src="assets/img/sep_chat.jpg" alt=""><div class="hl" id="sc-s11-cam-b0" style="left:648px;top:862px;width:1146px;height:46px;--dim:0.28"></div></div><div class="overlay" id="sc-s11-ov"><div class="cols mini"><div class="col"><div class="ck">IA</div><div class="ct">Ajuda a consultar</div><div class="cd">Chat só de leitura; números vêm de consultas conferidas</div></div><div class="col"><div class="ck">Regras</div><div class="ct">Calculam os valores</div><div class="cd">Fixas e reproduzíveis</div></div><div class="col"><div class="ck">Financeiro</div><div class="ct">Decide e aprova</div><div class="cd">Com justificativa registrada</div></div></div><div class="nots mini">A IA não inventa contrato, não escolhe taxa, não altera dados, não aprova, não paga.</div></div></div>
+    <div class="top"><div class="badge">Base sintética — setembro/2026</div><div class="title">IA consulta · Regras calculam · Financeiro decide</div></div>
+    <div class="band"><div class="chapter">O papel da IA</div></div>
+  </section>
+  <section class="clip scene" id="sc-s12" data-start="98.533" data-duration="12.143" data-track-index="1">
+    <div class="stage"><div class="cam" id="sc-s12-cam"><img class="shot" src="assets/img/sep_rev_atlas.jpg" alt=""><div class="hl" id="sc-s12-cam-b0" style="left:372px;top:798px;width:998px;height:54px;--dim:0.28"></div><div class="hl" id="sc-s12-cam-b1" style="left:1400px;top:770px;width:380px;height:80px;--dim:0"></div></div><div class="overlay" id="sc-s12-ov"><div class="limits mini"><div>Saída do Fênix ainda sem homologação</div><div>Não emite NFS-e · não executa pagamentos</div><div>Apenas formatos conhecidos · ambiente local</div></div></div></div>
+    <div class="top"><div class="badge">Base sintética — setembro/2026</div><div class="title">Contrato ausente exige revisão</div></div>
+    <div class="band"><div class="chapter">Limites</div></div>
+  </section>
+  <section class="clip scene" id="sc-s13" data-start="110.676" data-duration="12.048" data-track-index="1">
+    <div class="stage"><div class="card-stage">
+    <div class="close">
+      <div class="prio-row" data-at="0.3"><span>1 · Piloto acompanhado pelo financeiro</span><span>2 · Homologação com o Fênix</span><span>3 · Uso em equipe</span></div>
+      <div class="cl-p" data-at="5.0">Rodar o próximo fechamento junto com a rotina atual e comparar, item por item, notas, divergências e pendências.</div>
+      <div class="cl-t" data-at="7.4">Cada valor ligado ao <span class="acc">contrato certo</span>, à <span class="acc">competência certa</span> e à <span class="acc">evidência</span> que permite aprová-lo.</div>
+      <div class="brand" data-at="9.2"><span class="brand-mark">t</span>tarvo<span class="brand-dot">.</span><span class="motto">cada número tem uma origem</span></div>
+    </div></div></div>
+    <div class="top"><div class="title">Próximo passo: um ciclo acompanhado</div></div>
+    <div class="band"><div class="chapter">Próximo passo</div></div>
+  </section>
+  <div class="clip caption" id="cap-0" data-start="0.4" data-duration="3.222" data-track-index="2"><span>R$ 15.397,42.</span></div>
+  <div class="clip caption" id="cap-1" data-start="3.772" data-duration="5.633" data-track-index="2"><span>A Casa do Estudante tinha isenção de MDR e antecipação. A Orbe continuou cobrando.</span></div>
+  <div class="clip caption" id="cap-2" data-start="9.755" data-duration="6.998" data-track-index="2"><span>Numa venda de R$ 608,88, a Orbe aplicou 2,69%. O contrato diz 0%.</span></div>
+  <div class="clip caption" id="cap-3" data-start="16.903" data-duration="3.328" data-track-index="2"><span>O acordo estava na planilha, mas não chegou à cobrança.</span></div>
+  <div class="clip caption" id="cap-4" data-start="20.581" data-duration="5.511" data-track-index="2"><span>Para ver isso, alguém precisa ligar contrato, vigência e operação em fontes separadas: Orbe,</span></div>
+  <div class="clip caption" id="cap-5" data-start="26.092" data-duration="3.685" data-track-index="2"><span>taxas, Ponte Câmbio, extratos e o plano de contas do Fênix.</span></div>
+  <div class="clip caption" id="cap-6" data-start="30.127" data-duration="5.686" data-track-index="2"><span>A plataforma lê esses arquivos, calcula pelas regras definidas e para antes do ERP,</span></div>
+  <div class="clip caption" id="cap-7" data-start="35.813" data-duration="1.589" data-track-index="2"><span>esperando uma pessoa.</span></div>
+  <div class="clip caption" id="cap-8" data-start="37.752" data-duration="6.102" data-track-index="2"><span>Em setembro, são R$ 246.588,68 de faturamento proposto, em 21 notas.</span></div>
+  <div class="clip caption" id="cap-9" data-start="44.004" data-duration="6.123" data-track-index="2"><span>E R$ 22.173,57 em divergências, em valor absoluto. Não é perda: é o que merece conferência.</span></div>
+  <div class="clip caption" id="cap-10" data-start="50.477" data-duration="5.306" data-track-index="2"><span>Seis remessas contratadas em 30/09 foram liquidadas em 01/10. Pela liquidação,</span></div>
+  <div class="clip caption" id="cap-11" data-start="55.783" data-duration="3.143" data-track-index="2"><span>R$ 1.039,37 de comissão sairiam de setembro.</span></div>
+  <div class="clip caption" id="cap-12" data-start="59.376" data-duration="4.2" data-track-index="2"><span>Em outubro, num pacote sintético de teste, a analista escolhe o mês,</span></div>
+  <div class="clip caption" id="cap-13" data-start="63.576" data-duration="1.817" data-track-index="2"><span>roda e confere as entradas.</span></div>
+  <div class="clip caption" id="cap-14" data-start="65.743" data-duration="4.208" data-track-index="2"><span>A Vela tem dois contratos para a mesma data. A plataforma não escolhe:</span></div>
+  <div class="clip caption" id="cap-15" data-start="69.951" data-duration="4.539" data-track-index="2"><span>as operações ficam fora do faturamento, e a decisão vai para o Comercial.</span></div>
+  <div class="clip caption" id="cap-16" data-start="74.84" data-duration="5.378" data-track-index="2"><span>A analista registra a decisão, com justificativa. Com 63 bloqueantes abertas,</span></div>
+  <div class="clip caption" id="cap-17" data-start="80.218" data-duration="2.175" data-track-index="2"><span>a aprovação continua travada.</span></div>
+  <div class="clip caption" id="cap-18" data-start="82.743" data-duration="5.376" data-track-index="2"><span>Contestações viram sugestões com evidências, e só saem com permissão do responsável.</span></div>
+  <div class="clip caption" id="cap-19" data-start="88.569" data-duration="5.513" data-track-index="2"><span>A IA fica num chat de consulta, só de leitura. Ela ajuda a perguntar; as regras calculam;</span></div>
+  <div class="clip caption" id="cap-20" data-start="94.082" data-duration="4.301" data-track-index="2"><span>o financeiro decide. Nesta gravação, o chat não estava configurado.</span></div>
+  <div class="clip caption" id="cap-21" data-start="98.833" data-duration="4.402" data-track-index="2"><span>Onde falta informação, a solução para: a Atlas, sem contrato confirmado,</span></div>
+  <div class="clip caption" id="cap-22" data-start="103.235" data-duration="1.679" data-track-index="2"><span>fica fora do faturamento.</span></div>
+  <div class="clip caption" id="cap-23" data-start="105.064" data-duration="5.462" data-track-index="2"><span>O arquivo do Fênix ainda precisa de homologação, e não há emissão de nota nem pagamentos.</span></div>
+  <div class="clip caption" id="cap-24" data-start="110.976" data-duration="4.545" data-track-index="2"><span>Com mais um mês: piloto acompanhado, homologação com o Fênix e uso em equipe.</span></div>
+  <div class="clip caption" id="cap-25" data-start="115.671" data-duration="4.802" data-track-index="2"><span>Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar,</span></div>
+  <div class="clip caption" id="cap-26" data-start="120.473" data-duration="1.001" data-track-index="2"><span>item por item.</span></div>
+  <audio id="sfx-s05-0_3" data-start="37.852" data-duration="0.11" data-track-index="6" data-volume="0.3" src="assets/sfx/drop_001.ogg"></audio>
+  <audio id="sfx-s05-6_5" data-start="44.052" data-duration="0.11" data-track-index="6" data-volume="0.3" src="assets/sfx/drop_001.ogg"></audio>
+  <audio id="sfx-s07" data-start="60.476" data-duration="0.06" data-track-index="5" data-volume="0.45" src="assets/sfx/mouseclick1.ogg"></audio>
+  <audio id="music-0" data-start="0" data-duration="117.36" data-track-index="10" data-volume="0.11" data-fade-in="1" data-fade-out="2" src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"></audio>
+  <audio id="music-1" data-start="115.36" data-duration="7.44" data-track-index="11" data-volume="0.11" data-fade-in="2" data-fade-out="3" src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"></audio>
+  <audio id="vo" data-start="0" data-duration="122.724" data-track-index="3" data-volume="1" src="assets/vo/voiceover.wav"></audio>
+</div>
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+
+  // s01 · A isenção não chegou à cobrança
+  tl.fromTo('#sc-s01 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 0);
+  tl.fromTo('#sc-s01 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 0.15);
+  tl.to('#sc-s01 .stage, #sc-s01 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 9.305);
+  tl.fromTo('#sc-s01 [data-at="0.4"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.4);
+  tl.fromTo('#sc-s01 [data-at="1.6"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 1.6);
+  tl.fromTo('#sc-s01 [data-at="3.8"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 3.8);
+
+  // s02 · Uma venda mostra a falha: 0% contratado, 2,69% aplicado
+  tl.fromTo('#sc-s02 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 9.555);
+  tl.fromTo('#sc-s02 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 9.705);
+  tl.to('#sc-s02 .stage, #sc-s02 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 20.132);
+  tl.set('#sc-s02-cam', {"x":0,"y":-110,"scale":1}, 9.555);
+  tl.to('#sc-s02-cam', { ...{"x":-432,"y":-814,"scale":1.6}, duration: 0.9, ease: 'power2.inOut' }, 9.555);
+  tl.to('#sc-s02-cam', { ...{"x":-432,"y":-814,"scale":1.6}, duration: 1.1, ease: 'power2.inOut' }, 12.055);
+  tl.to('#sc-s02-cam', { ...{"x":-1534.8,"y":-918,"scale":1.8}, duration: 0.8, ease: 'power2.inOut' }, 13.155);
+  tl.fromTo('#sc-s02-cam-b0', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 10.455);
+  tl.to('#sc-s02-cam-b0', { opacity: 0, duration: 0.3 }, 13.555);
+  tl.fromTo('#sc-s02-cam-b1', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 11.955);
+  tl.to('#sc-s02-cam-b1', { opacity: 0, duration: 0.3 }, 13.555);
+  tl.fromTo('#sc-s02-cam-b2', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 14.155);
+
+  // s03 · Contrato, vigência e operação estão em fontes separadas
+  tl.fromTo('#sc-s03 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 20.381);
+  tl.fromTo('#sc-s03 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 20.531);
+  tl.to('#sc-s03 .stage, #sc-s03 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 29.676);
+  tl.fromTo('#sc-s03 [data-at="2.6"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 22.981);
+  tl.fromTo('#sc-s03 [data-at="3.6"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 23.981);
+  tl.fromTo('#sc-s03 [data-at="4.6"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 24.981);
+  tl.fromTo('#sc-s03 [data-at="5.6"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 25.981);
+  tl.fromTo('#sc-s03 [data-at="6.8"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 27.181);
+
+  // s04 · Regras calculam; a execução para antes do ERP
+  tl.fromTo('#sc-s04 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 29.927);
+  tl.fromTo('#sc-s04 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 30.077);
+  tl.to('#sc-s04 .stage, #sc-s04 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 37.302);
+  tl.set('#sc-s04-vcam', {"x":-160,"y":-76.4,"scale":1.12}, 29.927);
+  tl.to('#sc-s04-vcam', { ...{"x":-174.6,"y":-233.2,"scale":1.22}, duration: 1.1, ease: 'power2.inOut' }, 36.427);
+
+  // s05 · Faturamento e divergências são medidas distintas
+  tl.fromTo('#sc-s05 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 37.552);
+  tl.fromTo('#sc-s05 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 37.702);
+  tl.to('#sc-s05 .stage, #sc-s05 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 50.027);
+  tl.fromTo('#sc-s05 [data-at="0.3"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 37.852);
+  tl.fromTo('#sc-s05 [data-at="6.5"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 44.052);
+  tl.fromTo('#sc-s05 [data-at="8.5"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 46.052);
+
+  // s06 · Competência pela contratação: R$ 1.039,37 ficam em setembro
+  tl.fromTo('#sc-s06 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 50.277);
+  tl.fromTo('#sc-s06 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 50.427);
+  tl.to('#sc-s06 .stage, #sc-s06 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 58.826);
+  tl.set('#sc-s06-cam', {"x":0,"y":-70,"scale":1}, 50.277);
+  tl.to('#sc-s06-cam', { ...{"x":-480,"y":-250,"scale":1.25}, duration: 0.8, ease: 'power2.inOut' }, 50.277);
+  tl.fromTo('#sc-s06-cam-b0', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 51.177);
+  tl.fromTo('#sc-s06-cam-b1', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 54.877);
+
+  // s07 · Outubro roda com o pacote do mês
+  tl.fromTo('#sc-s07 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 59.076);
+  tl.fromTo('#sc-s07 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 59.226);
+  tl.to('#sc-s07 .stage, #sc-s07 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 65.293);
+  tl.set('#sc-s07-cam', {"x":-576,"y":-504,"scale":1.3}, 59.076);
+  tl.set('#sc-s07-vcam', {"x":-160,"y":-76.4,"scale":1.12}, 61.076);
+  tl.to('#sc-s07-vcam', { ...{"x":-174.6,"y":-233.2,"scale":1.22}, duration: 1.1, ease: 'power2.inOut' }, 64.476);
+  tl.set('#sc-s07-vcam', { opacity: 0 }, 59.076);
+  tl.to('#sc-s07-vcam', { opacity: 1, duration: 0.25 }, 61.076);
+  tl.to('#sc-s07-dl', { opacity: 0, duration: 0.25 }, 61.076);
+  tl.fromTo('#sc-s07-cur', { opacity: 0, x: 1563.8, y: 674.5 }, { opacity: 1, x: 1815.8, y: 850.5, duration: 0.9, ease: 'power2.inOut' }, 59.576);
+  tl.to('#sc-s07-cur', { scale: 0.85, duration: 0.08, yoyo: true, repeat: 1 }, 60.476);
+  tl.to('#sc-s07-cur', { opacity: 0, duration: 0.2 }, 61.076);
+
+  // s08 · Contrato ambíguo exige revisão
+  tl.fromTo('#sc-s08 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 65.543);
+  tl.fromTo('#sc-s08 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 65.693);
+  tl.to('#sc-s08 .stage, #sc-s08 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 74.39);
+  tl.set('#sc-s08-cam', {"x":0,"y":-180,"scale":1}, 65.543);
+  tl.to('#sc-s08-cam', { ...{"x":-498,"y":-495,"scale":1.35}, duration: 0.8, ease: 'power2.inOut' }, 65.543);
+  tl.fromTo('#sc-s08-cam-b0', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 66.143);
+  tl.fromTo('#sc-s08-cam-b1', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 68.543);
+
+  // s09 · Bloqueante aberta impede aprovar
+  tl.fromTo('#sc-s09 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 74.64);
+  tl.fromTo('#sc-s09 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 74.79);
+  tl.to('#sc-s09 .stage, #sc-s09 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 82.293);
+  tl.set('#sc-s09-vcam', {"x":-672,"y":-360,"scale":1.35}, 74.64);
+  tl.set('#sc-s09-cam', {"x":-384,"y":-396,"scale":1.2}, 74.64);
+  tl.fromTo('#sc-s09-sl', { opacity: 0 }, { opacity: 1, duration: 0.3 }, 78.24);
+  tl.fromTo('#sc-s09-cam-b0', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 78.44);
+  tl.fromTo('#sc-s09-cam-b1', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 79.24);
+  tl.fromTo('#sc-s09-cam-b2', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 79.84);
+
+  // s10 · Comunicação só sai com permissão
+  tl.fromTo('#sc-s10 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 82.543);
+  tl.fromTo('#sc-s10 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 82.693);
+  tl.to('#sc-s10 .stage, #sc-s10 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 88.02);
+  tl.set('#sc-s10-cam', {"x":0,"y":-10,"scale":1}, 82.543);
+  tl.to('#sc-s10-cam', { ...{"x":-864,"y":-130,"scale":1.45}, duration: 0.6, ease: 'power2.inOut' }, 82.543);
+  tl.fromTo('#sc-s10-cam-b0', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 83.343);
+  tl.fromTo('#sc-s10-cam-b1', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 85.143);
+
+  // s11 · IA consulta · Regras calculam · Financeiro decide
+  tl.fromTo('#sc-s11 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 88.269);
+  tl.fromTo('#sc-s11 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 88.419);
+  tl.to('#sc-s11 .stage, #sc-s11 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 98.283);
+  tl.set('#sc-s11-cam', {"x":0,"y":-180,"scale":1}, 88.269);
+  tl.to('#sc-s11-cam', { ...{"x":-576,"y":-504,"scale":1.3}, duration: 0.6, ease: 'power2.inOut' }, 88.269);
+  tl.fromTo('#sc-s11-cam-b0', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 95.469);
+  tl.fromTo('#sc-s11-ov', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 88.869);
+  tl.to('#sc-s11-ov', { opacity: 0, duration: 0.3 }, 95.269);
+
+  // s12 · Contrato ausente exige revisão
+  tl.fromTo('#sc-s12 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 98.533);
+  tl.fromTo('#sc-s12 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 98.683);
+  tl.to('#sc-s12 .stage, #sc-s12 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 110.426);
+  tl.set('#sc-s12-cam', {"x":0,"y":-180,"scale":1}, 98.533);
+  tl.to('#sc-s12-cam', { ...{"x":-498,"y":-495,"scale":1.35}, duration: 0.8, ease: 'power2.inOut' }, 98.533);
+  tl.fromTo('#sc-s12-cam-b0', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 99.133);
+  tl.to('#sc-s12-cam-b0', { opacity: 0, duration: 0.3 }, 104.833);
+  tl.fromTo('#sc-s12-cam-b1', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 101.133);
+  tl.to('#sc-s12-cam-b1', { opacity: 0, duration: 0.3 }, 104.833);
+  tl.fromTo('#sc-s12-ov', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 105.033);
+
+  // s13 · Próximo passo: um ciclo acompanhado
+  tl.fromTo('#sc-s13 .stage', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 110.676);
+  tl.fromTo('#sc-s13 .top', { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 110.826);
+  tl.to('#sc-s13 .stage, #sc-s13 .top', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 122.474);
+  tl.fromTo('#sc-s13 [data-at="0.3"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 110.976);
+  tl.fromTo('#sc-s13 [data-at="5.0"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 115.676);
+  tl.fromTo('#sc-s13 [data-at="7.4"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 118.076);
+  tl.fromTo('#sc-s13 [data-at="9.2"]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 119.876);
+
+  window.__timelines["main"] = tl;
+  tl.seek(0);
+</script>
+</body>
+</html>

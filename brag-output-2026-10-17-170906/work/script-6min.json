@@ -1,0 +1,393 @@
+{
+ "voice": "pf_dora",
+ "lang": "pt-br",
+ "gap_sentence": 0.35,
+ "scenes": [
+  {
+   "id": "s01",
+   "chapter": "Um acordo que não chegou à cobrança",
+   "lead": 0.6,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Quinze mil, trezentos e noventa e sete reais.",
+     "R$ 15.397,42."
+    ],
+    [
+     "É o valor das divergências da Casa do Estudante em setembro, em cento e dezoito operações.",
+     "É o valor das divergências da Casa do Estudante em setembro, em 118 operações."
+    ],
+    [
+     "A Casa tinha isenção de MDR e de antecipação. A Orbe continuou cobrando.",
+     "A Casa tinha isenção de MDR e de antecipação. A Orbe continuou cobrando."
+    ]
+   ]
+  },
+  {
+   "id": "s02",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Veja uma venda só, de seiscentos e oito reais e oitenta e oito centavos.",
+     "Veja uma venda só, de R$ 608,88."
+    ],
+    [
+     "A Orbe aplicou dois vírgula sessenta e nove por cento. O contrato vigente diz zero.",
+     "A Orbe aplicou 2,69%. O contrato vigente diz 0%."
+    ],
+    [
+     "A diferença calculada é de dezesseis reais e trinta e oito centavos.",
+     "A diferença calculada é de R$ 16,38."
+    ]
+   ]
+  },
+  {
+   "id": "s03",
+   "lead": 0.3,
+   "tail": 0.7,
+   "lines": [
+    [
+     "O erro não estava na conta. O acordo existia na planilha de taxas, mas não chegou à cobrança da adquirente.",
+     "O erro não estava na conta. O acordo existia na planilha de taxas, mas não chegou à cobrança da adquirente."
+    ],
+    [
+     "Para perceber, alguém precisa ligar contrato, vigência e operação, linha por linha.",
+     "Para perceber, alguém precisa ligar contrato, vigência e operação, linha por linha."
+    ]
+   ]
+  },
+  {
+   "id": "s04",
+   "chapter": "O que a analista ganha",
+   "lead": 0.4,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Hoje essa ligação depende de fontes separadas: Orbe, planilha de taxas, Ponte Câmbio por e-mail, extratos e o plano de contas do Fênix.",
+     "Hoje essa ligação depende de fontes separadas: Orbe, planilha de taxas, Ponte Câmbio por e-mail, extratos e o plano de contas do Fênix."
+    ],
+    [
+     "E há estornos, duplicidades, operações liquidadas no mês seguinte, cadastros sem contrato e entradas no banco que não são receita.",
+     "E há estornos, duplicidades, operações liquidadas no mês seguinte, cadastros sem contrato e entradas no banco que não são receita."
+    ]
+   ]
+  },
+  {
+   "id": "s05",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "A plataforma lê esses arquivos nos formatos conhecidos e organiza o fechamento em passos que a analista acompanha.",
+     "A plataforma lê esses arquivos nos formatos conhecidos e organiza o fechamento em passos que a analista acompanha."
+    ],
+    [
+     "No fim, ela para antes do ERP e espera uma pessoa.",
+     "No fim, ela para antes do ERP e espera uma pessoa."
+    ]
+   ]
+  },
+  {
+   "id": "s06",
+   "lead": 0.3,
+   "tail": 0.6,
+   "lines": [
+    [
+     "Em setembro, são duas medidas diferentes, que não se somam.",
+     "Em setembro, são duas medidas diferentes, que não se somam."
+    ],
+    [
+     "Duzentos e quarenta e seis mil, quinhentos e oitenta e oito reais de faturamento proposto, em vinte e uma notas a preparar.",
+     "R$ 246.588,68 de faturamento proposto, em 21 notas a preparar."
+    ],
+    [
+     "E vinte e dois mil, cento e setenta e três reais em duzentas e trinta e sete divergências de taxa, em valor absoluto. Não é perda: é o que merece conferência.",
+     "E R$ 22.173,57 em 237 divergências de taxa, em valor absoluto. Não é perda: é o que merece conferência."
+    ]
+   ]
+  },
+  {
+   "id": "s07",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Para cada valor, a analista vê a origem, a regra e quem decide. Aqui, a sugestão é contestar a diferença. Quem contesta é o financeiro.",
+     "Para cada valor, a analista vê a origem, a regra e quem decide. Aqui, a sugestão é contestar a diferença. Quem contesta é o financeiro."
+    ]
+   ]
+  },
+  {
+   "id": "s08",
+   "lead": 0.3,
+   "tail": 0.6,
+   "lines": [
+    [
+     "No banco, uma devolução de repasse de doze mil e quatrocentos reais voltou para a conta.",
+     "No banco, uma devolução de repasse de R$ 12.400,00 voltou para a conta."
+    ],
+    [
+     "O motivo ainda depende de confirmação, e a pendência fica com operações e tesouraria.",
+     "O motivo ainda depende de confirmação, e a pendência fica com operações e tesouraria."
+    ]
+   ]
+  },
+  {
+   "id": "s09",
+   "chapter": "Receita na competência correta",
+   "lead": 0.4,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Agora, um erro que uma leitura rápida dos relatórios provoca.",
+     "Agora, um erro que uma leitura rápida dos relatórios provoca."
+    ],
+    [
+     "Seis remessas foram contratadas em trinta de setembro e liquidadas em primeiro de outubro. Elas pertencem a setembro.",
+     "Seis remessas foram contratadas em 30/09 e liquidadas em 01/10. Elas pertencem a setembro."
+    ]
+   ]
+  },
+  {
+   "id": "s10",
+   "lead": 0.3,
+   "tail": 0.8,
+   "lines": [
+    [
+     "Se usássemos a data de liquidação, mil e trinta e nove reais e trinta e sete centavos de comissão ficariam fora do faturamento de setembro.",
+     "Se usássemos a data de liquidação, R$ 1.039,37 de comissão ficariam fora do faturamento de setembro."
+    ],
+    [
+     "A plataforma usa a data de contratação, e o filtro mostra exatamente essas seis operações.",
+     "A plataforma usa a data de contratação, e o filtro mostra exatamente essas seis operações."
+    ]
+   ]
+  },
+  {
+   "id": "s11",
+   "chapter": "Cenário de teste — outubro/2026",
+   "lead": 0.5,
+   "tail": 0.6,
+   "lines": [
+    [
+     "Agora, outubro. Este é um cenário de teste, um pacote sintético criado para ver se a solução funciona num mês novo.",
+     "Agora, outubro. Este é um cenário de teste, um pacote sintético criado para ver se a solução funciona num mês novo."
+    ],
+    [
+     "Nele, a Orbe já aplica a isenção da Casa. Os problemas são outros.",
+     "Nele, a Orbe já aplica a isenção da Casa. Os problemas são outros."
+    ]
+   ]
+  },
+  {
+   "id": "s12",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "A analista escolhe outubro, usa o pacote do mês e roda o fechamento.",
+     "A analista escolhe outubro, usa o pacote do mês e roda o fechamento."
+    ],
+    [
+     "Os passos acendem um a um, e a execução para na aprovação humana.",
+     "Os passos acendem um a um, e a execução para na aprovação humana."
+    ]
+   ]
+  },
+  {
+   "id": "s13",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Primeiro, ela confere as entradas: o que foi recebido, o que é válido e o que tem problema.",
+     "Primeiro, ela confere as entradas: o que foi recebido, o que é válido e o que tem problema."
+    ],
+    [
+     "Uma linha do extrato tem um número ilegível, e a Orbe tem operações duplicadas e conflitantes. Nada some em silêncio.",
+     "Uma linha do extrato tem um número ilegível, e a Orbe tem operações duplicadas e conflitantes. Nada some em silêncio."
+    ]
+   ]
+  },
+  {
+   "id": "s14",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "A Vela ganhou uma taxa nova sem encerrar a anterior: dois contratos para a mesma modalidade e data.",
+     "A Vela ganhou uma taxa nova sem encerrar a anterior: dois contratos para a mesma modalidade e data."
+    ],
+    [
+     "A plataforma não escolhe um deles. As vinte e duas operações ficam sem faturamento, e a decisão vai para o Comercial.",
+     "A plataforma não escolhe um deles. As 22 operações ficam sem faturamento, e a decisão vai para o Comercial."
+    ],
+    [
+     "O pacote também traz uma mudança de taxa da EduAbroad em dezesseis de outubro.",
+     "O pacote também traz uma mudança de taxa da EduAbroad em 16/10."
+    ]
+   ]
+  },
+  {
+   "id": "s15",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "A analista registra a decisão, com justificativa e com o seu nome.",
+     "A analista registra a decisão, com justificativa e com o seu nome."
+    ]
+   ]
+  },
+  {
+   "id": "s16",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Mesmo assim, ainda há sessenta e três pendências bloqueantes, e a aprovação continua travada.",
+     "Mesmo assim, ainda há 63 pendências bloqueantes, e a aprovação continua travada."
+    ],
+    [
+     "O próximo passo é resolver ou encaminhar os bloqueios, não forçar a exportação.",
+     "O próximo passo é resolver ou encaminhar os bloqueios, não forçar a exportação."
+    ]
+   ]
+  },
+  {
+   "id": "s17",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Para contestar com a Orbe ou a Ponte, a execução prepara uma mensagem com as ocorrências e as evidências.",
+     "Para contestar com a Orbe ou a Ponte, a execução prepara uma mensagem com as ocorrências e as evidências."
+    ],
+    [
+     "Nada sai sozinho: o responsável revisa e dá permissão. Nesta gravação, o e-mail não estava conectado, e nada foi enviado.",
+     "Nada sai sozinho: o responsável revisa e dá permissão. Nesta gravação, o e-mail não estava conectado, e nada foi enviado."
+    ]
+   ]
+  },
+  {
+   "id": "s18",
+   "lead": 0.3,
+   "tail": 0.7,
+   "lines": [
+    [
+     "Se chegar um complemento, ele gera uma nova execução, e a anterior fica preservada.",
+     "Se chegar um complemento, ele gera uma nova execução, e a anterior fica preservada."
+    ]
+   ]
+  },
+  {
+   "id": "s19",
+   "chapter": "O papel da IA",
+   "lead": 0.4,
+   "tail": 0.5,
+   "lines": [
+    [
+     "E a inteligência artificial? Ela está num chat de consulta. A analista pergunta, por exemplo: quais lojistas concentram as divergências desta execução?",
+     "E a inteligência artificial? Ela está num chat de consulta. A analista pergunta, por exemplo: quais lojistas concentram as divergências desta execução?"
+    ],
+    [
+     "O chat só lê os dados, e cada número da resposta vem de uma consulta conferida pelo servidor.",
+     "O chat só lê os dados, e cada número da resposta vem de uma consulta conferida pelo servidor."
+    ],
+    [
+     "Nesta gravação, o chat não estava configurado, então não mostramos nenhuma resposta.",
+     "Nesta gravação, o chat não estava configurado, então não mostramos nenhuma resposta."
+    ]
+   ]
+  },
+  {
+   "id": "s20",
+   "lead": 0.3,
+   "tail": 0.7,
+   "lines": [
+    [
+     "A divisão é deliberada. A IA ajuda a consultar. As regras calculam. O financeiro decide e aprova.",
+     "A divisão é deliberada. A IA ajuda a consultar. As regras calculam. O financeiro decide e aprova."
+    ],
+    [
+     "A IA não inventa contrato, não escolhe taxa, não altera dados e não aprova nada. E, sem o chat, cálculo e revisão continuam funcionando.",
+     "A IA não inventa contrato, não escolhe taxa, não altera dados e não aprova nada. E, sem o chat, cálculo e revisão continuam funcionando."
+    ]
+   ]
+  },
+  {
+   "id": "s21",
+   "chapter": "Onde a solução para",
+   "lead": 0.4,
+   "tail": 0.5,
+   "lines": [
+    [
+     "E quando falta informação? A Atlas tem cinquenta e sete registros, sete mil, oitocentos e setenta e seis reais, sem contrato vigente confirmado.",
+     "E quando falta informação? A Atlas tem 57 registros, R$ 7.876,05, sem contrato vigente confirmado."
+    ],
+    [
+     "Esse valor não comprova receita. Fica fora do faturamento até a confirmação.",
+     "Esse valor não comprova receita. Fica fora do faturamento até a confirmação."
+    ]
+   ]
+  },
+  {
+   "id": "s22",
+   "lead": 0.3,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Uma descrição bancária nova fica pendente para a Contabilidade. Uma bloqueante impede aprovar. E um e-mail com resultado incerto não é reenviado automaticamente.",
+     "Uma descrição bancária nova fica pendente para a Contabilidade. Uma bloqueante impede aprovar. E um e-mail com resultado incerto não é reenviado automaticamente."
+    ]
+   ]
+  },
+  {
+   "id": "s23",
+   "lead": 0.3,
+   "tail": 0.7,
+   "lines": [
+    [
+     "Há também limites atuais: só formatos conhecidos, saída do Fênix ainda sem homologação, sem emissão de nota fiscal, sem pagamentos e sem conciliação de parcelas com repasses agregados.",
+     "Há também limites atuais: só formatos conhecidos, saída do Fênix ainda sem homologação, sem emissão de nota fiscal, sem pagamentos e sem conciliação de parcelas com repasses agregados."
+    ],
+    [
+     "O envio real de e-mail depende de conta conectada e ainda não tem entrega externa comprovada.",
+     "O envio real de e-mail depende de conta conectada e ainda não tem entrega externa comprovada."
+    ]
+   ]
+  },
+  {
+   "id": "s24",
+   "chapter": "Com mais um mês",
+   "lead": 0.4,
+   "tail": 0.5,
+   "lines": [
+    [
+     "Com mais um mês: um piloto acompanhado pelo financeiro, medindo tempo de revisão, retrabalho e exceções bem tratadas.",
+     "Com mais um mês: um piloto acompanhado pelo financeiro, medindo tempo de revisão, retrabalho e exceções bem tratadas."
+    ],
+    [
+     "A homologação da saída com o Fênix. E o uso em equipe, separando quem prepara de quem aprova.",
+     "A homologação da saída com o Fênix. E o uso em equipe, separando quem prepara de quem aprova."
+    ]
+   ]
+  },
+  {
+   "id": "s25",
+   "lead": 0.4,
+   "tail": 2.5,
+   "lines": [
+    [
+     "Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar, item por item, notas, divergências e pendências.",
+     "Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar, item por item, notas, divergências e pendências."
+    ],
+    [
+     "Cada valor ligado ao contrato certo, à competência certa e à evidência que permite aprová-lo.",
+     "Cada valor ligado ao contrato certo, à competência certa e à evidência que permite aprová-lo."
+    ]
+   ]
+  }
+ ]
+}

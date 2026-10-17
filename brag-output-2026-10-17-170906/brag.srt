@@ -1,0 +1,107 @@
+1
+00:00:00,400 --> 00:00:03,622
+R$ 15.397,42.
+
+2
+00:00:03,772 --> 00:00:09,405
+A Casa do Estudante tinha isenção de MDR e antecipação. A Orbe continuou cobrando.
+
+3
+00:00:09,755 --> 00:00:16,753
+Numa venda de R$ 608,88, a Orbe aplicou 2,69%. O contrato diz 0%.
+
+4
+00:00:16,903 --> 00:00:20,231
+O acordo estava na planilha, mas não chegou à cobrança.
+
+5
+00:00:20,581 --> 00:00:26,092
+Para ver isso, alguém precisa ligar contrato, vigência e operação em fontes separadas: Orbe,
+
+6
+00:00:26,092 --> 00:00:29,777
+taxas, Ponte Câmbio, extratos e o plano de contas do Fênix.
+
+7
+00:00:30,127 --> 00:00:35,813
+A plataforma lê esses arquivos, calcula pelas regras definidas e para antes do ERP,
+
+8
+00:00:35,813 --> 00:00:37,402
+esperando uma pessoa.
+
+9
+00:00:37,752 --> 00:00:43,854
+Em setembro, são R$ 246.588,68 de faturamento proposto, em 21 notas.
+
+10
+00:00:44,004 --> 00:00:50,127
+E R$ 22.173,57 em divergências, em valor absoluto. Não é perda: é o que merece conferência.
+
+11
+00:00:50,477 --> 00:00:55,783
+Seis remessas contratadas em 30/09 foram liquidadas em 01/10. Pela liquidação,
+
+12
+00:00:55,783 --> 00:00:58,926
+R$ 1.039,37 de comissão sairiam de setembro.
+
+13
+00:00:59,376 --> 00:01:03,576
+Em outubro, num pacote sintético de teste, a analista escolhe o mês,
+
+14
+00:01:03,576 --> 00:01:05,393
+roda e confere as entradas.
+
+15
+00:01:05,743 --> 00:01:09,951
+A Vela tem dois contratos para a mesma data. A plataforma não escolhe:
+
+16
+00:01:09,951 --> 00:01:14,490
+as operações ficam fora do faturamento, e a decisão vai para o Comercial.
+
+17
+00:01:14,840 --> 00:01:20,218
+A analista registra a decisão, com justificativa. Com 63 bloqueantes abertas,
+
+18
+00:01:20,218 --> 00:01:22,393
+a aprovação continua travada.
+
+19
+00:01:22,743 --> 00:01:28,119
+Contestações viram sugestões com evidências, e só saem com permissão do responsável.
+
+20
+00:01:28,569 --> 00:01:34,082
+A IA fica num chat de consulta, só de leitura. Ela ajuda a perguntar; as regras calculam;
+
+21
+00:01:34,082 --> 00:01:38,383
+o financeiro decide. Nesta gravação, o chat não estava configurado.
+
+22
+00:01:38,833 --> 00:01:43,235
+Onde falta informação, a solução para: a Atlas, sem contrato confirmado,
+
+23
+00:01:43,235 --> 00:01:44,914
+fica fora do faturamento.
+
+24
+00:01:45,064 --> 00:01:50,526
+O arquivo do Fênix ainda precisa de homologação, e não há emissão de nota nem pagamentos.
+
+25
+00:01:50,976 --> 00:01:55,521
+Com mais um mês: piloto acompanhado, homologação com o Fênix e uso em equipe.
+
+26
+00:01:55,671 --> 00:02:00,473
+Nossa proposta: rodar o próximo fechamento junto com a rotina atual e comparar,
+
+27
+00:02:00,473 --> 00:02:01,474
+item por item.
