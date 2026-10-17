@@ -1,1 +1,7 @@
 openpyxl==3.1.5
+fastapi==0.115.14
+uvicorn==0.34.3
+python-multipart==0.0.20
+pyarrow==20.0.0
+jsonschema==4.24.0
+httpx==0.28.1

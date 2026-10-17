@@ -10,6 +10,7 @@ import { useAction } from '../state/useAction';
 import { Icon } from './Icon';
 import { Sheet } from './Overlay';
 import { Callout, Field, HashChip } from './ui';
+import { useToast } from './Toast';
 
 type Source = 'pack' | 'upload' | 'folder';
 
@@ -30,6 +31,7 @@ export function RunLauncher({ comp: initial, onClose, draft, steps }: { comp: st
   const { data: state } = useAppState();
   const { data: pipeline } = usePipeline();
   const { run, busy } = useAction();
+  const toast = useToast();
   const [comp, setComp] = useState(initial);
   const [source, setSource] = useState<Source>('pack');
   const [files, setFiles] = useState<InputFile[]>([]);
@@ -45,8 +47,9 @@ export function RunLauncher({ comp: initial, onClose, draft, steps }: { comp: st
       const created = await run('start', () => agent.createRun({ comp, source, files, folder, draft, steps }), { rethrow: true, invalidate: [['runs'], ['checklist']] });
       if (created) { onClose(); navigate(`/runs/${created.id}`); }
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) setConflict(String(error.data?.run_id || ''));
-      else throw error;
+      const detail = error instanceof ApiError ? error.data?.error as { code?: string; details?: { id?: string }[] } | undefined : undefined;
+      if (error instanceof ApiError && detail?.code === 'PERIOD_BUSY') setConflict(String(detail.details?.[0]?.id || ''));
+      else toast.error(error);
     }
   }
 
@@ -55,11 +58,11 @@ export function RunLauncher({ comp: initial, onClose, draft, steps }: { comp: st
       narrow
       eyebrow={draft ? 'Teste do pipeline' : 'Execução com um clique'}
       title={draft ? 'Testar pipeline em rascunho' : 'Rodar fechamento'}
-      sub={draft ? 'Roda até a aprovação humana e não gera exportação.' : 'O agente executa os passos do pipeline e para na aprovação humana antes do ERP.'}
+      sub={draft ? 'Executa os cálculos em rascunho, sem aprovação nem exportação.' : 'O agente executa os passos do pipeline e para na aprovação humana antes do ERP.'}
       onClose={onClose}
       footer={<>
         <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
-        <button type="button" className="btn primary lg" disabled={!!busy || (source === 'folder' && !folder.trim())} onClick={() => start().catch(() => {})}>
+        <button type="button" className="btn primary lg" disabled={!!busy || !comp || (source === 'upload' && missing.length > 0) || (source === 'folder' && !folder.trim())} onClick={() => start().catch(() => {})}>
           {busy ? <span className="spin" /> : <Icon name="play" />}{draft ? 'Testar' : 'Rodar'}
         </button>
       </>}

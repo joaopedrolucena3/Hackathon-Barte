@@ -19,6 +19,7 @@ function ManualControls({ task, comp }: { task: ChecklistTask; comp: string }) {
   const client = useQueryClient();
   const toast = useToast();
   const [comment, setComment] = useState(task.comment || '');
+  const [owner, setOwner] = useState(task.owner || '');
   const [editing, setEditing] = useState(false);
   const mutation = useMutation({
     mutationFn: (patch: Partial<ChecklistTask>) => agent.updateChecklistTask(task.id, patch),
@@ -37,6 +38,9 @@ function ManualControls({ task, comp }: { task: ChecklistTask; comp: string }) {
         onChange={event => mutation.mutate({ status: event.target.value as Status })}>
         {MANUAL.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
+      <input className="input sm" style={{ width: 160 }} value={owner} onChange={event => setOwner(event.target.value)}
+        aria-label={`Responsável por ${task.title}`} placeholder="Responsável" maxLength={160}
+        onBlur={() => { if (owner !== task.owner) mutation.mutate({ owner }); }} />
       {editing ? (
         <form className="row" style={{ gap: 6 }} onSubmit={event => { event.preventDefault(); mutation.mutate({ comment }); setEditing(false); }}>
           <input className="input sm" autoFocus value={comment} onChange={event => setComment(event.target.value)} placeholder="Comentário" style={{ width: 220 }} />
@@ -62,7 +66,7 @@ function TaskRow({ task, comp }: { task: ChecklistTask; comp: string }) {
           <Badge tone={task.kind === 'agent' ? 'info' : 'outline'}>{task.kind === 'agent' ? 'Agente' : 'Manual'}</Badge>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-          {task.kind === 'agent' ? `Revisor: ${task.reviewer}` : `Responsável: ${task.owner}`}
+          {task.kind === 'agent' ? `Revisor: ${task.reviewer || 'a definir'}` : `Responsável: ${task.owner || 'a definir'}`}
           {task.updated_at && ` · atualizado ${dateTimeBR(task.updated_at)}`}
           {task.updated_by && ` por ${task.updated_by}`}
           {task.comment && <> · <span className="text-2">“{task.comment}”</span></>}

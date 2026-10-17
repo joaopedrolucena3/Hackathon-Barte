@@ -58,7 +58,7 @@ function ApproveModal({ run, onClose }: { run: Run; onClose: () => void }) {
   return (
     <Modal eyebrow="Aprovação humana" title="Aprovar e exportar para o Fênix" sub="O lote segue para exportação. A decisão fica na trilha de auditoria." onClose={onClose}
       footer={<><button className="btn ghost" onClick={onClose}>Cancelar</button>
-        <button className="btn success" disabled={!!busy} onClick={async () => {
+        <button className="btn success" disabled={!!busy || !comment.trim()} onClick={async () => {
           if (await act('approve', () => agent.approve(run.id, comment), { success: 'Lote aprovado. Exportação em andamento.', invalidate: [keys.run(run.id), keys.approval(run.id), ['checklist'], ['runs']] })) onClose();
         }}><Icon name="check" />Aprovar e exportar</button></>}>
       {s && (
@@ -72,7 +72,7 @@ function ApproveModal({ run, onClose }: { run: Run; onClose: () => void }) {
             <div><dt>Excluídos do lote</dt><dd>{count(s.batch.excluded)}</dd></div>
           </dl>
           {s.open_alerts > 0 && <Callout tone="warning" icon="alert">{plural(s.open_alerts, 'alerta segue aberto', 'alertas seguem abertos')} e aparecem no relatório de exceções.</Callout>}
-          <Field label="Comentário da aprovação"><ReasonInput value={comment} onChange={setComment} required={false} suggestions={['Exceções revisadas', 'Alertas com responsável definido']} /></Field>
+          <Field label="Justificativa da aprovação" required><ReasonInput value={comment} onChange={setComment} required suggestions={['Exceções revisadas', 'Alertas com responsável definido']} /></Field>
         </div>
       )}
     </Modal>
@@ -102,7 +102,7 @@ function Downloads({ run }: { run: Run }) {
         {(run.exports || []).map(file => (
           <div key={file.name} className="download-card">
             <Icon name="file" />
-            <div className="grow"><strong>{file.name}</strong><span className="muted">{plural(file.rows, 'registro', 'registros')}</span></div>
+            <div className="grow"><strong>{file.name}</strong><span className="muted">{file.rows === undefined ? 'Documento de auditoria' : plural(file.rows, 'registro', 'registros')}</span></div>
             <HashChip hash={file.sha256} />
             <button className="btn sm" onClick={() => agent.downloadExport(run.id, file.name).catch(toast.error)}><Icon name="download" />Baixar</button>
           </div>
@@ -115,7 +115,7 @@ function Downloads({ run }: { run: Run }) {
 
 export default function ReviewTab({ run }: { run: Run }) {
   const [params, setParams] = useSearchParams();
-  const { data: exceptions, isLoading } = useExceptions(run.id, ['awaiting_approval', 'approved', 'rejected'].includes(run.status));
+  const { data: exceptions, isLoading, error } = useExceptions(run.id, ['awaiting_approval', 'approved', 'rejected'].includes(run.status) || (run.draft && run.status === 'done'));
   const { data: summary } = useApprovalSummary(run.id, ['awaiting_approval', 'approved', 'rejected'].includes(run.status));
   const client = useQueryClient();
   const toast = useToast();
@@ -148,9 +148,10 @@ export default function ReviewTab({ run }: { run: Run }) {
   const current = exceptions?.find(item => item.id === currentId);
   useEffect(() => { setSelected(new Set()); }, [status, severity, tipo, term]);
 
-  if (!['awaiting_approval', 'approved', 'rejected'].includes(run.status)) {
+  if (!['awaiting_approval', 'approved', 'rejected'].includes(run.status) && !(run.draft && run.status === 'done')) {
     return <div className="card"><Empty icon="lock" title="A revisão abre quando o agente chega à aprovação">{run.status === 'failed' ? 'Este run falhou antes do portão.' : 'Acompanhe os passos na aba Passos.'}</Empty></div>;
   }
+  if (error) return <Callout tone="critical" icon="alert">{error.message}</Callout>;
   if (isLoading || !exceptions) return <Loading label="Carregando exceções…" />;
 
   const open = (id: string) => setParams(current => { current.set('ex', id); return current; }, { replace: true });
@@ -200,9 +201,9 @@ export default function ReviewTab({ run }: { run: Run }) {
           {selected.size > 0 && editable && (
             <div className="bulk-bar">
               <strong>{plural(selected.size, 'alerta selecionado', 'alertas selecionados')}</strong>
-              <input className="input sm grow" value={bulkNote} onChange={event => setBulkNote(event.target.value)} placeholder="Comentário opcional para o lote" />
+              <input className="input sm grow" value={bulkNote} onChange={event => setBulkNote(event.target.value)} placeholder="Justificativa para aceitar o lote" aria-label="Justificativa para aceitar o lote" required />
               <button className="btn sm ghost" onClick={() => setSelected(new Set())}>Limpar</button>
-              <button className="btn sm success" disabled={!!bulk} onClick={acceptBulk}>
+              <button className="btn sm success" disabled={!!bulk || !bulkNote.trim()} onClick={acceptBulk}>
                 {bulk ? <><span className="spin" />Aceitando {bulk.done}/{bulk.total}</> : <><Icon name="check" />Aceitar em lote</>}
               </button>
             </div>

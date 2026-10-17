@@ -1,0 +1,314 @@
+| ID | Feature | Papel do backend |
+|---|---|---|
+| A2 | Checklist do fechamento | Guardar tarefas do mês, status e vínculo com passos do pipeline |
+| B1 | Lista de passos na lateral | Expor a definição ordenada dos passos de um pipeline |
+| B3 | Execução com um clique | Receber competência + arquivos e disparar a execução |
+| B4 | Progresso passo a passo | Emitir eventos de progresso em tempo real |
+| B5 | Aprovação humana antes do ERP | Pausar antes da exportação e registrar a decisão |
+| B6 | Auditabilidade | Registrar tudo o que foi lido, calculado, aprovado e exportado |
+| C1 | Construtor por passos | Catálogo de passos + definição de pipeline editável e versionada |
+| C8 | Preview dos dados ao vivo | Servir a tabela de saída de cada passo, paginada e filtrável |
+
+## Princípio: nenhuma chamada de LLM no workflow
+
+Decisão do time: *o workflow não chama API de LLM*. Todo passo é código Python
+determinístico. A mesma entrada gera sempre a mesma saída, byte a byte. Isso
+sustenta B6 (auditabilidade) e o requisito do ⁠ 00_LEIA-ME.md ⁠: rodar de novo em
+outubro com arquivos novos no mesmo formato.
+
+Consequências práticas:
+
+•⁠  ⁠Regras de negócio ficam em código e em configuração (parâmetros dos passos),
+  nunca em prompts.
+•⁠  ⁠O que o código não consegue decidir vira *exceção* para revisão humana (B5).
+  O agente não chuta.
+•⁠  ⁠Regras ainda não confirmadas pelo financeiro da Tarvo ficam registradas em
+  ⁠ HIPOTESES.md ⁠ e parametrizadas, para trocar sem mexer em código.
+
+## Stack sugerida
+
+•⁠  ⁠Python 3.11+, *FastAPI* (API REST + SSE), *pandas* (transformações).
+•⁠  ⁠⁠ openpyxl ⁠ para XLSX, ⁠ email ⁠ (stdlib) para o ⁠ .eml ⁠, parser OFX próprio ou
+  ⁠ ofxparse ⁠ (o arquivo é OFX 1.02 SGML, charset 1252).
+•⁠  ⁠Persistência: *SQLite* (um arquivo, zero setup) para runs, checklist, auditoria.
+  Saídas de cada passo em *Parquet* em ⁠ saida/runs/<run_id>/ ⁠.
+•⁠  ⁠Execução: uma ⁠ BackgroundTask ⁠ / thread por run. Volume é pequeno (~2 mil
+  transações), não precisa de fila.
+
+Estrutura proposta em ⁠ src/ ⁠:
+
+
+src/
+  api/            # FastAPI: rotas, schemas Pydantic, SSE
+  pipeline/
+    engine.py     # executa a definição, gerencia estado e eventos
+    registry.py   # catálogo de passos (C1)
+    steps/        # um módulo por passo
+  readers/        # um leitor por formato de arquivo
+  audit/          # trilha de auditoria e hashes
+  config/         # parâmetros, mapeamentos, pipeline padrão (JSON)
+
+
+## Dados de entrada (o que os leitores precisam tratar)
+
+Todos os 6 arquivos de ⁠ Tarvo_Data_Pack_set2026/ ⁠. Peculiaridades observadas:
+
+| Arquivo | Formato | Armadilhas |
+|---|---|---|
+| ⁠ 01_orbe_relatorio_comissoes_set2026.csv ⁠ | CSV ⁠ ; ⁠, decimal ⁠ , ⁠, data ⁠ dd/mm/aaaa ⁠ | 1.943 linhas. Tipos: VENDA, ESTORNO, ANTECIPACAO, REVERSAO ANTECIPACAO. Mesmo ⁠ cod_estabelecimento ⁠ com nomes diferentes (ex.: ⁠ MUNDO ABERTO INTERCAMBIO ⁠, ⁠ Mundo Aberto ⁠, ⁠ MUNDO ABERTO INTERC LTDA ⁠). Estornos apontam para a venda por ⁠ id_referencia ⁠ / ⁠ data_venda_original ⁠ |
+| ⁠ 02_tabela_taxas_contratadas.xlsx ⁠ | XLSX, 2 abas | Usar só a aba *"Taxas vigentes"*; ignorar "ANTIGO 2025 - nao usar". Cabeçalho na linha 5. Taxas misturam número (⁠ 0.0149 ⁠) e texto (⁠ 1,49% ⁠). CNPJ com e sem máscara e sem zeros à esquerda (⁠ 3229837000103 ⁠). Lojistas sem "EC Orbe" (Horizonte Viagens, Kiwi "EC pendente", Novo Horizonte). Duas linhas para Bridge com vigências diferentes (até 14/09 e a partir de 15/09). Spread em branco = "padrão" (valor do padrão não está no arquivo). Canguru com spread literal ⁠ padrão ⁠. Globo Trotter ⁠ INATIVO desde jul/26 ⁠. Linhas "só remessa" sem MDR. Comentário de célula ("condição especial") |
+| ⁠ 03_email_ponte_cambio_relatorio_set2026.eml ⁠ | MIME multipart | Extrair anexo ⁠ PonteCambio_Relatorio_TARVO_092026.xlsx ⁠ (base64). Corpo diz: repasse de *50% do spread* creditado em 06/10/2026; status *"APROVADO C/ RESSALVA"* segue para liquidação |
+| ⁠ 04_plano_de_contas_fenix_erp.csv ⁠ | CSV ⁠ ; ⁠, encoding não-UTF-8 (provável cp1252) | Só contas ⁠ ACEITA_LANCTO = S ⁠ (analíticas) recebem lançamento |
+| ⁠ 05a_extrato_banco_aurora_cc4471_set2026.csv ⁠ | CSV ⁠ ; ⁠ com 6 linhas de cabeçalho livre | Linha ⁠ SALDO ANTERIOR ⁠. Valores ⁠ 66.026,00 ⁠ (milhar ⁠ . ⁠). TEDs da Orbe, PIX para lojistas com nome truncado (⁠ ROTA GLOBAL INTERCAMBIO LT ⁠), tarifas, folha, transferência para Meridiano |
+| ⁠ 05b_extrato_banco_meridiano_cc90233_set2026.ofx ⁠ | OFX 1.02 SGML, cp1252 | Tags sem fechamento. ⁠ MEMO ⁠ com nome do lojista e acentuação quebrada. ⁠ FITID ⁠ único por lançamento |
+
+Cada leitor devolve um ⁠ DataFrame ⁠ com colunas normalizadas (snake_case, ⁠ Decimal ⁠
+ou centavos ⁠ int ⁠ para dinheiro, ⁠ date ⁠ para datas) e registra no audit: caminho,
+SHA-256, tamanho, número de linhas lidas e descartadas.
+
+	⁠Dinheiro: usar centavos inteiros ou ⁠ Decimal ⁠, nunca ⁠ float ⁠. Taxas: ⁠ Decimal ⁠
+	⁠com 4 casas (⁠ 0.0149 ⁠). Ex.: ⁠ 0.007900000000000001 ⁠ na tabela tem que virar ⁠ 0.0079 ⁠.
+
+## Modelo do pipeline (C1, B1)
+
+### Catálogo de passos
+
+Cada passo é uma classe registrada no ⁠ registry.py ⁠:
+
+⁠ python
+class Step(Protocol):
+    type: str                 # "normalizar_orbe", "conferir_mdr", ...
+    title: str                # texto curto para a lateral (B1)
+    description: str          # o que faz, em português, para o contador
+    inputs: list[str]         # ids de datasets que consome
+    outputs: list[str]        # ids de datasets que produz
+    params_schema: dict       # JSON Schema dos parâmetros editáveis no construtor
+    version: str              # muda quando o código do passo muda (B6)
+
+    def run(self, ctx: RunContext, params: dict) -> StepResult: ...
+ ⁠
+
+⁠ StepResult ⁠ traz: datasets produzidos, métricas (linhas in/out, totais em R$),
+lista de *exceções* e mensagens de log.
+
+### Definição de pipeline
+
+JSON versionado, editado pelo construtor (C1) no front:
+
+⁠ json
+{
+  "id": "fechamento-tarvo",
+  "version": 3,
+  "steps": [
+    {"id": "s1", "type": "ler_arquivos", "params": {}},
+    {"id": "s2", "type": "normalizar_orbe", "params": {}},
+    {"id": "s3", "type": "resolver_lojista", "params": {"fallback": "cnpj"}},
+    {"id": "s4", "type": "conferir_mdr", "params": {"tolerancia_pp": 0.0001}},
+    {"id": "s5", "type": "vincular_estornos", "params": {}},
+    {"id": "s6", "type": "conciliar_aurora", "params": {"janela_dias": 2}},
+    {"id": "s7", "type": "processar_cambio", "params": {"participacao_spread": 0.5}},
+    {"id": "s8", "type": "gerar_lancamentos", "params": {}},
+    {"id": "s9", "type": "aprovacao", "params": {}},
+    {"id": "s10", "type": "exportar_erp", "params": {"formato": "csv_fenix"}}
+  ]
+}
+ ⁠
+
+Regras de validação ao salvar (retornar 422 com a lista de erros):
+
+•⁠  ⁠Todo ⁠ type ⁠ existe no catálogo; ⁠ params ⁠ valida contra ⁠ params_schema ⁠.
+•⁠  ⁠A ordem respeita dependências: cada ⁠ input ⁠ de um passo foi produzido antes.
+•⁠  ⁠Existe exatamente um passo ⁠ aprovacao ⁠ e ele vem *antes* de ⁠ exportar_erp ⁠
+  (B5 não pode ser removido nem movido para depois da exportação).
+•⁠  ⁠Salvar cria nova ⁠ version ⁠; versões antigas nunca são sobrescritas (B6).
+
+### Passos do pipeline padrão
+
+As regras marcadas *[H]* são hipóteses a confirmar com o financeiro da Tarvo e
+devem estar em ⁠ HIPOTESES.md ⁠.
+
+ 1.⁠ ⁠*Ler arquivos* — roda os 6 leitores. Falha dura se algum arquivo faltar ou
+   não abrir. Saída: datasets brutos.
+ 2.⁠ ⁠*Normalizar Orbe* — datas, decimais, nome do lojista canônico por
+   ⁠ cod_estabelecimento ⁠, faixa de parcelas (⁠ 1 ⁠ → crédito à vista, ⁠ 2–6 ⁠,
+   ⁠ 7–12 ⁠). Exceção: linha com campos obrigatórios vazios.
+ 3.⁠ ⁠*Resolver lojista* — liga Orbe ↔️ tabela de taxas por "EC Orbe"; sem EC,
+   tenta CNPJ normalizado (14 dígitos com zero à esquerda) e por fim nome
+   normalizado (sem acento, sem LTDA, maiúsculas). Match só por nome = exceção
+   "vínculo fraco" para revisão. Atenção a nomes parecidos e distintos
+   (⁠ HORIZONTE VIAGENS TURISMO ⁠ ≠ ⁠ HORIZONTE INTERCAMBIO ⁠).
+ 4.⁠ ⁠*Conferir MDR* — para cada VENDA, escolhe a taxa contratada **vigente na
+   data da venda** (Bridge muda em 15/09) pela modalidade/faixa e compara com
+   ⁠ taxa_aplicada_pct ⁠. Calcula ⁠ diferenca_pp ⁠ e ⁠ impacto_rs ⁠. Exceções:
+   divergência acima da tolerância, lojista inativo com venda, lojista sem taxa
+   para a modalidade. *[H]* taxa da ANTECIPACAO comparada com a coluna
+   "Antecipação".
+ 5.⁠ ⁠*Vincular estornos* — liga ESTORNO e REVERSAO ANTECIPACAO à operação
+   original por ⁠ id_referencia ⁠. Exceções: referência inexistente no mês,
+   estorno maior que a venda, estorno duplicado.
+ 6.⁠ ⁠*Conciliar Aurora* — *[H]* soma do ⁠ valor_liquido ⁠ da Orbe por data de
+   liquidação ↔️ TEDs ⁠ ORBE ADQUIRENCIA ⁠ no extrato; PIX enviados ↔️ repasses a
+   lojistas. Casamento por valor exato e janela de datas (⁠ janela_dias ⁠).
+   Exceções: TED sem par, diferença de valor, PIX para lojista não identificado.
+   Tarifas, folha, condomínio e transferência entre contas são classificados por
+   regra de texto do histórico.
+ 7.⁠ ⁠*Processar câmbio* — lê o anexo da Ponte Câmbio e o OFX Meridiano.
+   Receita = ⁠ participacao_spread ⁠ (50%, do corpo do e-mail) × spread realizado.
+   *[H]* spread contratado por lojista vem da coluna "Spread remessa"; vazio ou
+   ⁠ padrão ⁠ usa o valor padrão (desconhecido; parâmetro obrigatório). Operações
+   "APROVADO C/ RESSALVA" entram como liquidadas, mas são sinalizadas.
+ 8.⁠ ⁠*Gerar lançamentos* — monta partidas dobradas usando só contas analíticas do
+   plano Fênix (ex.: ⁠ 1.1.01.001 ⁠ Banco Aurora, ⁠ 1.1.03.001 ⁠ Recebíveis Orbe,
+   ⁠ 3.1.01 ⁠ Receita de MDR, ⁠ 3.1.02 ⁠ Receita de antecipação, ⁠ 3.1.03 ⁠ Receita de
+   intermediação de câmbio, ⁠ 4.2.01 ⁠ Tarifas bancárias,
+   ⁠ 1.1.09.002 ⁠ Créditos não identificados). *[H]* o mapeamento evento → contas
+   fica em ⁠ config/mapa_contabil.json ⁠. Exceções: conta inexistente ou sintética,
+   lote desbalanceado (débito ≠ crédito).
+ 9.⁠ ⁠*Aprovação* (B5) — passo especial: não calcula nada; muda o run para
+   ⁠ awaiting_approval ⁠ e espera a decisão.
+10.⁠ ⁠*Exportar ERP* — só roda com run ⁠ approved ⁠. Grava
+    ⁠ saida/<competencia>/lancamentos_fenix.csv ⁠ + ⁠ relatorio_excecoes.csv ⁠ +
+    ⁠ auditoria.json ⁠.
+
+## Execução (B3, B4)
+
+### Estados do run
+
+
+queued → running → awaiting_approval → approved → exporting → done
+                 ↘️ failed              ↘️ rejected
+
+
+•⁠  ⁠⁠ failed ⁠: erro não tratado em um passo. Guarda traceback no audit; passos
+  seguintes ficam ⁠ skipped ⁠.
+•⁠  ⁠⁠ rejected ⁠: revisor reprovou. Nada é exportado. O run fica arquivado; o próximo
+  run é um run novo (nunca "editar" um run).
+•⁠  ⁠Estado por passo: ⁠ pending | running | done | done_with_exceptions | failed | skipped ⁠.
+
+### Disparo com um clique
+
+⁠ POST /api/runs ⁠ com competência e (opcional) arquivos enviados. Sem upload, usa
+⁠ Tarvo_Data_Pack_<competencia>/ ⁠. Valida a competência (⁠ AAAA-MM ⁠) e se já existe
+run ⁠ running ⁠ para ela (409).
+
+### Eventos em tempo real
+
+⁠ GET /api/runs/{id}/events ⁠ via *Server-Sent Events*. Tipos de evento:
+
+⁠ json
+{"type": "run_started",   "run_id": "...", "at": "..."}
+{"type": "step_started",  "step_id": "s4", "at": "..."}
+{"type": "step_progress", "step_id": "s4", "done": 800, "total": 1943}
+{"type": "step_finished", "step_id": "s4", "status": "done_with_exceptions",
+ "metrics": {"rows_in": 1943, "rows_out": 1943, "exceptions": 37}, "duration_ms": 412}
+{"type": "awaiting_approval", "exceptions_open": 52}
+{"type": "run_finished",  "status": "done"}
+ ⁠
+
+Cada evento também é gravado; ⁠ GET /api/runs/{id} ⁠ devolve o estado consolidado
+para o front se reconectar sem perder nada.
+
+## Aprovação humana (B5)
+
+•⁠  ⁠Ao chegar no passo ⁠ aprovacao ⁠, o backend consolida todas as exceções do run
+  com: ⁠ id ⁠, ⁠ step_id ⁠, ⁠ tipo ⁠, ⁠ severidade ⁠ (⁠ bloqueante | alerta ⁠), descrição,
+  referência à(s) linha(s) de origem, ⁠ impacto_rs ⁠.
+•⁠  ⁠Revisor pode, por exceção: *aceitar* (segue), *ajustar* (informa valor/conta
+  corretos, com justificativa obrigatória) ou *excluir do lote*.
+•⁠  ⁠Aprovação final só é aceita se não houver exceção ⁠ bloqueante ⁠ aberta (422).
+•⁠  ⁠Toda decisão grava ⁠ quem ⁠, ⁠ quando ⁠, ⁠ antes ⁠, ⁠ depois ⁠, ⁠ justificativa ⁠.
+•⁠  ⁠Ajustes não reescrevem a saída dos passos anteriores: geram um dataset
+  ⁠ ajustes ⁠ aplicado no passo de exportação (rastreável).
+
+## Auditabilidade (B6)
+
+Cada run grava em ⁠ audit ⁠ (SQLite) e exporta em ⁠ auditoria.json ⁠:
+
+•⁠  ⁠Arquivos de entrada: nome, SHA-256, tamanho, linhas lidas/descartadas.
+•⁠  ⁠Definição do pipeline usada (⁠ id ⁠ + ⁠ version ⁠) e ⁠ version ⁠ de cada passo.
+•⁠  ⁠Para cada passo: início, fim, duração, parâmetros efetivos, métricas, hash do
+  dataset de saída, exceções geradas.
+•⁠  ⁠Decisões de aprovação (acima) e o arquivo exportado com seu hash.
+•⁠  ⁠Commit do git do código (⁠ git rev-parse HEAD ⁠) se disponível.
+
+*Teste de reprodutibilidade:* rodar duas vezes com os mesmos arquivos e a mesma
+versão do pipeline tem que produzir hashes de saída idênticos. Vale um teste
+automatizado e é um ótimo momento da demo.
+
+## Checklist do fechamento (A2)
+
+Tarefas por competência, agrupadas por área:
+
+| Área | Tarefa (exemplo) | Vínculo |
+|---|---|---|
+| Adquirência | Conferir taxas MDR cobradas pela Orbe | passo ⁠ conferir_mdr ⁠ |
+| Adquirência | Tratar estornos e reversões | passo ⁠ vincular_estornos ⁠ |
+| Bancos | Conciliar Banco Aurora | passo ⁠ conciliar_aurora ⁠ |
+| Câmbio | Apurar receita de intermediação | passo ⁠ processar_cambio ⁠ |
+| Contabilidade | Revisar e aprovar lançamentos | passo ⁠ aprovacao ⁠ |
+| Contabilidade | Exportar para o Fênix | passo ⁠ exportar_erp ⁠ |
+| Comercial | Atualizar tabela de taxas | manual |
+
+•⁠  ⁠Tarefa vinculada a passo tem status *derivado* do run mais recente da
+  competência (⁠ pendente ⁠, ⁠ em andamento ⁠, ⁠ com exceções ⁠, ⁠ concluída ⁠).
+•⁠  ⁠Tarefa manual tem status editável, responsável e comentário.
+•⁠  ⁠O template de tarefas vive em ⁠ config/checklist.json ⁠; ao abrir uma competência
+  nova, o backend instancia o template.
+
+## Preview de dados (C8)
+
+•⁠  ⁠Saída de cada passo salva em Parquet; preview lê dali (não reprocessa).
+•⁠  ⁠Paginação no servidor (⁠ page ⁠, ⁠ page_size ⁠ ≤ 500), ordenação e filtro simples
+  por coluna (⁠ eq ⁠, ⁠ contains ⁠, ⁠ gt ⁠, ⁠ lt ⁠) e ⁠ only_exceptions=true ⁠.
+•⁠  ⁠A resposta inclui o *schema* com metadado por coluna: tipo (⁠ money ⁠,
+  ⁠ percent ⁠, ⁠ date ⁠, ⁠ text ⁠), e se é coluna *nova* neste passo (o front destaca).
+•⁠  ⁠Linhas com exceção trazem ⁠ __exception_ids ⁠ para o front marcar e linkar.
+•⁠  ⁠⁠ diff=true ⁠ compara com o dataset de entrada do passo (linhas
+  adicionadas/removidas, colunas novas).
+
+## API (contrato com o front)
+
+| Método | Rota | Feature | Descrição |
+|---|---|---|---|
+| GET | ⁠ /api/steps/catalog ⁠ | C1 | Tipos de passo com título, descrição, inputs/outputs, ⁠ params_schema ⁠ |
+| GET | ⁠ /api/pipelines/{id} ⁠ | B1, C1 | Definição atual (ou ⁠ ?version= ⁠) |
+| GET | ⁠ /api/pipelines/{id}/versions ⁠ | C1, B6 | Histórico de versões |
+| POST | ⁠ /api/pipelines/{id}/validate ⁠ | C1 | Valida sem salvar; devolve erros por passo |
+| PUT | ⁠ /api/pipelines/{id} ⁠ | C1 | Salva nova versão |
+| POST | ⁠ /api/files ⁠ | B3 | Upload de arquivo de entrada; devolve ⁠ file_id ⁠ + hash |
+| POST | ⁠ /api/runs ⁠ | B3 | ⁠ {pipeline_id, competencia, file_ids?} ⁠ → ⁠ {run_id} ⁠ |
+| GET | ⁠ /api/runs?competencia= ⁠ | B3, B6 | Lista de runs |
+| GET | ⁠ /api/runs/{id} ⁠ | B1, B4 | Estado do run e de cada passo, métricas |
+| GET | ⁠ /api/runs/{id}/events ⁠ | B4 | SSE |
+| GET | ⁠ /api/runs/{id}/steps/{step_id}/preview ⁠ | C8 | Página da tabela + schema |
+| GET | ⁠ /api/runs/{id}/exceptions ⁠ | B5 | Exceções com filtros |
+| POST | ⁠ /api/runs/{id}/exceptions/{exc_id}/decision ⁠ | B5 | ⁠ {acao, valor?, conta?, justificativa} ⁠ |
+| POST | ⁠ /api/runs/{id}/approval ⁠ | B5 | ⁠ {decisao: aprovar\|reprovar, comentario} ⁠ |
+| GET | ⁠ /api/runs/{id}/audit ⁠ | B6 | Trilha completa |
+| GET | ⁠ /api/runs/{id}/export ⁠ | B6 | Download dos arquivos de ⁠ saida/ ⁠ |
+| GET | ⁠ /api/competencias/{comp}/checklist ⁠ | A2 | Tarefas com status |
+| PATCH | ⁠ /api/checklist/{task_id} ⁠ | A2 | Status/responsável/comentário de tarefa manual |
+
+Erros sempre no formato ⁠ {"error": {"code": "...", "message": "...", "details": [...]}} ⁠.
+Sem autenticação real no hackathon; o "usuário" vem de um header ⁠ X-User ⁠ para
+alimentar a auditoria.
+
+## Testes mínimos
+
+•⁠  ⁠Leitores: cada armadilha da tabela de entrada vira um teste (percentual em
+  texto, CNPJ sem zero, aba antiga ignorada, OFX cp1252, extrato com cabeçalho).
+•⁠  ⁠⁠ conferir_mdr ⁠: venda da Bridge em 14/09 usa 2,59%; em 15/09 usa 2,19%.
+•⁠  ⁠⁠ gerar_lancamentos ⁠: todo lote fecha débito = crédito; nenhuma conta sintética.
+•⁠  ⁠Aprovação: exportar sem aprovar → 409; aprovar com bloqueante aberta → 422.
+•⁠  ⁠Reprodutibilidade: dois runs iguais → mesmos hashes.
+
+## Perguntas em aberto (levar ao financeiro da Tarvo)
+
+•⁠  ⁠Qual o spread "padrão" de remessa?
+•⁠  ⁠Como a Orbe liquida: por dia de venda, D+1, D+30 por parcela? Isso define a
+  conciliação com as TEDs.
+•⁠  ⁠Divergência de MDR a favor da Tarvo também é exceção, ou só a contra?
+•⁠  ⁠Se um lojista inativo (como Globo Trotter) aparecer com venda: bloqueia ou
+  alerta? (Em set/2026 o EC dele não aparece no relatório da Orbe.)
+•⁠  ⁠Tratamento do "APROVADO C/ RESSALVA" na receita de câmbio.
+•⁠  ⁠Mapa evento → contas contábeis (especialmente PIS/COFINS/ISS sobre receitas).

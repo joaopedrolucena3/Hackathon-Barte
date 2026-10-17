@@ -1,0 +1,14 @@
+{
+  "id": "mapa_contabil",
+  "version": 1,
+  "status": "hipotese_explicitamente_sujeita_aprovacao",
+  "description": "Partidas de extratos e apropriação das comissões calculadas. A correspondência completa de eventos ao ERP exige revisão do contador no gate. Não calcula impostos nem concilia parcelas Orbe.",
+  "bank_accounts": {"AURORA": "1.1.01.001", "MERIDIANO": "1.1.01.002"},
+  "events": {
+    "MDR": {"debit": "1.1.03.001", "credit": "3.1.01", "description": "Comissão contratada de checkout a receber"},
+    "ANTECIPACAO": {"debit": "1.1.03.001", "credit": "3.1.02", "description": "Comissão contratada de antecipação a receber"},
+    "REMESSA": {"debit": "1.1.03.002", "credit": "3.1.03", "description": "Participação no spread realizado positivo a receber"}
+  },
+  "negative_amount_policy": "Inverter débito e crédito mantendo valor absoluto e rastro do valor original.",
+  "taxes": {"enabled": false, "reason": "Sem apuração de tributos sobre NF autorizada pelas fontes."}
+}

@@ -1,59 +1,33 @@
-# Endpoints que o front espera do back
+# Contrato da interface integrada
 
-O front novo funciona hoje com um **mock do agente** (`src/api/agent/mock/`) que lê os dados reais de `GET /api/state` e grava no back real o que já existe: decisões (`/api/decisions`), recálculo, importação e parâmetros. O resto (runs, eventos, checklist, pipeline) fica no `localStorage` do navegador.
+O nome deste arquivo foi preservado para manter links existentes. Os endpoints do agente agora estão implementados e o modo padrão é HTTP real; `VITE_AGENT_API=mock` ativa explicitamente o simulador anterior.
 
-Quando o back implementar os endpoints abaixo, rode o front com `VITE_AGENT_API=http npm run build` (ou `npm run dev`). As telas não mudam: o adaptador `src/api/agent/http.ts` já chama estes caminhos. Os tipos estão em `src/api/agent/contract.ts`.
+`src/api/agent/contract.ts` descreve os modelos de exibição. `adapters.ts` traduz os objetos persistidos do backend e `http.ts` faz as chamadas. Não envie o modelo de exibição diretamente à API.
 
-Todo POST/PUT/PATCH recebe `actor`, como os endpoints atuais. Erros: `{error}` com 400/404/409.
+## Diferenças traduzidas pelo adaptador
 
-## Competência e checklist (A2)
+- Mutações novas usam `X-User` com `X-User-Encoding: percent-utf8`, sem campo `actor` em corpos estritos. Operações antigas continuam recebendo `actor` no JSON.
+- Erros usam `{error:{code,message,details}}`; a mensagem aparece na interface.
+- Catálogo, runs, checklist, versões e exceções usam envelopes; a lista de exceções é paginada e o adaptador carrega todas as páginas.
+- Upload envia um arquivo por requisição no campo `file`. O run recebe os seis IDs, `pipeline_id` e `competencia`; a resposta 202 identifica o run, cujo snapshot é consultado depois.
+- SSE nomeado inclui cursor persistido e reconexão por snapshot. O estado final não depende de receber todos os eventos.
+- Decisões usam `acao: aceitar|ajustar|excluir`, `justificativa`, `conta` e `valor`. Todos os encaminhamentos exigem justificativa. Ajustes e exclusões afetam de fato o lote exportado.
+- Aprovação usa `decisao: aprovar|reprovar` e `comentario`. A interface não libera exportação antes do gate.
+- O catálogo entrega JSON Schema; valores fixados por `const` aparecem bloqueados no construtor.
+- `draft: true` permite testar `steps` ainda não salvos. O teste não aprova, exporta ou substitui o checklist real.
+- Prévia usa o ID do passo, filtros, paginação e totais de dinheiro do servidor. Os dados são os do snapshot; mudança de parâmetros exige nova execução de teste.
 
-| Método | Caminho | Retorno |
+## Rotas de integração
+
+Além das rotas documentadas em [API_PIPELINE.md](../back/docs/API_PIPELINE.md), o front usa:
+
+| Método | Rota | Uso |
 |---|---|---|
-| GET | `/api/competencias` | `CompetenciaInfo[]` |
-| GET | `/api/insights?comp=AAAA-MM` | `Insights`: agregados em R$ para os gráficos (pendências por estado/tipo, divergências por lojista, bancos por dia/conta, notas). O front não soma dinheiro. |
-| GET | `/api/competencias/{comp}/checklist` | `ChecklistTask[]`. Tarefas do agente derivam do run mais recente. |
-| PATCH | `/api/checklist/{id}` | `{status?, owner?, comment?}` só para tarefas manuais → `ChecklistTask` |
+| GET | `/api/competencias` | Competências disponíveis |
+| GET | `/api/insights?comp=AAAA-MM` | Agregações para gráficos |
+| GET | `/api/runs/{id}/approval-summary` | Revisão, bloqueantes e equilíbrio |
+| POST | `/api/runs/{id}/exceptions/decisions` | Aceite atômico de alertas em lote |
+| GET | `/api/runs/compare?a=&b=` | Comparação de hashes e contexto |
+| GET | `/api/runs/{id}/exports/{nome}` | Artefato individual aprovado ou auditoria |
 
-## Runs (B3, B1/B4, C8)
-
-| Método | Caminho | Retorno |
-|---|---|---|
-| POST | `/api/files` (multipart, campo `files`) | `{files: InputFile[]}` com nome, tamanho e SHA-256 |
-| POST | `/api/runs` | `{comp, source: pack\|upload\|folder, files?, folder?, draft?, steps?}` → `Run`. `steps` só em rascunho (Testar do construtor, inclusive alterações não salvas); rascunho para no portão e não exporta. 409 com `{run_id}` se já houver run rodando. |
-| GET | `/api/runs?comp=` | `RunRef[]`, mais recente primeiro |
-| GET | `/api/runs/{id}` | `Run` consolidado (fonte da verdade após reconexão) |
-| GET | `/api/runs/{id}/events` | SSE com eventos `step_started`, `step_progress`, `step_finished`, `awaiting_approval`, `run_finished` (`RunEvent`) |
-| GET | `/api/runs/{id}/steps/{step}/preview` | `PreviewPage`. Query: `page`, `page_size`, `sort`, `dir`, `filters` (JSON `ColumnFilter[]`), `only_exceptions`, `diff`, `params` (JSON, prévia do construtor). Totais de colunas de dinheiro da página e do dataset. |
-
-## Revisão e aprovação (B5)
-
-| Método | Caminho | Retorno |
-|---|---|---|
-| GET | `/api/runs/{id}/exceptions` | `ReviewException[]` |
-| GET | `/api/runs/{id}/approval-summary` | `ApprovalSummary` (bloqueantes, alertas, impacto, lote balanceado) |
-| POST | `/api/runs/{id}/exceptions/{eid}/decision` | `{action: accept\|adjust\|exclude, note, account_code?, amount?}` → `ReviewException`. Justificativa obrigatória em ajustar/excluir. |
-| POST | `/api/runs/{id}/exceptions/decisions` | `{ids, action: accept, note}` → `{decided}`. Aceite de alertas em lote; recusar se houver bloqueante na lista. |
-| POST | `/api/runs/{id}/approval` | `{decision: approve\|reject, comment}` → `Run`. Aprovar falha com 409 se houver bloqueante aberta. |
-| GET | `/api/runs/{id}/exports/{nome}` | `lancamentos_fenix.csv`, `relatorio_excecoes.csv`, `auditoria.json` |
-
-Hoje o mock traduz: Aceitar → `confirm`; Ajustar → `adjust` (conta via `account_code`; o valor proposto vai no texto da justificativa, porque o back não aceita número solto); Excluir do lote → `adjust` com a justificativa prefixada por `[Excluído do lote]`.
-
-## Auditoria (B6)
-
-| Método | Caminho | Retorno |
-|---|---|---|
-| GET | `/api/runs/{id}/audit` | `AuditTrail` (arquivos com hash, pipeline, passos com parâmetros e hash de saída, decisões antes → depois, aprovação, exportações) |
-| GET | `/api/runs/compare?a=&b=` | `RunComparison` (hash de saída por passo) |
-
-## Construtor (C1)
-
-| Método | Caminho | Retorno |
-|---|---|---|
-| GET | `/api/steps/catalog` | `StepCatalogItem[]` com `params_schema` |
-| GET | `/api/pipelines/fechamento-tarvo?version=` | `Pipeline` |
-| GET | `/api/pipelines/fechamento-tarvo/versions` | `PipelineVersion[]` com a lista de mudanças |
-| POST | `/api/pipelines/fechamento-tarvo/validate` | `{steps}` → `ValidationResult` |
-| PUT | `/api/pipelines/fechamento-tarvo` | `{steps}` → nova versão |
-
-O servidor atual só trata GET e POST (`src/app.py`): PUT e PATCH precisam ser adicionados.
+O contrato de transporte completo é gerado em `/api/openapi.json`. As rotas `/api/mail/*` têm cliente separado em `src/api/mail.ts`, incluindo OAuth, evidências e aprovação da mensagem exata. Cobranças e avisos simulados continuam no cliente `core.ts`.

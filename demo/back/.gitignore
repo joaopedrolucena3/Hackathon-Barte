@@ -5,3 +5,12 @@ data/*.sqlite3*
 data/*.db*
 .DS_Store
 .env
+data/*-runs/
+data/workflow_uploads/
+saida/runs/
+saida/workflow_uploads/
+*.pem
+client_secret*.json
+google-client*.json
+.mail-private/
+data/mail-qa/

@@ -1,6 +1,6 @@
 # Verificação do fechamento Tarvo
 
-A suíte contém 55 testes e usa `unittest` e arquivos temporários para as verificações de persistência. Os arquivos do data pack são somente lidos. Rode a partir da pasta `tarvo-mvp`:
+A suíte atual contém 130 testes: 55 do fechamento original, 35 do pipeline versionado e 40 da integração Gmail. A execução completa em 17/10/2026 passou em 51,814 segundos. A verificação anterior ao Gmail tinha 90 testes e passou em 31,823 segundos. Os detalhes novos estão em [TESTES_EMAIL.md](TESTES_EMAIL.md). Usa `unittest` e arquivos temporários para as verificações de persistência. Os arquivos do data pack são somente lidos. Rode a partir da pasta `tarvo-mvp`:
 
 ```sh
 ./run.sh test
@@ -44,6 +44,25 @@ Os testes de serviço verificam assinatura obrigatória, decisões persistidas, 
 Cobranças e contestações só podem chegar ao registro de envio simulado depois de revisão e aprovação explícita. Alterar conteúdo depois de aprovar invalida aquela aprovação. E-mails internos obedecem às preferências do contato e podem ser enviados em simulação sem aprovação, conforme pedido do usuário. Os testes não acessam nenhum serviço de e-mail externo.
 
 Os testes de exportação validam nomes, cabeçalhos, separador, valores e presença dos seis CSVs oficiais, relatório e hipóteses no ZIP.
+
+## Pipeline versionado
+
+As regressões do pipeline cobrem catálogo e dependências, preservação das versões, leitura das seis fontes, parâmetros efetivos, mês sem dados, descoberta de pasta mensal e ambiguidade de fontes. O fluxo mantém o bloqueio antes do ERP, as exceções persistidas e o replay de eventos SSE.
+
+| Controle | Evidência verificada |
+|---|---|
+| Duas execuções idênticas | Mesmos bytes/hashes de Parquet e CSV financeiros, inclusive em pastas distintas. Metadados operacionais não entram nesse contrato. |
+| Partidas dobradas | 4.360 linhas, 2.180 pares; débitos e créditos somam R$ 23.474.915,80 cada. Somente contas analíticas. |
+| Exceções iniciais | 305, das quais 58 bloqueantes: 57 operações Atlas e a validação explícita do mapa contábil proposto. |
+| Controle de aprovação | Exportar antes de aprovar retorna 409; aprovar com bloqueantes abertas retorna 422. Reprovação arquiva sem exportação. |
+| Ajustes | Alteram a cópia exportada, preservam o Parquet original e o equilíbrio; zero remove o par, inclusive quando se informa conta válida. |
+| Código carregado | Alterar código após iniciar o processo bloqueia novos runs com 409 até reiniciar; uma instância nova no mesmo processo não contorna o controle. |
+| Reinício | Retoma revisão sem recalcular etapas concluídas; execução interrompida é marcada como falha, sem prender a competência. |
+| Prévia | Paginação, ordenação, filtro numérico, exceções e diferenças sobre o Parquet persistido; não chama novamente os passos. |
+| API | Erros estruturados, proteção de origem local, upload com hash, autoria Unicode, histórico de versões e ZIP aprovado. |
+| Checklist | Vínculos derivados da execução e tarefa manual com autoria e comentário persistidos. |
+
+A revisão de navegador usou banco isolado na porta 8766: disparo real com progresso, pausa na aprovação, exclusão de operação Atlas sem receita, tarefa manual, nova versão do construtor, rejeição de ordem inválida, prévia filtrada com diferenças e reprovação final. A aprovação com exportação foi testada pela API em banco temporário, sem conceder aprovação contábil no banco principal.
 
 ## Limites da verificação
 

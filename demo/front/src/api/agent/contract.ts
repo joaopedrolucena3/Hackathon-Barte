@@ -1,5 +1,4 @@
-// Contract of the closing agent (A2, B1–B6, C1, C8). Implemented by mock/ today and by http.ts once
-// the backend ships the endpoints listed in front/API_PENDENTE.md.
+// UI contract for the real closing workflow and the explicitly enabled demo adapter.
 
 export type Area = 'Adquirência' | 'Bancos' | 'Câmbio' | 'Contabilidade' | 'Comercial';
 
@@ -41,6 +40,7 @@ export interface ColumnFilter {
 }
 
 export interface PreviewQuery {
+  dataset?: string;
   page: number;
   page_size: number;
   sort?: { key: string; dir: 'asc' | 'desc' } | null;
@@ -52,6 +52,8 @@ export interface PreviewQuery {
 }
 
 export interface PreviewPage {
+  dataset?: string;
+  datasets?: string[];
   step_id: string;
   state: 'ready' | 'pending' | 'running' | 'not_tabular' | 'failed';
   schema: ColumnSchema[];
@@ -96,6 +98,8 @@ export interface StepRun {
 }
 
 export interface InputFile {
+  /** Identifier returned by the upload API; hashes alone do not select a server file. */
+  id?: string;
   name: string;
   size?: number;
   sha256: string;
@@ -113,7 +117,7 @@ export interface Approval {
 export interface ExportFile {
   name: string;
   sha256: string;
-  rows: number;
+  rows?: number;
   /** Where the browser downloads it from. */
   href?: string;
 }
@@ -182,6 +186,7 @@ export interface ReviewDecision {
   amount?: string;
   before_amount?: string;
   before_account?: string;
+  entry_id?: string;
 }
 
 export interface ReviewException {
@@ -206,6 +211,7 @@ export interface ReviewException {
   /** Bank line the exception refers to, when reclassification is possible. */
   bank_line_id?: string;
   current_account?: string;
+  associated_entries?: { entry_id: string; account_code: string; amount: string; event: string }[];
   decision: ReviewDecision | null;
 }
 
@@ -354,6 +360,7 @@ export interface AgentApi {
   createRun(input: CreateRunInput): Promise<Run>;
   listRuns(comp?: string): Promise<RunRef[]>;
   getRun(id: string): Promise<Run>;
+  getRunAccounts(id: string): Promise<{ code: string; name: string; postable: boolean }[]>;
   /** Live events (SSE). `onReconnect` fires after a dropped stream comes back: reload the consolidated run. */
   subscribeRun(id: string, onEvent: (event: RunEvent) => void, onReconnect?: () => void): () => void;
   getPreview(runId: string, stepId: string, query: PreviewQuery): Promise<PreviewPage>;

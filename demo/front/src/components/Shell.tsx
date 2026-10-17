@@ -41,7 +41,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-footer">
           <strong><span className="live-dot" /> Ambiente local</strong>
-          Dados sintéticos do case. E-mails em simulação.{agent.mode === 'mock' && <><br />Agente em modo demonstração.</>}
+          Dados sintéticos do case. Gmail de pendências exige conexão e aprovação. Cobranças e avisos são simulados.{agent.mode === 'mock' && <><br />Agente em modo demonstração.</>}
         </div>
       </aside>
       <div className="workspace">
@@ -53,13 +53,13 @@ export function Shell({ children }: { children: ReactNode }) {
               <span className="sr-only">Responsável</span>
               <input value={actor} onChange={event => setActor(event.target.value)} placeholder="Seu nome" maxLength={100} autoComplete="name" aria-label="Responsável pelas ações" />
             </label>
-            <span className="pill-sim"><span className="live-dot" /> Simulação</span>
+            <span className="pill-sim"><span className="live-dot" /> {agent.mode === 'mock' ? 'Demonstração' : 'Ambiente local'}</span>
           </div>
         </header>
         <main className="main" id="main" tabIndex={-1}>{children}</main>
         <footer className="footer-seal">
           <span>Tarvo · cada número tem uma origem.</span>
-          <span className="mono">código {CODE_VERSION}{agent.mode === 'mock' ? ' · agente: demonstração (sem endpoints de run no back)' : ''}</span>
+          <span className="mono">código {CODE_VERSION}{agent.mode === 'mock' ? ' · agente: demonstração no navegador' : ' · execuções persistidas'}</span>
         </footer>
       </div>
     </div>

@@ -2,13 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { agent, type ReviewAction, type ReviewException, type Run } from '../api/agent';
-import { core } from '../api/core';
 import { cnpj, dateBR, dateTimeBR, money, readable } from '../lib/format';
-import { keys, useAppState } from '../state/queries';
+import { keys, useAppState, useRunAccounts } from '../state/queries';
 import { useAction } from '../state/useAction';
-import { EmailEditor } from './EmailEditor';
 import { Icon } from './Icon';
-import { TraceView } from './TraceView';
 import { Badge, Callout, Field, Money, ReasonInput, Segmented } from './ui';
 
 const ACTIONS: { value: ReviewAction; label: string }[] = [
@@ -32,25 +29,31 @@ export function ExceptionDetail({ exception, run, editable, onClose, onDecided, 
   preset?: DecisionPreset | null;
 }) {
   const { data: state } = useAppState();
+  const { data: runAccounts } = useRunAccounts(run.id);
   const [action, setAction] = useState<ReviewAction>('accept');
   const [note, setNote] = useState('');
   const [account, setAccount] = useState(exception.current_account || '');
   const [amount, setAmount] = useState('');
+  const [entryId, setEntryId] = useState('');
   const [changing, setChanging] = useState(false);
-  const [email, setEmail] = useState<string | null>(null);
   const { run: act, busy } = useAction();
-  useEffect(() => { setAction('accept'); setNote(''); setAmount(''); setAccount(exception.current_account || ''); setChanging(false); }, [exception.id, exception.current_account]);
+  useEffect(() => { setAction('accept'); setNote(''); setAmount(''); setEntryId(exception.associated_entries?.length === 1 ? exception.associated_entries[0].entry_id : ''); setAccount(exception.current_account || ''); setChanging(false); }, [exception.id, exception.current_account]);
 
   const step = run.steps.find(item => item.type === exception.step_type);
   const decided = exception.decision;
   const showForm = editable && (!decided || changing);
-  const needsReason = action !== 'accept';
-  const accounts = state?.accounts.filter(item => item.postable) || [];
-  const invalid = (needsReason && !note.trim()) || (action === 'adjust' && !amount && (!exception.bank_line_id || account === exception.current_account));
+  const needsReason = true;
+  const currentIssue = state?.period === run.comp && state.results.pendencias.find(item => item.id_saida === exception.id && item.motivo === exception.description && item.valor_brl === exception.impact_brl);
+  const sameFiles = !!state && run.files.length >= 6 && run.files.every(file => state.sources.some(source => source.name === file.name && source.sha256 === file.sha256));
+  const accounts = runAccounts?.filter(item => item.postable) || [];
+  const entry = exception.associated_entries?.find(item => item.entry_id === entryId);
+  const currentAccount = entry?.account_code || exception.current_account;
+  const canAdjust = agent.mode === 'mock' || !!exception.associated_entries?.length;
+  const invalid = !note.trim() || (action === 'adjust' && (!canAdjust || (agent.mode !== 'mock' && !entryId) || (!amount && (!account || account === currentAccount))));
 
   const submit = async () => {
     const result = await act('decide', () => agent.decide(run.id, exception.id, {
-      action, note, ...(action === 'adjust' ? { amount: amount || undefined, account_code: exception.bank_line_id && account !== exception.current_account ? account : undefined } : {}),
+      action, note, ...(action === 'adjust' ? { amount: amount || undefined, account_code: account && account !== currentAccount ? account : undefined, entry_id: entryId || undefined } : {}),
     }), { success: `Decisão registrada: ${DECISION_LABEL[action].toLowerCase()}.`, invalidate: [keys.exceptions(run.id), keys.approval(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)] });
     if (result) { setChanging(false); onDecided?.(result, { action, note }); }
   };
@@ -106,19 +109,30 @@ export function ExceptionDetail({ exception, run, editable, onClose, onDecided, 
             </button>
           )}
           <Segmented<ReviewAction> value={action} onChange={setAction} label="Decisão" options={ACTIONS} />
-          {action === 'accept' && <p className="help">Segue como está. {exception.severity === 'bloqueante' ? 'Bloqueantes são aceitas uma a uma.' : 'A justificativa é opcional.'}</p>}
+          {action === 'accept' && <p className="help">Segue como está, com justificativa registrada. Bloqueantes são aceitas uma a uma.</p>}
           {action === 'exclude' && <p className="help">A operação sai do lote exportado para o ERP e continua no relatório de exceções.</p>}
           {action === 'adjust' && (
             <div className="form-grid">
-              {exception.bank_line_id && (
+              {!canAdjust && <Callout tone="warning">Esta exceção não tem partida calculada para ajustar. Corrija a origem ou o cadastro e rode uma nova execução.</Callout>}
+              {!!exception.associated_entries?.length && <Field label="Partida a ajustar" wide required>
+                <select className="select" value={entryId} onChange={event => {
+                  setEntryId(event.target.value);
+                  setAccount(exception.associated_entries?.find(item => item.entry_id === event.target.value)?.account_code || '');
+                }}>
+                  <option value="">Selecione a partida vinculada</option>
+                  {exception.associated_entries.map(item => <option key={item.entry_id} value={item.entry_id}>{item.event} · {money(item.amount)} · {item.entry_id}</option>)}
+                </select>
+              </Field>}
+              {(entry?.account_code || exception.bank_line_id) && (
                 <Field label="Conta Fênix (analíticas)" wide>
                   <select className="select" value={account} onChange={event => setAccount(event.target.value)}>
+                    <option value="">Manter conta atual ({currentAccount || 'a consultar'})</option>
                     {accounts.map(item => <option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}
                   </select>
                 </Field>
               )}
-              <Field label="Valor ajustado (R$)" help={`Atual: ${money(exception.impact_brl)}. Mudança de taxa se faz em Cadastros.`}>
-                <input className="input" type="number" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} placeholder="0.00" />
+              <Field label="Valor ajustado (R$)" help={`Partida atual: ${money(entry?.amount)}. Mudança de taxa se faz em Cadastros.`}>
+                <input className="input" type="number" step="0.01" min="0" disabled={!canAdjust} value={amount} onChange={event => setAmount(event.target.value)} placeholder="0.00" />
               </Field>
             </div>
           )}
@@ -136,19 +150,18 @@ export function ExceptionDetail({ exception, run, editable, onClose, onDecided, 
       )}
       {!editable && !decided && <Callout tone="gate" icon="lock">Decisões são registradas na aba Revisão enquanto o run aguarda aprovação.</Callout>}
 
-      {exception.kind === 'DIVERGENCIA_TAXA' && editable && (
-        <button className="btn sm" style={{ alignSelf: 'flex-start' }} disabled={!!busy} onClick={async () => {
-          const result = await act('dispute', () => core.draftEmail({ issue_id: exception.id }), { success: 'Contestação preparada para revisão.', invalidate: [keys.state] });
-          const id = result?.id || result?.email?.id;
-          if (id) setEmail(id);
-        }}><Icon name="mail" />Preparar contestação ao parceiro</button>
+      {currentIssue && sameFiles && (
+        <Link className="btn sm" style={{ alignSelf: 'flex-start' }} to={`/comunicacoes?aba=gmail&pendencia=${encodeURIComponent(exception.id)}`}><Icon name="mail" />Preparar e-mail da pendência atual</Link>
       )}
 
       <div>
         <h4 className="section-title" style={{ fontSize: 13.5 }}><Icon name="origin" />Linhas de origem</h4>
-        <TraceView id={exception.id} compact />
+        <p className="help">Evidências preservadas nesta execução. Consulte a prévia do passo para os dados e cálculos completos.</p>
+        <div className="table-wrap"><table className="table">
+          <thead><tr><th>Arquivo</th><th>Referência</th><th>Linha</th></tr></thead>
+          <tbody>{exception.evidence.map((item, index) => <tr key={index}><td className="mono">{item.arquivo || '—'}</td><td className="mono">{item.ref}</td><td>{item.linha || '—'}</td></tr>)}</tbody>
+        </table></div>
       </div>
-      {email && <EmailEditor emailId={email} cnpj={exception.cnpj} onClose={() => setEmail(null)} />}
     </div>
   );
 }

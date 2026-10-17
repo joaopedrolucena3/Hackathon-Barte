@@ -2,7 +2,7 @@
 // rows with exceptions carry a margin marker; totals of money columns come from the backend.
 import { useEffect, useState } from 'react';
 import type { CellValue, ColumnFilter, ColumnSchema, ParamValue, PreviewPage, PreviewQuery, PreviewRow } from '../api/agent';
-import { cnpj, count, dateBR, decimal, percent, pp } from '../lib/format';
+import { cnpj, count, dateBR, decimal, percent, pp, readable } from '../lib/format';
 import { usePreview } from '../state/queries';
 import { Icon } from './Icon';
 import { Badge, Callout, Empty, HashChip, Loading, Money, Toggle } from './ui';
@@ -65,7 +65,9 @@ export function DataPreview({ runId, stepId, paramsOverride, onException, initia
   }));
   const addFilter = () => {
     if (!draft.key || !draft.value.trim()) return;
-    update({ filters: [...(query.filters || []), { ...draft, value: draft.value.trim() }] });
+    let value = draft.value.trim();
+    if (columns.find(column => column.key === draft.key)?.type === 'date' && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) value = value.split('/').reverse().join('-');
+    update({ filters: [...(query.filters || []), { ...draft, value }] });
     setDraft({ key: draft.key, op: draft.op, value: '' });
   };
   const newCount = columns.filter(column => column.is_new).length;
@@ -75,6 +77,13 @@ export function DataPreview({ runId, stepId, paramsOverride, onException, initia
       {!compact && (
         <div className="preview-toolbar">
           {header}
+          {page.datasets && page.datasets.length > 1 && <label className="row" style={{ gap: 8, fontSize: 12.5 }}>
+            Tabela de saída
+            <select className="select sm" style={{ width: 'auto' }} aria-label="Tabela de saída" value={query.dataset || page.dataset} onChange={event => {
+              setDraft({ key: '', op: 'contains', value: '' });
+              setQuery({ page: 1, page_size: pageSize, dataset: event.target.value, filters: [] });
+            }}>{page.datasets.map(name => <option key={name} value={name}>{readable(name)}</option>)}</select>
+          </label>}
           <div className="row wrap" style={{ gap: 14 }}>
             <label className="row" style={{ gap: 7, fontSize: 12.5 }}><Toggle checked={!!query.only_exceptions} onChange={value => update({ only_exceptions: value })} label="Só exceções" />Só exceções{page.exceptions_total ? <span className="count">{count(page.exceptions_total)}</span> : null}</label>
             <label className="row" style={{ gap: 7, fontSize: 12.5 }}><Toggle checked={!!query.diff} onChange={value => update({ diff: value })} label="Comparar com entrada" />Comparar com entrada</label>
@@ -108,7 +117,7 @@ export function DataPreview({ runId, stepId, paramsOverride, onException, initia
       {!compact && (newCount > 0 || query.diff) && (
         <p className="preview-hint">
           {newCount > 0 && <><span className="new-dot" /> {plural(newCount)} criadas por este passo. </>}
-          {query.diff && (page.diff_summary?.removed ? `${count(page.diff_summary.removed)} linha(s) removida(s) em relação à entrada aparecem riscadas.` : 'Nenhuma linha adicionada ou removida: o passo só acrescentou colunas.')}
+          {query.diff && `${count(page.diff_summary?.removed)} linha(s) removida(s) e ${count(page.diff_summary?.added)} adicionada(s) em relação à entrada. A tabela exibe a saída desta etapa.`}
         </p>
       )}
       {page.rows.length ? (
