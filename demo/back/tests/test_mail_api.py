@@ -144,6 +144,22 @@ class MailHTTPTests(unittest.TestCase):
         self.assertIn(self.approve(draft).status_code,(401,403))
         self.assertFalse(self.client.get('/api/mail/account').json()['authorized'])
 
+    def test_provider_mode_is_preserved_after_configuration_changes(self):
+        self.connect(); self.contact()
+        draft = self.draft()
+        response = self.approve(draft)
+        self.assertEqual(response.status_code, 200, response.text)
+        sent = response.json()
+        self.assertEqual(sent['provider_mode'], 'injected_test')
+        self.assertEqual(sent['approval']['provider_mode'], 'injected_test')
+        self.auth.provider_mode = 'gmail'
+        stored = self.client.get('/api/mail/drafts/' + draft['id']).json()
+        self.assertEqual(stored['provider_mode'], 'injected_test')
+        events = self.client.get('/api/mail/issues/' + draft['issue_id'] + '/history').json()
+        sent_event = next(event for event in events if event['type'] == 'send_sent')
+        self.assertEqual(sent_event['provider_mode'], 'injected_test')
+        self.assertIn('nenhum e-mail real', sent_event['delivery_note'])
+
     def test_uncertain_result_is_visible_and_never_retried(self):
         self.connect(); self.contact()
         draft=self.draft();self.provider.outcome='uncertain'

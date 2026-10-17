@@ -48,8 +48,9 @@ function StepEntry({ entry }: { entry: Extract<AuditEntry, { kind: 'step' }> }) 
 }
 
 function Timeline({ run }: { run: Run }) {
-  const { data: trail, isLoading } = useAudit(run.id);
+  const { data: trail, isLoading, error } = useAudit(run.id);
   const [showAll, setShowAll] = useState(false);
+  if (error) return <Callout tone="critical" icon="alert">{error.message}</Callout>;
   if (isLoading || !trail) return <Loading label="Montando a trilha…" />;
   const decisions = trail.entries.filter(entry => entry.kind === 'decision');
   const firstDecision = trail.entries.findIndex(entry => entry.kind === 'decision');
@@ -105,7 +106,7 @@ function Timeline({ run }: { run: Run }) {
           case 'export':
             return (
               <Entry key={`e-${entry.file.name}`} icon="download" tone="done" at={entry.at} title={<span className="mono" style={{ fontSize: 12.5 }}>{entry.file.name}</span>}>
-                <div className="row wrap" style={{ gap: 10, fontSize: 12.5 }}><span className="muted">{plural(entry.file.rows, 'registro', 'registros')}</span><HashChip hash={entry.file.sha256} size={12} /></div>
+                <div className="row wrap" style={{ gap: 10, fontSize: 12.5 }}><span className="muted">{entry.file.rows === undefined ? 'Documento de auditoria' : plural(entry.file.rows, 'registro', 'registros')}</span><HashChip hash={entry.file.sha256} size={12} /></div>
               </Entry>
             );
           default:

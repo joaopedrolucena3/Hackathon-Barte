@@ -241,7 +241,7 @@ class MailService:
                 draft[key] = value.strip()
             if draft.get("to") and not _email(draft["to"]): raise ServiceError(422, "INVALID_RECIPIENT", "Informe um único endereço de e-mail válido.")
             draft.update(version=draft["version"] + 1, sender=_identity(sender), status="draft", updated_at=_now(), updated_by=actor)
-            for key in ("error", "approval", "sent_at", "provider_message_id", "provider_thread_id", "attempt_id"): draft.pop(key, None)
+            for key in ("error", "approval", "sent_at", "provider_message_id", "provider_thread_id", "attempt_id", "provider_mode"): draft.pop(key, None)
             self._save_version(draft, evidence, files)
             event = self._event(draft, "draft_saved", actor, {"before_version": before["version"], "content_hash": draft["content_hash"], "evidence_refreshed": refresh})
         self._audit(actor, "draft_saved", event)
@@ -273,8 +273,10 @@ class MailService:
         if message.is_multipart(): message.set_boundary(f"tarvo-{draft['id']}-v{draft['version']}")
         return message.as_bytes()
 
-    def approve_send(self, ident, payload, actor, auth_context, send_callable):
+    def approve_send(self, ident, payload, actor, auth_context, send_callable, *, provider_mode="unknown"):
         actor = _actor(actor)
+        # Preserve how this attempt was dispatched; current configuration must not relabel old sends.
+        provider_mode = provider_mode if provider_mode in {"gmail", "injected_test"} else "unknown"
         identity = _identity(auth_context)
         if not identity or not all(identity.values()) or not _email(identity["email"]):
             raise ServiceError(401, "MAIL_AUTH_REQUIRED", "Uma sessão Google autorizada no servidor é necessária para aprovar o envio.")
@@ -294,13 +296,14 @@ class MailService:
                 if review["blockers"]: raise ServiceError(409, "MAIL_REVIEW_REQUIRED", "Resolva os bloqueios e revise o conteúdo antes de aprovar.", review["blockers"])
                 at, attempt_id = _now(), "attempt-" + uuid.uuid4().hex
                 raw = self._mime(draft, at)
-                approval = {"at": at, "declared_actor": actor, "google_account": identity, "identity_note": "Nome declarado pelo analista; a conta Google autoriza a sessão e pode ser compartilhada.", "version": draft["version"], "content_hash": draft["content_hash"], "evidence_hash": draft["evidence_hash"]}
-                attempt = {"id": attempt_id, "draft_id": ident, "version": draft["version"], "status": "sending", "started_at": at, "approval": approval, "mime_sha256": hashlib.sha256(raw).hexdigest(), "approved_content": copy.deepcopy(draft)}
+                approval = {"at": at, "declared_actor": actor, "google_account": identity, "provider_mode": provider_mode, "identity_note": "Nome declarado pelo analista; a conta Google autoriza a sessão e pode ser compartilhada.", "version": draft["version"], "content_hash": draft["content_hash"], "evidence_hash": draft["evidence_hash"]}
+                draft["provider_mode"] = provider_mode
+                attempt = {"id": attempt_id, "draft_id": ident, "version": draft["version"], "status": "sending", "provider_mode": provider_mode, "started_at": at, "approval": approval, "mime_sha256": hashlib.sha256(raw).hexdigest(), "approved_content": copy.deepcopy(draft)}
                 try: self.db.execute("INSERT INTO mail_attempts VALUES (?,?,?,?,?,?)", (attempt_id, ident, draft["version"], "sending", canonical(attempt), raw))
                 except sqlite3.IntegrityError as exc: raise ServiceError(409, "MAIL_SEND_LOCKED", "Esta versão já possui uma tentativa registrada; não será reenviada.") from exc
                 draft.update(status="sending", approval=approval, attempt_id=attempt_id, updated_at=at)
                 self._put(draft)
-                event = self._event(draft, "send_approved", actor, {"attempt_id": attempt_id, "google_account": identity, "content_hash": draft["content_hash"], "mime_sha256": attempt["mime_sha256"]})
+                event = self._event(draft, "send_approved", actor, {"attempt_id": attempt_id, "google_account": identity, "provider_mode": provider_mode, "content_hash": draft["content_hash"], "mime_sha256": attempt["mime_sha256"]})
             dispatched = False
             try:
                 # Exact MIME is durable before the only provider invocation.
@@ -332,7 +335,8 @@ class MailService:
             if error: attempt["error"] = error
             self.db.execute("UPDATE mail_attempts SET status=?,data=? WHERE id=?", (status, canonical(attempt), attempt_id))
             self._put(draft)
-            event = self._event(draft, "send_" + status, actor, {"attempt_id": attempt_id, "google_account": identity, **provider, **({"error": error} if error else {}), "delivery_note": "Aceito pelo Gmail; entrega e leitura não foram confirmadas." if status == "sent" else ""})
+            accepted_note = ("Aceito pelo provedor de teste; nenhum e-mail real foi enviado." if provider_mode == "injected_test" else "Aceito pelo Gmail; entrega e leitura não foram confirmadas." if provider_mode == "gmail" else "Aceito pelo provedor; modo de envio não identificado. Entrega e leitura não foram confirmadas.")
+            event = self._event(draft, "send_" + status, actor, {"attempt_id": attempt_id, "google_account": identity, "provider_mode": provider_mode, **provider, **({"error": error} if error else {}), "delivery_note": accepted_note if status == "sent" else ""})
         self._audit(actor, "send_" + status, event)
         return self.get_draft(ident, identity)
 

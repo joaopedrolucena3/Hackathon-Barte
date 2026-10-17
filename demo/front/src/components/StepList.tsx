@@ -24,7 +24,8 @@ export function stepSummary(step: StepRun) {
     if (m.exceptions !== undefined) parts.push(plural(m.exceptions, 'exceção', 'exceções'));
     if (m.blocking) parts.push(`${count(m.blocking)} bloqueantes`);
   } else {
-    if (m.rows_out !== undefined) parts.push(step.type === 'ler_arquivos' ? plural(m.rows_out, 'arquivo', 'arquivos') : plural(m.rows_out, 'linha', 'linhas'));
+    if (step.type === 'ler_arquivos' && typeof m.extra?.files === 'number') parts.push(plural(m.extra.files, 'arquivo', 'arquivos'));
+    if (m.rows_out !== undefined) parts.push(plural(m.rows_out, 'linha', 'linhas'));
     if (m.exceptions) parts.push(plural(m.exceptions, 'exceção', 'exceções'));
   }
   if (step.duration_ms !== undefined && step.kind !== 'gate') parts.push(duration(step.duration_ms));

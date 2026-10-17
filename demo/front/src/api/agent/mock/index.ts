@@ -137,6 +137,7 @@ export const mockAgent: AgentApi = {
       .map(({ id, comp: c, status, created_at, created_by, draft, pipeline }) => ({ id, comp: c, status, created_at, created_by, draft, pipeline }));
   },
   getRun: async id => structuredClone(requireRun(id)),
+  getRunAccounts: async () => (await core.state()).accounts,
   subscribeRun: (id, onEvent) => { boot(); return subscribe(id, onEvent); },
   getPreview: preview,
 

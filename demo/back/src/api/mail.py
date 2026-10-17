@@ -73,7 +73,7 @@ def mail_router(mail, auth, store, actor_dependency):
         return HTMLResponse('<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>Configurar Gmail · Tarvo</title><style>body{max-width:860px;margin:40px auto;padding:0 24px;color:#20343e;font:16px/1.6 system-ui}pre{white-space:pre-wrap;font:inherit}a{color:#8c442e}</style>'
-            '<a href="/#mail">Voltar à plataforma</a><pre>' + text + '</pre></html>')
+            '<a href="/comunicacoes?aba=gmail">Voltar à plataforma</a><pre>' + text + '</pre></html>')
 
     @router.get('/account')
     def status(request: Request):
@@ -95,7 +95,7 @@ def mail_router(mail, auth, store, actor_dependency):
             if error:
                 raise AuthError(400, 'OAUTH_NOT_AUTHORIZED', 'A autorização Google não foi concluída. Conecte novamente quando desejar.')
             result = auth.complete(state, code, request.cookies.get(BINDING_COOKIE))
-            response = RedirectResponse('/#mail', status_code=303)
+            response = RedirectResponse('/comunicacoes?aba=gmail', status_code=303)
             response.set_cookie(SESSION_COOKIE, result['session_token'], max_age=8*60*60,
                                 httponly=True, samesite='lax', secure=request.url.scheme == 'https', path=COOKIE_PATH)
             context = auth.status(result['session_token']).get('connection') or {}
@@ -108,13 +108,13 @@ def mail_router(mail, auth, store, actor_dependency):
             # No callback URL, authorization code, provider payload, or token in logs/HTML.
             response = HTMLResponse('<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
                 '<title>Conexão Gmail · Tarvo</title><main><h1>Conexão não concluída</h1><p>'
-                + html.escape(exc.message) + '</p><a href="/#mail">Voltar à plataforma</a></main></html>',
+                + html.escape(exc.message) + '</p><a href="/comunicacoes?aba=gmail">Voltar à plataforma</a></main></html>',
                 status_code=exc.status)
         except Exception:
             response = HTMLResponse('<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
                 '<title>Conexão Gmail · Tarvo</title><main><h1>Conexão não concluída</h1>'
                 '<p>Não foi possível validar a autorização. Tente conectar novamente.</p>'
-                '<a href="/#mail">Voltar à plataforma</a></main></html>', status_code=400)
+                '<a href="/comunicacoes?aba=gmail">Voltar à plataforma</a></main></html>', status_code=400)
         response.delete_cookie(BINDING_COOKIE, path=COOKIE_PATH)
         response.headers['Referrer-Policy'] = 'no-referrer'
         return response
@@ -159,7 +159,7 @@ def mail_router(mail, auth, store, actor_dependency):
     @router.post('/drafts/{draft_id}/approve-send')
     def send(draft_id: str, body: MailApproval, actor: str = Depends(actor_dependency), context=Depends(authorized)):
         result = mail.approve_send(draft_id, body.model_dump(), actor, context,
-                                   lambda raw: auth.send_message(context, raw))
+                                   lambda raw: auth.send_message(context, raw), provider_mode=auth.provider_mode)
         return present(result)
 
     @router.get('/drafts/{draft_id}/attachments/{attachment_id}')

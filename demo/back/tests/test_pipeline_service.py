@@ -277,7 +277,7 @@ class PipelineServiceTests(unittest.TestCase):
         current = self.service.checklist('2026-09')
         self.assertEqual(current['run_id'], run['id'])
         self.assertEqual(next(t for t in current['tasks'] if t['id'] == manual['id'])['status'], 'concluida')
-        self.assertEqual(next(t for t in current['tasks'] if t['step_type'] == 'aprovacao')['status'], 'em_andamento')
+        self.assertEqual(next(t for t in current['tasks'] if t['step_type'] == 'aprovacao')['status'], 'awaiting_approval')
         self.assertEqual(next(t for t in current['tasks'] if t['step_type'] == 'exportar_erp')['status'], 'pendente')
         october = self.service.checklist('2026-10')
         self.assertTrue(all(t['status'] == 'pendente' for t in october['tasks']))

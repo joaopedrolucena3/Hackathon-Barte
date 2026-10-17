@@ -97,7 +97,7 @@ def _computed(ctx, tolerance=None):
     scratch = ctx.setdefault("scratch", {})
     if tolerance is not None: scratch["remittance_tolerance_pp"] = str(tolerance)
     data = _inputs(ctx)
-    params = {"period": ctx["period"], "remittance_tolerance_pp": scratch.get("remittance_tolerance_pp", "0.002")}
+    params = {**ctx.get("references", {}).get("parameters", {}), "period": ctx["period"], "remittance_tolerance_pp": scratch.get("remittance_tolerance_pp", "0.002")}
     resolved_aliases = [(r.get("ec"), r.get("cnpj")) for r in ctx.get("datasets", {}).get("orbe_resolvido", [])
                         if r.get("match_confirmed") and r.get("match_method") == "CNPJ"]
     key = hashlib.sha256(dumps([data, params, sorted(set(resolved_aliases))]).encode()).hexdigest()
@@ -129,6 +129,8 @@ def _contract_entries(result, business):
 
 def _ler_arquivos(ctx, params):
     data = load_data(ctx["source_dir"])
+    for key in ("merchants", "rates"):
+        if key in ctx.get("references", {}): data[key] = copy.deepcopy(ctx["references"][key])
     hard = [w for w in data["import_warnings"] if w["type"] in {"ARQUIVO_AUSENTE", "ARQUIVO_AMBIGUO", "ANEXO_AMBIGUO", "ABA_AUSENTE"}]
     if hard: raise ValueError("Importação incompleta: " + "; ".join(w["message"] for w in hard))
     mapping = {"checkout": "raw_orbe", "rates": "raw_rates", "merchants": "raw_merchants", "bank": "raw_bank",

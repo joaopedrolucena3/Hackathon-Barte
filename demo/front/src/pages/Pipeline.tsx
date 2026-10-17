@@ -34,7 +34,7 @@ function SortableStep({ step, item, index, selected, issues, readOnly, onSelect,
         </span>
       </button>
       {locked ? (
-        <Tip text="A aprovação humana é obrigatória: não pode ser removida, desligada nem ir para depois da exportação ao ERP."><Icon name="lock" className="muted" /></Tip>
+        <Tip text={item?.kind === 'export' ? 'A exportação é obrigatória no pipeline e só ocorre após aprovação. Execuções de teste não exportam.' : 'A aprovação humana é obrigatória: não pode ser removida, desligada nem ir para depois da exportação ao ERP.'}><Icon name="lock" className="muted" /></Tip>
       ) : !readOnly && (
         <span className="row" style={{ gap: 2 }}>
           <Toggle checked={step.enabled} onChange={onToggle} label={`Ligar ${item?.title}`} />
@@ -75,9 +75,9 @@ function ParamInput({ field, value, readOnly, error, onChange }: { field: ParamF
 export default function PipelinePage() {
   const [params, setParams] = useSearchParams();
   const viewVersion = params.get('versao') ? Number(params.get('versao')) : undefined;
-  const { data: latest } = usePipeline();
+  const { data: latest, error: pipelineError } = usePipeline();
   const { data: viewed } = usePipeline(viewVersion);
-  const { data: catalog } = useCatalog();
+  const { data: catalog, error: catalogError } = useCatalog();
   const { data: versions } = usePipelineVersions();
   const { data: state } = useAppState();
   const comp = state ? lastComp(state.period) : '';
@@ -103,6 +103,7 @@ export default function PipelinePage() {
   }, [steps]);
   const byType = useMemo(() => new Map((catalog || []).map(item => [item.type, item])), [catalog]);
 
+  if (pipelineError || catalogError) return <Callout tone="critical" icon="alert">{(pipelineError || catalogError)?.message}</Callout>;
   if (!latest || !catalog || !base) return <Loading page />;
   const step = steps.find(item => item.id === selected) || steps[0];
   const item = step ? byType.get(step.type) : undefined;
@@ -165,8 +166,8 @@ export default function PipelinePage() {
           {!step ? <Empty title="Selecione um passo" /> : item?.kind === 'gate' ? (
             <div className="card-body"><Callout tone="gate" icon="lock">Portão de aprovação: não transforma dados. Aqui o run para até um responsável decidir as exceções e aprovar o lote.</Callout></div>
           ) : sampleRun ? (
-            <DataPreview runId={sampleRun.id} stepId={step.type} paramsOverride={step.params} pageSize={50}
-              header={<p className="help">Prévia com os parâmetros desta tela, sobre os dados do {sampleRun.id}. Mude um parâmetro e veja o efeito.</p>} />
+            <DataPreview runId={sampleRun.id} stepId={step.type} pageSize={50}
+              header={<p className="help">Dados preservados do {sampleRun.id}. Use Testar para calcular uma nova prévia com os parâmetros desta tela.</p>} />
           ) : <Empty icon="play" title="Sem amostra ainda">Rode o fechamento uma vez para ver aqui o efeito de cada passo.</Empty>}
         </section>
 

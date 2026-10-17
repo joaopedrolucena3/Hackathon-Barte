@@ -91,8 +91,8 @@
     "id": "H12",
     "question": "As edições do cadastro antigo alteram uma execução versionada?",
     "source": "Requisito de imutabilidade e reexecução por competência.",
-    "decision": "Cada run usa cópias dos arquivos e a definição versionada. Cadastros do fechamento original ficam preservados, mas não são incorporados silenciosamente no pipeline; novas referências entram pelos arquivos de uma nova execução.",
-    "impact": "Ao revisar uma referência, iniciar outro run com o conjunto atualizado; a evidência aprovada continua imutável.",
+    "decision": "Cada run usa cópias dos arquivos e a definição versionada. Ao executar o pack atual, os cadastros, taxas e parâmetros revisados entram em snapshot próprio somente se os hashes dos seis arquivos coincidirem com as fontes do fechamento atual. Uploads e outras pastas usam suas próprias referências; execuções existentes nunca são reescritas.",
+    "impact": "Após revisar uma referência, iniciar outro run do pack atual para incorporá-la. A auditoria registra as referências efetivas; a evidência de execuções anteriores continua imutável.",
     "status": "arquitetura"
   }
 ]

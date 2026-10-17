@@ -12,6 +12,7 @@ export const keys = {
   checklist: (comp: string) => ['checklist', comp] as const,
   runs: (comp?: string) => ['runs', comp || 'all'] as const,
   run: (id: string) => ['run', id] as const,
+  runAccounts: (id: string) => ['run-accounts', id] as const,
   preview: (runId: string, stepId: string, query?: PreviewQuery) => ['preview', runId, stepId, ...(query ? [query] : [])] as const,
   exceptions: (runId: string) => ['exceptions', runId] as const,
   approval: (runId: string) => ['approval', runId] as const,
@@ -28,6 +29,7 @@ export const useInsights = (comp: string) => useQuery({ queryKey: keys.insights(
 export const useChecklist = (comp: string) => useQuery({ queryKey: keys.checklist(comp), queryFn: () => agent.getChecklist(comp), enabled: !!comp });
 export const useRuns = (comp?: string) => useQuery({ queryKey: keys.runs(comp), queryFn: () => agent.listRuns(comp) });
 export const useRun = (id: string) => useQuery({ queryKey: keys.run(id), queryFn: () => agent.getRun(id), enabled: !!id, staleTime: 0 });
+export const useRunAccounts = (id: string) => useQuery({ queryKey: keys.runAccounts(id), queryFn: () => agent.getRunAccounts(id), enabled: !!id, staleTime: Infinity });
 export const useExceptions = (runId: string, enabled = true) =>
   useQuery({ queryKey: keys.exceptions(runId), queryFn: () => agent.listExceptions(runId), enabled: !!runId && enabled });
 export const useApprovalSummary = (runId: string, enabled = true) =>
@@ -62,9 +64,10 @@ export function useRunEvents(runId: string, onEvent?: (event: RunEvent) => void)
       if (event.type === 'awaiting_approval' || event.type === 'run_finished' || event.type === 'step_finished') {
         invalidate(['checklist'], ['runs'], keys.audit(runId), ['insights']);
       }
+      if (event.type === 'awaiting_approval') invalidate(keys.run(runId), keys.exceptions(runId), keys.approval(runId));
       if (event.type === 'run_finished') invalidate(keys.run(runId), keys.state);
       handler.current?.(event);
-    }, () => invalidate(keys.run(runId), ['preview', runId]));
+    }, () => invalidate(keys.run(runId), ['preview', runId], keys.exceptions(runId), keys.approval(runId), keys.audit(runId), ['checklist'], ['runs'], ['insights'], keys.state));
   }, [runId, client]);
 }
 

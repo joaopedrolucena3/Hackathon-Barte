@@ -21,6 +21,8 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from starlette.exceptions import HTTPException
 
 from ..store import ConflictError, ROOT, Store
+from ..engine import calculate
+from .insights import build_insights
 from ..pipeline.service import PipelineService, ServiceError
 from ..mail.auth import AuthManager, AuthError
 from ..mail.service import MailService
@@ -37,6 +39,8 @@ class RunRequest(BaseModel):
     file_ids: list[str] | None = Field(default=None, min_length=6, max_length=6)
     source_dir: str | None = None
     pipeline_version: int | None = Field(default=None, ge=1)
+    draft: bool = False
+    steps: list[dict] | None = None
 
 
 class DecisionRequest(BaseModel):
@@ -45,6 +49,13 @@ class DecisionRequest(BaseModel):
     valor: str | int | float | None = None
     conta: str | None = None
     entry_id: str | None = None
+    justificativa: str = Field(min_length=1, max_length=10000)
+
+
+class BatchDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    ids: list[str] = Field(min_length=1, max_length=500)
+    acao: Literal["aceitar"]
     justificativa: str = Field(min_length=1, max_length=10000)
 
 
@@ -211,12 +222,41 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
 
     @app.post("/api/runs", status_code=202)
     def start(body: RunRequest, actor: str = Depends(actor_header)):
-        result = flow.start_run(body.model_dump(exclude_none=True), actor)
+        references = None
+        if body.file_ids is None and not body.source_dir:
+            with store.lock:
+                if body.competencia == store.get('period'):
+                    references = {'merchants': store.records('merchants'), 'rates': store.records('rates'),
+                                  'parameters': store.get('parameters', {}),
+                                  'source_hashes': {item['name']: item['sha256'] for item in store.get('source_data', {}).get('sources', []) if not item.get('embedded')}}
+        result = flow.start_run(body.model_dump(exclude_none=True), actor, references=references)
         return {"run_id": result} if isinstance(result, str) else result
 
     @app.get("/api/runs")
     def runs(competencia: str | None = None):
         return {"runs": flow.list_runs(competencia)}
+
+    @app.get("/api/runs/compare")
+    def compare(a: str, b: str):
+        return flow.compare_runs(a, b)
+
+    @app.get("/api/runs/{run_id}/accounts")
+    def accounts(run_id: str):
+        return flow.accounts(run_id)
+
+    @app.get("/api/runs/{run_id}/approval-summary")
+    def approval_summary(run_id: str):
+        return flow.approval_summary(run_id)
+
+    @app.get("/api/runs/{run_id}/exports/{name}")
+    def export_file(run_id: str, name: str):
+        content = flow.export_file(run_id, name)
+        return Response(content, media_type="application/json" if name.endswith('.json') else "text/csv",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.post("/api/runs/{run_id}/exceptions/decisions")
+    def batch_decisions(run_id: str, body: BatchDecisionRequest, actor: str = Depends(actor_header)):
+        return flow.decide_many(run_id, body.ids, {'acao': body.acao, 'justificativa': body.justificativa}, actor)
 
     @app.get("/api/runs/{run_id}/events")
     async def events(request: Request, run_id: str, after: int = 0,
@@ -292,6 +332,30 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     def run(run_id: str):
         return flow.get_run(run_id)
 
+    def source_periods():
+        with store.lock:
+            data = store.get('source_data', {})
+        return {row.get('date', '')[:7] for row in data.get('checkout', []) + data.get('bank', []) if row.get('date')} | {row['contracted_date'][:7] for row in data.get('remittances', []) if row.get('contracted_date')}
+
+    @app.get("/api/competencias")
+    def competencias():
+        periods = source_periods()
+        current = store.get('period')
+        all_periods = periods | {run['competencia'] for run in flow.list_runs()} | {current}
+        return [{'comp': period, 'has_data': period in periods, 'current': period == current} for period in sorted(all_periods, reverse=True)]
+
+    @app.get("/api/insights")
+    def insights(comp: str):
+        flow._period(comp)
+        with store.lock:
+            if comp == store.get('period'):
+                result = store._results()
+            elif comp in source_periods():
+                result = calculate(store._data(), {**store.get('parameters', {}), 'period': comp})
+            else:
+                raise ServiceError(404, 'PERIOD_WITHOUT_INPUTS', 'A conferência atual não possui fontes desta competência.')
+        return build_insights(comp, result)
+
     @app.get("/api/competencias/{competencia}/checklist")
     def checklist(competencia: str):
         result = flow.checklist(competencia)
@@ -346,9 +410,20 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     def static(path: str):
         if path.startswith("api/"):
             raise HTTPException(404, "Rota não encontrada.")
-        target = (ROOT / "web" / (path or "index.html")).resolve()
-        if not target.is_relative_to((ROOT / "web").resolve()) or not target.is_file():
+        frontend = ROOT.parent / "front" / "dist"
+        if path.startswith('legacy/') or path == 'legacy':
+            root = ROOT / 'web'
+            relative = path.removeprefix('legacy').lstrip('/') or 'index.html'
+        else:
+            root = frontend if (frontend / 'index.html').is_file() else ROOT / 'web'
+            relative = path or 'index.html'
+        target = (root / relative).resolve()
+        if not target.is_relative_to(root.resolve()):
             raise HTTPException(404, "Página não encontrada.")
-        return FileResponse(target)
+        if target.is_file(): return FileResponse(target)
+        # React Router deep links resolve only within known app routes.
+        if root == frontend and path.split('/')[0] in {'competencias', 'runs', 'pipeline', 'comunicacoes', 'cadastros', 'notas-bancos'}:
+            return FileResponse(frontend / 'index.html')
+        raise HTTPException(404, "Página não encontrada.")
 
     return app

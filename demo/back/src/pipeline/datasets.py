@@ -31,6 +31,7 @@ def dumps(value):
 
 
 def column_type(name):
+    if name == "foreign_amount": return "number"
     if name.endswith("_pct") or name.endswith("_pp") or "percent" in name or name == "taxa_contratada": return "percent"
     if name in {"date", "data", "original_date", "contracted_date", "settlement_date", "start", "end"} or name.startswith("data_") or name.startswith("vigencia_"): return "date"
     if name in {"gross", "net", "reported_fee", "amount", "valor", "debito", "credito", "balance", "opening", "closing", "foreign_amount"} or name.endswith(("_brl", "_rs")):
@@ -109,7 +110,7 @@ def preview(path, query=None, input_rows=None):
     if not isinstance(filters, list): raise ValueError("Filtros devem ser uma lista.")
     for condition in filters:
         if not isinstance(condition, dict): raise ValueError("Filtro deve ser um objeto.")
-        column, operation, value = condition.get("column"), condition.get("op", "eq"), condition.get("value")
+        column, operation, value = condition.get("column", condition.get("key")), condition.get("op", "eq"), condition.get("value")
         if column not in names: raise ValueError(f"Coluna desconhecida: {column}")
         if operation not in ("eq", "contains", "gt", "lt"): raise ValueError("Operador de filtro inválido.")
         def matches(row):
@@ -136,13 +137,24 @@ def preview(path, query=None, input_rows=None):
                 try: return (0, Decimal(str(value)))
                 except InvalidOperation: return (1, str(value))
             return (0, str(value))
-        rows.sort(key=sort_key, reverse=str(query.get("sort_dir", query.get("order", "asc"))).lower() == "desc")
+        rows.sort(key=sort_key, reverse=str(query.get("sort_dir", query.get("order", query.get("dir", "asc")))).lower() == "desc")
     try:
         page, page_size = int(query.get("page", 1)), int(query.get("page_size", 50))
     except (TypeError, ValueError) as exc: raise ValueError("Paginação inválida.") from exc
     if page < 1 or not 1 <= page_size <= 500: raise ValueError("Página deve ser positiva e page_size entre 1 e 500.")
     response = {"rows": rows[(page - 1) * page_size:page * page_size], "schema": schema, "page": page, "page_size": page_size,
                 "total": len(rows), "total_rows": len(rows), "unfiltered_total": before_count, "pages": (len(rows) + page_size - 1) // page_size}
+    money_columns = [column["name"] for column in schema if column["type"] == "money"]
+    def totals(selected):
+        output = {}
+        for name in money_columns:
+            values = [Decimal(str(row[name])) for row in selected if row.get(name) not in (None, "")]
+            if any(not value.is_finite() for value in values): raise ValueError("Número não finito no dataset.")
+            if values: output[name] = format(sum(values, Decimal(0)), ".2f")
+        return output
+    response["totals"] = {"page": totals(response["rows"]), "all": totals(rows)}
+    response["input_rows"] = len(previous) if input_rows is not None else before_count
+    response["exceptions_total"] = sum(bool(row.get("__exception_ids")) for row in rows)
     if _boolean(query.get("diff", False)):
         old = {_row_key(row): row for row in previous}
         new = {_row_key(row): row for row in read_dataset(path)}

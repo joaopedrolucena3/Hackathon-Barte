@@ -149,6 +149,116 @@ class WorkflowHTTPTests(unittest.TestCase):
         response=self.client.post('/api/files',headers=self.user,files={'file':('../../app.py',b'bad','text/plain')})
         self.assertGreaterEqual(response.status_code,400,response.text)
 
+    def test_frontend_draft_keeps_gate_exports_and_checklist_isolated(self):
+        pipeline = self.client.get('/api/pipelines/fechamento-tarvo').json()
+        run_id, actual = self.start()
+        request = {'pipeline_id': pipeline['id'], 'competencia': '2026-09', 'draft': True, 'steps': pipeline['steps']}
+        request['steps'][2]['params']['sugerir_nome'] = False
+        response = self.client.post('/api/runs', headers=self.user, json=request)
+        self.assertEqual(response.status_code, 202, response.text)
+        draft_id = response.json()['run_id']
+        draft = self.wait_run(draft_id)
+        self.assertEqual(draft['status'], 'done', draft)
+        self.assertTrue(draft['draft'])
+        self.assertIsNone(draft['approval'])
+        self.assertEqual(draft['exports'], [])
+        self.assertEqual([step['status'] for step in draft['steps'][-2:]], ['skipped', 'skipped'])
+        self.assertEqual(self.client.get(f'/api/runs/{draft_id}/export').status_code, 409)
+        self.assertEqual(self.client.get(f'/api/runs/{draft_id}/exports/lancamentos_fenix.csv').status_code, 409)
+        audit = self.client.get(f'/api/runs/{draft_id}/exports/auditoria.json')
+        self.assertEqual(audit.status_code, 200, audit.text)
+        self.assertEqual(audit.json()['run_id'], draft_id)
+        self.assertEqual(self.client.get('/api/competencias/2026-09/checklist').json()['run_id'], run_id)
+        self.assertEqual(self.client.get('/api/pipelines/fechamento-tarvo').json()['steps'], pipeline['steps'][:2] + [{**pipeline['steps'][2], 'params': {**pipeline['steps'][2]['params'], 'sugerir_nome': True}}] + pipeline['steps'][3:])
+        compare = self.client.get(f'/api/runs/compare?a={run_id}&b={draft_id}')
+        self.assertEqual(compare.status_code, 200, compare.text)
+        self.assertFalse(compare.json()['reproducible'])
+        self.assertEqual(compare.json()['a']['id'], run_id)
+        self.assertTrue(actual['steps'][0]['output_hash'])
+
+    def test_preview_totals_summary_and_atomic_alert_decisions(self):
+        from decimal import Decimal
+        run_id, _ = self.start()
+        summary = self.client.get(f'/api/runs/{run_id}/approval-summary').json()
+        self.assertEqual(summary['batch']['debit_brl'], '23474915.80')
+        self.assertEqual(summary['batch']['debit_brl'], summary['batch']['credit_brl'])
+        preview = self.client.get(f'/api/runs/{run_id}/steps/s8/preview?dataset=lancamentos&page_size=2').json()
+        self.assertEqual(preview['totals']['all']['debito'], summary['batch']['debit_brl'])
+        self.assertEqual(Decimal(preview['totals']['page']['debito']), sum(Decimal(row['debito']) for row in preview['rows']))
+        changed = self.client.get(f'/api/runs/{run_id}/steps/s3/preview', params={'params_override': json.dumps({'fallback': 'cnpj', 'sugerir_nome': False})})
+        self.assertEqual(changed.status_code, 422)
+        self.assertEqual(changed.json()['error']['code'], 'PREVIEW_REQUIRES_DRAFT')
+        rows = self.client.get(f'/api/runs/{run_id}/exceptions?page_size=500').json()['exceptions']
+        alerts = [row for row in rows if row['severidade'] != 'bloqueante'][:2]
+        blocker = next(row for row in rows if row['severidade'] == 'bloqueante')
+        batch = {'ids': [alerts[0]['id'], blocker['id']], 'acao': 'aceitar', 'justificativa': 'Revisão de teste'}
+        response = self.client.post(f'/api/runs/{run_id}/exceptions/decisions', headers=self.user, json=batch)
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(self.client.get(f'/api/runs/{run_id}/approval-summary').json()['decided'], 0)
+        batch['ids'] = [row['id'] for row in alerts]
+        response = self.client.post(f'/api/runs/{run_id}/exceptions/decisions', headers=self.user, json=batch)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['decided'], 2)
+        self.assertEqual(self.client.get(f'/api/runs/{run_id}/approval-summary').json()['decided'], 2)
+        self.assertTrue(any(row['postable'] for row in self.client.get(f'/api/runs/{run_id}/accounts').json()['accounts']))
+        self.assertTrue(any(row.get('bank_line_id') and row.get('associated_entries') for row in rows))
+        sale = next(row for row in rows if row.get('ref_origem') == 'TX88410932')
+        self.assertEqual(sale['merchant'], 'CASA DO ESTUDANTE VIAGENS')
+        self.assertEqual(sale['date'], '2026-09-01')
+        self.assertEqual(sale['amount'], '608.88')
+        stored = next(row for row in self.app.state.workflow._exceptions(run_id) if row['id'] == sale['id'])
+        self.assertNotIn('merchant', stored)
+
+    def test_pack_references_are_snapshotted_and_unsaved_steps_require_draft(self):
+        store = self.app.state.store
+        pipeline = self.client.get('/api/pipelines/fechamento-tarvo').json()
+        response = self.client.post('/api/runs', headers=self.user, json={'pipeline_id': pipeline['id'], 'competencia': '2026-09', 'steps': pipeline['steps']})
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(response.json()['error']['code'], 'DRAFT_REQUIRED')
+        with store.lock, store.db:
+            rate = store.records('rates')[0]
+            rate['rate_pct'] = '0.1234'
+            store._store_rate(rate)
+        response = self.client.post('/api/runs', headers=self.user, json={'pipeline_id': pipeline['id'], 'competencia': '2026-09', 'draft': True})
+        self.assertEqual(response.status_code, 202, response.text)
+        run_id = response.json()['run_id']
+        run = self.wait_run(run_id)
+        self.assertEqual(run['status'], 'done', run)
+        self.assertEqual(next(row for row in run['snapshot']['references']['rates'] if row['id'] == rate['id'])['rate_pct'], '0.1234')
+        snapshot_hash = run['snapshot']['references_hash']
+        with store.lock, store.db:
+            rate['rate_pct'] = '0.5678'
+            store._store_rate(rate)
+        after = self.client.get(f'/api/runs/{run_id}').json()
+        self.assertEqual(after['snapshot']['references_hash'], snapshot_hash)
+        self.assertEqual(next(row for row in after['snapshot']['references']['rates'] if row['id'] == rate['id'])['rate_pct'], '0.1234')
+        preview = self.client.get(f'/api/runs/{run_id}/steps/s1/preview?dataset=raw_rates&page_size=500').json()
+        self.assertEqual(next(row for row in preview['rows'] if row['id'] == rate['id'])['rate_pct'], '0.1234')
+
+    def test_competencias_insights_and_spa_deep_links(self):
+        from unittest.mock import patch
+        periods = self.client.get('/api/competencias').json()
+        self.assertTrue(any(item['comp'] == '2026-09' and item['has_data'] and item['current'] for item in periods))
+        insights = self.client.get('/api/insights?comp=2026-09')
+        self.assertEqual(insights.status_code, 200, insights.text)
+        from decimal import Decimal
+        notes = self.client.get('/api/state').json()['results']['notas']
+        self.assertEqual(insights.json()['notas']['total_brl'], format(sum((Decimal(row['valor_brl']) for row in notes), Decimal(0)), '.2f'))
+        self.assertTrue(insights.json()['bancos'])
+        self.assertEqual(self.client.get('/api/insights?comp=2040-01').status_code, 404)
+        fake_root = self.base / 'demo' / 'back'
+        frontend = fake_root.parent / 'front' / 'dist'
+        frontend.mkdir(parents=True)
+        (frontend / 'index.html').write_text('<html>Integrated app</html>')
+        with patch('src.api.app.ROOT', fake_root):
+            for route in ('/', '/competencias/2026-09', '/runs/example/revisao', '/pipeline', '/comunicacoes', '/cadastros', '/notas-bancos'):
+                response = self.client.get(route)
+                self.assertEqual(response.status_code, 200, route)
+                self.assertIn('Integrated app', response.text)
+            self.assertEqual(self.client.get('/api/unknown').status_code, 404)
+            self.assertEqual(self.client.get('/assets/missing.js').status_code, 404)
+            self.assertEqual(self.client.get('/%2e%2e/secrets').status_code, 404)
+
     def test_original_summary_and_sources_remain_available(self):
         response=self.client.get('/api/state')
         self.assertEqual(response.status_code,200,response.text)

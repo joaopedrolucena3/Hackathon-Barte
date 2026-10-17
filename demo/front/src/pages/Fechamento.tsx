@@ -11,7 +11,7 @@ import { TopbarSlot } from '../components/TopbarSlot';
 import { Badge, Callout, Empty, Loading, Money, PageHead, STATUS, StatusBadge, Tip } from '../components/ui';
 import { capitalize, count, dateBR, dateTimeBR, duration, moneyShort, periodLong, periodShort, plural } from '../lib/format';
 import { progressOf } from '../state/runEvents';
-import { keys, rememberComp, useAppState, useApprovalSummary, useChecklist, useCompetencias, useElapsed, useInsights, useRun, useRuns } from '../state/queries';
+import { keys, rememberComp, useAppState, useApprovalSummary, useChecklist, useCompetencias, useElapsed, useInsights, useRun, useRuns, useRunEvents } from '../state/queries';
 import { useAction } from '../state/useAction';
 import { CloseMonthModal, ReopenModal } from './fechamento/ClosingModals';
 import { CommissionsPanel } from './fechamento/CommissionsPanel';
@@ -110,6 +110,7 @@ export default function Fechamento() {
   const { data: runs } = useRuns(comp);
   const latestRef = runs?.find(run => !run.draft);
   const { data: latest } = useRun(latestRef?.id || '');
+  useRunEvents(latestRef?.id || '');
   const { data: summary } = useApprovalSummary(latest?.id || '', !!latest && ['awaiting_approval', 'approved'].includes(latest.status));
   const [launch, setLaunch] = useState(false);
   const [closing, setClosing] = useState<'close' | 'reopen' | null>(null);
@@ -229,7 +230,7 @@ export default function Fechamento() {
           </Link>
         </div>
       )}
-      {hasData && <p className="help" style={{ marginTop: 8 }}>Valores provisórios até a revisão. Comissões, divergências e pendências são visões das mesmas operações: não some os cartões.</p>}
+      {hasData && <p className="help" style={{ marginTop: 8 }}>Conferência dos dados e cadastros atuais. Cada execução preserva seus próprios cálculos e decisões; consulte a Revisão para o lote ERP. Comissões, divergências e pendências são visões das mesmas operações: não some os cartões.</p>}
 
       {hasData && (
         <div className="grid section" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)' }}>
@@ -249,7 +250,7 @@ export default function Fechamento() {
             </div>
           </div>
           <div className="card">
-            <div className="card-head"><div><h3 className="card-title">Relatório e saídas</h3><p className="card-sub">{state.sources.filter(src => !src.embedded).length} arquivos de origem com SHA-256</p></div></div>
+            <div className="card-head"><div><h3 className="card-title">Relatório de conferência</h3><p className="card-sub">Dados atuais · {state.sources.filter(src => !src.embedded).length} arquivos de origem com SHA-256. O pacote ERP fica na Revisão do run aprovado.</p></div></div>
             <div className="card-body stack" style={{ gap: 8 }}>
               <a className="btn" href={downloads.report} target="_blank" rel="noopener"><Icon name="file" />Abrir relatório imprimível</a>
               <a className="btn" href={downloads.zip} download><Icon name="download" />Baixar pacote (6 CSVs + relatório)</a>

@@ -19,7 +19,7 @@ export default function RunPage({ tab }: { tab: 'passos' | 'revisao' | 'auditori
   // Agent time stops at the approval gate; waiting for a human is not processing time.
   const gateAt = run?.status === 'awaiting_approval' ? run.steps.find(step => step.kind === 'gate')?.started_at : undefined;
   const elapsed = useElapsed(run?.created_at, run?.finished_at || gateAt);
-  const reviewable = !!run && ['awaiting_approval', 'approved', 'rejected'].includes(run.status);
+  const reviewable = !!run && (['awaiting_approval', 'approved', 'rejected'].includes(run.status) || (run.draft && run.status === 'done'));
   const { data: summary } = useApprovalSummary(runId, reviewable);
 
   if (isLoading) return <Loading page label="Carregando o run…" />;

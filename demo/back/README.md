@@ -4,13 +4,13 @@ Plataforma local para apurar setembro de 2026 a partir dos arquivos originais da
 
 ## Rodar
 
-Pré-requisito: Python 3.11 ou superior com venv e acesso ao PyPI na primeira execução. O fechamento funciona sem chave de API. Para envio real pelo Gmail, configure o OAuth descrito abaixo.
+Pré-requisitos: Python 3.11 ou superior com venv, Node.js 18+ e npm; acesso ao PyPI e npm na primeira execução. O fechamento funciona sem chave de API. Para envio real pelo Gmail, configure o OAuth descrito abaixo.
 
 ```sh
 ./run.sh
 ```
 
-Abra http://127.0.0.1:8765. Para a extensão do backend, use a tela **Pipeline**; veja também `docs/ENTREGA_PIPELINE.md`. A primeira execução cria `.venv`, instala as dependências fixadas em `requirements.lock.txt` e importa automaticamente `data/case/` para `data/tarvo.sqlite3`. As próximas execuções reutilizam o banco. Para parar, pressione Ctrl+C no terminal.
+Abra http://127.0.0.1:8765. A interface React integrada está em `../front/`; o launcher a compila automaticamente. Use **Fechamento** para iniciar e **Execução** para revisar o pipeline; veja também `docs/ENTREGA_PIPELINE.md`. A primeira execução cria `.venv`, instala as dependências fixadas em `requirements.lock.txt` e importa automaticamente `data/case/` para `data/tarvo.sqlite3`. As próximas execuções reutilizam o banco. Para parar, pressione Ctrl+C no terminal.
 
 ```sh
 ./run.sh test       # suíte automatizada, bancos temporários
@@ -18,11 +18,11 @@ Abra http://127.0.0.1:8765. Para a extensão do backend, use a tela **Pipeline**
 ./run.sh serve --port 8766 --db data/demo.sqlite3 --runs-dir data/demo-runs  # demonstração isolada
 ```
 
-Windows: crie o ambiente com `python -m venv .venv`, instale as dependências usando `.venv\Scripts\python -m pip install -r requirements.lock.txt`, e rode `.venv\Scripts\python -m src.app`.
+Windows: crie o ambiente com `python -m venv .venv`, instale as dependências usando `.venv\Scripts\python -m pip install -r requirements.lock.txt`, compile o front com `cd ..\front && npm ci && npm run build`, volte para `back` e rode `.venv\Scripts\python -m src.app`.
 
 ## E-mails de pendências pelo Gmail
 
-Na tela **Pendências**, use **Gerar e-mail**. A mensagem tem texto editável, contraparte identificada pelas fontes e anexos restritos às evidências relacionadas. **Gmail · pendências** reúne os rascunhos, o histórico, os contatos Orbe/Ponte e a conexão da conta de teste.
+Em **Comunicações → Gmail · pendências**, selecione a pendência e use **Gerar e-mail**. A mensagem tem texto editável, contraparte identificada pelas fontes e anexos restritos às evidências relacionadas. **Gmail · pendências** reúne os rascunhos, o histórico, os contatos Orbe/Ponte e a conexão da conta de teste.
 
 O botão **Aprovar e enviar** registra a versão revisada e inicia o envio real. Exige sessão OAuth autorizada no servidor, além do nome declarado do responsável. Alterações nas evidências exigem nova revisão. Tentativas simultâneas não duplicam mensagens; um resultado incerto exige conferência manual e não é repetido automaticamente.
 
@@ -80,7 +80,7 @@ Checkout usa taxa contratada por produto/data, com HALF_UP por linha, estornos p
 
 ## Arquitetura
 
-Python + FastAPI/Uvicorn + SQLite + PyArrow/Parquet + interface HTML/CSS/JavaScript sem compilação. Um processo local, um worker por execução e nenhum serviço externo no workflow. As transformações mantêm Decimal e listas de registros para aproveitar o motor já verificado, sem converter dinheiro em float. A IA ajudou a construir e revisar; o workflow não chama LLM. As versões diretas estão em `requirements.txt` e o ambiente completo em `requirements.lock.txt`.
+Python + FastAPI/Uvicorn + SQLite + PyArrow/Parquet + interface React/TypeScript compilada pelo Vite. Um processo local, um worker por execução e nenhum serviço externo no workflow. As transformações mantêm Decimal e listas de registros para aproveitar o motor já verificado, sem converter dinheiro em float. A IA ajudou a construir e revisar; o workflow não chama LLM. As versões diretas estão em `requirements.txt` e o ambiente completo em `requirements.lock.txt`.
 
 - `src/importer.py`: CSV pt-BR, XLSX com taxas numéricas/textuais, anexo XLSX do EML e OFX em cp1252. Preserva origem física e valida formatos.
 - `src/engine.py`: funções determinísticas com Decimal; seis tabelas oficiais e detalhes de cálculo.
@@ -89,7 +89,8 @@ Python + FastAPI/Uvicorn + SQLite + PyArrow/Parquet + interface HTML/CSS/JavaScr
 - `src/pipeline/`: catálogo, validação, etapas determinísticas, Parquet, versões, execuções, decisões, checklist e exportação aprovada.
 - `src/config/`: pipeline padrão, checklist e mapa contábil explícito.
 - `src/mail/`: autorização Google, evidências, rascunhos versionados, tentativas e envio explícito pela Gmail API.
-- `web/`: interface responsiva, filtros, cadastros, rastros e aprovações.
+- `../front/`: interface React integrada à API real.
+- `web/`: interface anterior de verificação, preservada como referência.
 
 Recalcular ou alterar referências reabre o mês. A decisão só permanece válida se a evidência do item não mudou. A aprovação de e-mail se vincula ao destinatário, assunto, corpo e versão do cálculo. Cada envio simulado registra conteúdo, responsável e horário; os alertas internos respeitam as preferências e dispensam aprovação.
 
@@ -97,7 +98,7 @@ Avisos imediatos são processados quando surgem eventos ou se ativa um contato. 
 
 ## Outubro e reimportação
 
-Em Evidências, use Importar competência, informe mês e pasta local. Os arquivos devem manter o mesmo padrão de nomes e estrutura do case. Referências revisadas são preservadas; novas referências entram; alterações detectadas em uma taxa existente geram aviso para revisão. Cadastre vigências sem sobreposição na interface. O formato atual exige o conjunto de fontes correspondente; arquivos ausentes ou linhas inválidas geram pendência. Um mês sem movimentos também gera bloqueio.
+No Fechamento, use Rodar fechamento e escolha a competência e a pasta local, ou envie os seis arquivos. Os arquivos devem manter o mesmo padrão de nomes e estrutura do case. Referências revisadas são preservadas; novas referências entram; alterações detectadas em uma taxa existente geram aviso para revisão. Cadastre vigências sem sobreposição na interface. O formato atual exige o conjunto de fontes correspondente; arquivos ausentes ou linhas inválidas geram pendência. Um mês sem movimentos também gera bloqueio.
 
 O fechamento original arquiva importações e apresenta o lote ativo. A nova tela Pipeline permite selecionar execuções independentes por competência e mantém suas evidências, versões e saídas. A tela Checklist acompanha a execução mais recente do mês. Para isolamento completo, use um banco por demonstração ou cliente.
 

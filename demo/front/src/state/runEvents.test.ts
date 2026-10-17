@@ -37,6 +37,11 @@ describe('applyRunEvent', () => {
     expect(state.steps[3].status).toBe('pending');
   });
 
+  it('distinguishes an exported real run from a finished non-exporting draft', () => {
+    expect(applyRunEvent(run(), { type: 'run_finished', status: 'done', at: 't' }).status).toBe('approved');
+    expect(applyRunEvent({ ...run(), draft: true }, { type: 'run_finished', status: 'done', at: 't' }).status).toBe('done');
+  });
+
   it('does not mutate the previous state', () => {
     const before = run();
     applyRunEvent(before, { type: 'step_started', step_id: 'ler', at: 't' });

@@ -6,13 +6,14 @@ import type { Email, Notification } from '../api/types';
 import { DataTable } from '../components/DataTable';
 import { EMAIL_KIND, EmailEditor, emailStage } from '../components/EmailEditor';
 import { Icon } from '../components/Icon';
+import { GmailPanel } from '../components/GmailPanel';
 import { Sheet } from '../components/Overlay';
 import { Badge, Callout, Empty, Loading, PageHead, Segmented, SeverityBadge, Tabs } from '../components/ui';
 import { count, dateTimeBR } from '../lib/format';
 import { keys, useAppState } from '../state/queries';
 import { useAction } from '../state/useAction';
 
-type Tab = 'envios' | 'avisos' | 'destinatarios';
+type Tab = 'gmail' | 'envios' | 'avisos' | 'destinatarios';
 type Filter = 'all' | 'draft' | 'approved' | 'sent';
 
 export default function Comunicacoes() {
@@ -35,7 +36,7 @@ export default function Comunicacoes() {
       <PageHead
         eyebrow="Comunicação com controle"
         title="Comunicações"
-        sub="Rascunhos, envios simulados e avisos internos. Cobranças são preparadas em Notas e bancos; contestações, na revisão."
+        sub="Mensagens de pendências pelo Gmail, cobranças simuladas e avisos internos, com revisão e histórico."
         actions={<>
           <button className="btn" disabled={!!busy} onClick={() => run('notify', () => core.runNotifications(), { success: 'Avisos processados em modo simulação.', invalidate: [keys.state] })}><Icon name="bell" />Processar avisos</button>
           <button className="btn primary" disabled={!!busy} onClick={async () => {
@@ -45,12 +46,15 @@ export default function Comunicacoes() {
           }}><Icon name="mail" />E-mail do relatório</button>
         </>}
       />
-      <div style={{ marginBottom: 16 }}><Callout tone="info"><strong>Modo simulação.</strong> Nenhuma mensagem sai para destinatários reais. Avisos internos dispensam aprovação; cobranças e contestações exigem aprovação da versão exata.</Callout></div>
+      {tab !== 'gmail' && <div style={{ marginBottom: 16 }}><Callout tone="info"><strong>Envios simulados.</strong> Cobranças, relatórios e avisos desta aba não enviam mensagens reais. O envio de pendências pela conta autorizada fica na aba Gmail.</Callout></div>}
       <Tabs<Tab> value={tab} onChange={value => setParams({ aba: value })} items={[
-        { value: 'envios', label: 'Rascunhos e envios', count: emails.length, icon: 'mail' },
+        { value: 'gmail', label: 'Gmail · pendências', icon: 'mail' },
+        { value: 'envios', label: 'Envios simulados', count: emails.length, icon: 'mail' },
         { value: 'avisos', label: 'Avisos internos', count: state.notifications.length, icon: 'bell' },
         { value: 'destinatarios', label: 'Quem recebe', count: internal.length, icon: 'user' },
       ]} />
+
+      {tab === 'gmail' && <GmailPanel issues={state.results.pendencias} issueId={params.get('pendencia')} />}
 
       {tab === 'envios' && (
         <div className="card">

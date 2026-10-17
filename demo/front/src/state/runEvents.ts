@@ -40,7 +40,7 @@ export function applyRunEvent(run: Run, event: RunEvent): Run {
           : step)),
       };
     case 'run_finished':
-      return { ...run, status: event.status, finished_at: event.at };
+      return { ...run, status: event.status === 'done' && !run.draft ? 'approved' : event.status, finished_at: event.at };
   }
 }
 
