@@ -59,7 +59,7 @@ class DecisionRequest(BaseModel):
 class BatchDecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     ids: list[str] = Field(min_length=1, max_length=500)
-    acao: Literal["aceitar"]
+    acao: Literal["aceitar", "excluir"]
     justificativa: str = Field(min_length=1, max_length=10000)
 
 

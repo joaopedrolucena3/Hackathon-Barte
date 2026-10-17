@@ -688,7 +688,7 @@ class PipelineService:
             except (TypeError, ValueError): raise ServiceError(422, 'INVALID_PAGINATION', 'Página e tamanho devem ser inteiros.')
             return {'items': rows[(page - 1) * size:page * size], 'total': len(rows), 'page': page, 'page_size': size}
 
-    def decision(self, ident, exception_id, payload, actor, *, _commit=True):
+    def decision(self, ident, exception_id, payload, actor, *, _commit=True, _context=None):
         actor = self._actor(actor)
         with self.lock, (self.db if _commit else nullcontext()):
             run = self._run(ident)
@@ -718,7 +718,7 @@ class PipelineService:
                     if not account: raise ServiceError(422, 'INVALID_ACCOUNT', 'Use uma conta analítica presente no plano desta execução.')
                     after['conta'] = str(payload['conta'])
             if action in ('ajustar', 'excluir'):
-                context = self._context(run)
+                context = _context or self._context(run)
                 entries = context['datasets'].get('lancamentos', [])
                 origins = {str(exception.get('ref_origem', ''))}
                 for origin in exception.get('origens', []):
@@ -750,15 +750,19 @@ class PipelineService:
         actor = self._actor(actor)
         if not ids or len(ids) != len(set(ids)):
             raise ServiceError(422, 'INVALID_SELECTION', 'Selecione exceções distintas.')
-        if payload.get('acao') != 'aceitar':
-            raise ServiceError(422, 'INVALID_BATCH_ACTION', 'A decisão em lote aceita somente alertas.')
+        if payload.get('acao') not in ('aceitar', 'excluir'):
+            raise ServiceError(422, 'INVALID_BATCH_ACTION', 'A decisão em lote só aceita ou exclui do lote.')
         with self.lock, self.db:
             existing = {item['id']: item for item in self._exceptions(ident)}
             for key in ids:
                 if key not in existing: raise ServiceError(404, 'EXCEPTION_NOT_FOUND', 'Uma exceção selecionada não existe.')
-                if existing[key].get('severidade') == 'bloqueante':
-                    raise ServiceError(422, 'BATCH_BLOCKER', 'Exceções bloqueantes exigem decisão individual.')
-            for key in ids: self.decision(ident, key, payload, actor, _commit=False)
+            # Blockers only go in batch when they are the same issue for the same merchant (one business decision).
+            if any(existing[key].get('severidade') == 'bloqueante' for key in ids):
+                groups = {(existing[key].get('tipo'), existing[key].get('cnpj')) for key in ids}
+                if len(groups) != 1 or not next(iter(groups))[1]:
+                    raise ServiceError(422, 'BATCH_BLOCKER', 'Bloqueantes só são decididas em lote quando são do mesmo tipo e do mesmo lojista.')
+            context = self._context(self._run(ident)) if payload['acao'] == 'excluir' else None
+            for key in ids: self.decision(ident, key, payload, actor, _commit=False, _context=context)
             return {'decided': len(ids)}
 
     def approval(self, ident, payload, actor):

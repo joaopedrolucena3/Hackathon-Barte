@@ -81,6 +81,14 @@ describe('persisted workflow adapters', () => {
     expect(adaptRunEvent({ type: 'step_finished', step_id: 's4', status: 'done_with_exceptions', metrics: { exceptions: 2 }, at: 'now', duration_ms: 5 })).toMatchObject({ type: 'step_finished', status: 'exceptions', metrics: { exceptions: 2 } });
     expect(adaptRunEvent({ type: 'awaiting_approval', exceptions_total: 18, blocking_open: 2 })).toEqual({ type: 'awaiting_approval', exceptions: 18, blocking: 2 });
   });
+  it('keeps the gate counts on a refetch, matching the awaiting_approval event', () => {
+    const gate = (raw: unknown) => adaptRun(raw).steps.find(step => step.kind === 'gate')!;
+    // The native gate step reports only its own metrics; the run-level totals are what waits for a human.
+    const waiting = { ...snapshot, steps: snapshot.steps.map(step => step.id === 's9' ? { ...step, metrics: { exceptions: 0 } } : step), exceptions_total: 18, exceptions_open: 18, blocking_open: 2 };
+    expect(gate(waiting).metrics).toMatchObject({ exceptions: 18, blocking: 2 });
+    expect(gate(waiting).status).toBe('awaiting_approval');
+    expect(gate(snapshot).metrics.exceptions).toBeUndefined();
+  });
 });
 
 describe('real HTTP contract', () => {
@@ -160,6 +168,13 @@ describe('real HTTP contract', () => {
     const decided = await httpAgent.decide('run-1', 'exception-1', { action: 'adjust', note: 'Conferido', amount: '1.01', entry_id: 'entry-1' });
     expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({ acao: 'ajustar', justificativa: 'Conferido', valor: '1.01', entry_id: 'entry-1' });
     expect(decided.decision).toMatchObject({ amount: '1.01', entry_id: 'entry-1' });
+  });
+
+  it('sends a merchant batch exclusion as one request', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(response({ decided: 2 }));
+    vi.stubGlobal('fetch', fetcher);
+    await expect(httpAgent.decideMany('run-1', ['x', 'y'], { action: 'exclude', note: 'Sem contrato vigente' })).resolves.toEqual({ decided: 2 });
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ ids: ['x', 'y'], acao: 'excluir', justificativa: 'Sem contrato vigente' });
   });
 
   it('surfaces the real API error and blocks downloading unapproved files', async () => {

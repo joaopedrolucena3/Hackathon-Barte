@@ -143,16 +143,19 @@ export async function decide(
   return toException(updated, index);
 }
 
-export async function decideMany(run: Run, ids: string[], note: string, onProgress?: (done: number) => void) {
+export async function decideMany(run: Run, ids: string[], { action, note }: { action: 'accept' | 'exclude'; note: string }, onProgress?: (done: number) => void) {
   await ensureActor();
   if (run.status !== 'awaiting_approval') throw new ApiError('A revisão só aceita decisões enquanto o run aguarda aprovação.', 409);
   const byId = new Map((await listExceptions(run)).map(item => [item.id, item]));
-  const blocking = ids.filter(id => byId.get(id)?.severity === 'bloqueante');
-  if (blocking.length) throw new ApiError('Bloqueantes são decididas uma a uma.', 400);
+  const chosen = ids.flatMap(id => byId.get(id) || []);
+  if (chosen.some(item => item.severity === 'bloqueante') && new Set(chosen.map(item => `${item.kind}|${item.cnpj || item.merchant}`)).size !== 1) {
+    throw new ApiError('Bloqueantes só são decididas em lote quando são do mesmo tipo e do mesmo lojista.', 400);
+  }
   let decided = 0;
   try {
     for (const id of ids) {
       if (!byId.has(id)) continue;
+      if (action === 'exclude') { await decide(run, id, { action, note }); decided += 1; onProgress?.(decided); continue; }
       await core.decide({ id, action: 'confirm', note: note.trim() || `Alerta aceito em lote na revisão do ${run.id}.` });
       saveAdjustment(id, null);
       decided += 1;

@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Overlay';
 import { RunLauncher } from '../../components/RunLauncher';
 import { useToast } from '../../components/Toast';
-import { Badge, Callout, Empty, Field, HashChip, Loading, Money, ReasonInput, Segmented, Tip } from '../../components/ui';
+import { Badge, Callout, Count, Empty, Field, HashChip, Loading, Money, ReasonInput, Segmented, Tip } from '../../components/ui';
 import { count, dateBR, dateTimeBR, moneyShort, plural, readable } from '../../lib/format';
 import { keys, useApprovalSummary, useExceptions } from '../../state/queries';
 import { useAction } from '../../state/useAction';
@@ -24,27 +24,27 @@ function Summary({ run }: { run: Run }) {
     <div className="review-summary">
       <div className="kpi">
         <span className="kpi-label">Exceções decididas</span>
-        <span className="kpi-value num">{count(s.decided)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.total)}</small></span>
+        <span className="kpi-value num"><Count value={s.decided} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.total)}</small></span>
         <div className="meter"><span style={{ flexGrow: s.decided, background: 'var(--st-good)' }} /><span style={{ flexGrow: s.total - s.decided, background: 'var(--surface-3)' }} /></div>
       </div>
       <div className={`kpi ${s.open_blocking ? 'attention' : ''}`}>
         <span className="kpi-label">Bloqueantes abertas <Badge tone="critical" dot>Bloqueante</Badge></span>
-        <span className="kpi-value num">{count(s.open_blocking)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.blocking)}</small></span>
+        <span className="kpi-value num"><Count value={s.open_blocking} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.blocking)}</small></span>
         <span className="kpi-detail">{s.open_blocking ? 'Decida uma a uma antes de aprovar' : 'Nenhuma bloqueia a aprovação'}</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Alertas abertos <Badge tone="warning" dot>Alerta</Badge></span>
-        <span className="kpi-value num">{count(s.open_alerts)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.alerts)}</small></span>
+        <span className="kpi-value num"><Count value={s.open_alerts} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> de {count(s.alerts)}</small></span>
         <span className="kpi-detail">Podem ser aceitos em lote</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Impacto em aberto</span>
-        <span className="kpi-value"><Money value={s.open_impact_brl} /></span>
+        <span className="kpi-value"><Money value={s.open_impact_brl} animate /></span>
         <span className="kpi-detail">de {moneyShort(s.impact_brl)} em exceções (valores absolutos)</span>
       </div>
       <div className="kpi">
         <span className="kpi-label">Lote a exportar {s.batch.balanced && <Badge tone="good" dot>Balanceado</Badge>}</span>
-        <span className="kpi-value num">{count(s.batch.entries)}<small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> lançamentos</small></span>
+        <span className="kpi-value num"><Count value={s.batch.entries} animate /><small className="muted" style={{ fontSize: 15, fontWeight: 500 }}> lançamentos</small></span>
         <span className="kpi-detail">Débitos {moneyShort(s.batch.debit_brl)} = créditos {moneyShort(s.batch.credit_brl)}{s.batch.excluded ? ` · ${s.batch.excluded} excluídos` : ''}</span>
       </div>
     </div>
@@ -128,6 +128,7 @@ export default function ReviewTab({ run }: { run: Run }) {
   const [modal, setModal] = useState<'approve' | 'reject' | 'rerun' | null>(null);
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
   const [bulkNote, setBulkNote] = useState('');
+  const [merchantBatch, setMerchantBatch] = useState<{ ids: string[]; merchant: string; kind: string; action: 'exclude' | 'accept'; note: string; busy?: boolean } | null>(null);
   const tipo = params.get('tipo');
   const steps = params.get('passo')?.split(',').filter(Boolean);
   const editable = run.status === 'awaiting_approval' && !run.draft;
@@ -174,6 +175,24 @@ export default function ReviewTab({ run }: { run: Run }) {
       for (const key of [keys.exceptions(run.id), keys.approval(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)]) void client.invalidateQueries({ queryKey: key });
     }
   };
+  /** Open blockers of one issue for one merchant: a single business decision, so the backend takes them together. */
+  const merchantBlockers = (kind: string, cnpj?: string) => cnpj
+    ? exceptions.filter(item => item.kind === kind && item.cnpj === cnpj && item.severity === 'bloqueante' && !item.decision) : [];
+  const decideMerchant = async () => {
+    if (!merchantBatch) return;
+    const { ids, action, note, merchant } = merchantBatch;
+    setMerchantBatch({ ...merchantBatch, busy: true });
+    try {
+      const result = await agent.decideMany(run.id, ids, { action, note });
+      toast.ok(`${plural(result.decided, 'bloqueante', 'bloqueantes')} de ${merchant} ${action === 'exclude' ? 'excluídas do lote' : 'aceitas'}.`);
+      setMerchantBatch(null);
+    } catch (error) {
+      toast.error(error);
+      setMerchantBatch(state => state && { ...state, busy: false });
+    } finally {
+      for (const key of [keys.exceptions(run.id), keys.approval(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)]) void client.invalidateQueries({ queryKey: key });
+    }
+  };
   const blocking = summary?.open_blocking || 0;
 
   return (
@@ -208,6 +227,19 @@ export default function ReviewTab({ run }: { run: Run }) {
               </button>
             </div>
           )}
+          {merchantBatch && editable && (
+            <div className="bulk-bar blocker">
+              <strong>{plural(merchantBatch.ids.length, 'bloqueante', 'bloqueantes')} de {merchantBatch.merchant}</strong>
+              <Segmented value={merchantBatch.action} label="Decisão para todas" onChange={action => setMerchantBatch({ ...merchantBatch, action })}
+                options={[{ value: 'exclude', label: 'Excluir do lote' }, { value: 'accept', label: 'Aceitar' }]} />
+              <input className="input sm grow" value={merchantBatch.note} onChange={event => setMerchantBatch({ ...merchantBatch, note: event.target.value })}
+                placeholder="Justificativa para todas" aria-label="Justificativa para todas as bloqueantes do lojista" required />
+              <button className="btn sm ghost" disabled={merchantBatch.busy} onClick={() => setMerchantBatch(null)}>Cancelar</button>
+              <button className={`btn sm ${merchantBatch.action === 'exclude' ? 'danger' : 'success'}`} disabled={merchantBatch.busy || !merchantBatch.note.trim()} onClick={decideMerchant}>
+                {merchantBatch.busy ? <><span className="spin" />Registrando…</> : <><Icon name="check" />{merchantBatch.action === 'exclude' ? 'Excluir' : 'Aceitar'} {count(merchantBatch.ids.length)}</>}
+              </button>
+            </div>
+          )}
           {groups.length ? (
             <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 260px)' }}>
               <table className="table">
@@ -220,18 +252,26 @@ export default function ReviewTab({ run }: { run: Run }) {
                     const alerts = selectableAlerts(items);
                     const all = alerts.length > 0 && alerts.every(item => selected.has(item.id));
                     const shown = expanded[group] ? items : items.slice(0, GROUP_LIMIT);
+                    const blockers = merchantBlockers(kind, items.find(item => item.severity === 'bloqueante' && !item.decision)?.cnpj);
                     return (
                       <Fragment key={group}>
                         <tr className="group-row">
                           <td>{editable && alerts.length > 0 && <input type="checkbox" checked={all} aria-label={`Selecionar alertas de ${readable(kind)}`} onChange={() => setSelected(set => { const next = new Set(set); alerts.forEach(item => (all ? next.delete(item.id) : next.add(item.id))); return next; })} />}</td>
-                          <td colSpan={6}><span className="row between"><span>{readable(kind)} · {items[0].step_title}</span><span className="muted">{plural(items.length, 'item', 'itens')} · {plural(items.filter(item => !item.decision).length, 'aberto', 'abertos')}</span></span></td>
+                          <td colSpan={6}><span className="row between"><span>{readable(kind)} · {items[0].step_title}</span><span className="row" style={{ gap: 12 }}>
+                            {editable && blockers.length > 1 && (
+                              <button className="link" onClick={() => setMerchantBatch({ ids: blockers.map(item => item.id), merchant: blockers[0].merchant, kind, action: 'exclude', note: '' })}>
+                                Decidir as {count(blockers.length)} de {blockers[0].merchant}
+                              </button>
+                            )}
+                            <span className="muted">{plural(items.length, 'item', 'itens')} · {plural(items.filter(item => !item.decision).length, 'aberto', 'abertos')}</span>
+                          </span></span></td>
                         </tr>
                         {shown.map(item => (
                           <tr key={item.id} className={`clickable ${item.id === currentId ? 'selected' : ''}`} onClick={() => open(item.id)}>
                             <td onClick={event => event.stopPropagation()}>
                               {editable && item.severity === 'alerta' && !item.decision
                                 ? <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggle(item.id)} aria-label={`Selecionar ${item.ref_origem}`} />
-                                : item.severity === 'bloqueante' && !item.decision ? <Tip text="Bloqueantes são decididas uma a uma"><Icon name="lock" className="muted" size={13} /></Tip> : null}
+                                : item.severity === 'bloqueante' && !item.decision ? <Tip text="Bloqueantes são decididas uma a uma ou todas do mesmo lojista"><Icon name="lock" className="muted" size={13} /></Tip> : null}
                             </td>
                             <td><Badge tone={item.severity === 'bloqueante' ? 'critical' : 'warning'} dot>{item.severity === 'bloqueante' ? 'Bloqueante' : 'Alerta'}</Badge></td>
                             <td className="wrap" style={{ minWidth: 180 }}><span className="strong">{item.merchant}</span><span className="mono muted" style={{ display: 'block', fontSize: 11 }}>{item.ref_origem}</span></td>

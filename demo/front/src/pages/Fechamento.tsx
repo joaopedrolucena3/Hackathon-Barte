@@ -4,12 +4,14 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { ChecklistTask, Run, Status } from '../api/agent';
 import { core, downloads } from '../api/core';
 import { HBarChart, SegmentMeter, StackedBar, STATUS_COLORS } from '../components/charts/Bars';
+import { StepTrack } from '../components/AgentHeader';
 import { Checklist, isDone } from '../components/Checklist';
 import { Icon } from '../components/Icon';
 import { RunLauncher } from '../components/RunLauncher';
 import { TopbarSlot } from '../components/TopbarSlot';
-import { Badge, Callout, Empty, Loading, Money, PageHead, STATUS, StatusBadge, Tip } from '../components/ui';
-import { capitalize, count, dateBR, dateTimeBR, duration, moneyShort, periodLong, periodShort, plural } from '../lib/format';
+import { AgentOrb, moodOf } from '../components/motion';
+import { Badge, Callout, Count, Empty, Loading, Money, PageHead, RunId, STATUS, StatusBadge } from '../components/ui';
+import { capitalize, count, dateBR, dateTimeBR, duration, issueNames, moneyShort, periodLong, periodShort, plural, shortRunId } from '../lib/format';
 import { progressOf } from '../state/runEvents';
 import { keys, rememberComp, useAppState, useApprovalSummary, useChecklist, useCompetencias, useElapsed, useInsights, useRun, useRuns, useRunEvents } from '../state/queries';
 import { useAction } from '../state/useAction';
@@ -69,17 +71,17 @@ function LastRunCard({ run, onRun }: { run?: Run; onRun: () => void }) {
   return (
     <div className="card fill">
       <div className="card-head">
-        <div><h3 className="card-title">Último run · <span className="mono">{run.id}</span></h3><p className="card-sub">{run.created_by} · {dateTimeBR(run.created_at)}{run.draft ? ' · teste' : ''}</p></div>
+        <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
+          <AgentOrb mood={moodOf(run.status)} size={28} />
+          <div>
+            <h3 className="card-title">Último run</h3>
+            <p className="card-sub row wrap" style={{ gap: '2px 6px' }}><RunId id={run.id} /><span className="nowrap">{run.created_by}</span><span className="nowrap">{dateTimeBR(run.created_at)}{run.draft ? ' · teste' : ''}</span></p>
+          </div>
+        </div>
         <StatusBadge status={run.status} />
       </div>
       <div className="card-body stack" style={{ gap: 12 }}>
-        <div className="step-dots" aria-label="Passos do run">
-          {run.steps.map(step => (
-            <Tip key={step.id} text={<><strong>{step.title}</strong><br />{STATUS[step.status].label}</>}>
-              <Link to={`/runs/${run.id}?step=${step.id}`} className={`step-dot ${step.kind}`} style={{ background: colorOf(step.status) }} aria-label={`${step.title}: ${STATUS[step.status].label}`} />
-            </Tip>
-          ))}
-        </div>
+        <StepTrack run={run} link />
         <div className="row between muted" style={{ fontSize: 12.5 }}>
           <span className="num">{progress.done} de {progress.total} passos</span>
           <span className="num">{run.finished_at || run.status === 'awaiting_approval' ? `processamento ${duration(run.steps.filter(step => step.kind !== 'gate').reduce((sum, step) => sum + (step.duration_ms || 0), 0))}` : duration(elapsed)}</span>
@@ -169,7 +171,7 @@ export default function Fechamento() {
         <div className="card fill">
           <div className="card-head"><div><h3 className="card-title">Progresso do fechamento</h3><p className="card-sub">Tarefas do checklist por situação</p></div></div>
           <div className="card-body stack" style={{ gap: 16 }}>
-            <div className="hero-num num">{taskStats.done}<small>de {taskStats.total} tarefas</small></div>
+            <div className="hero-num num"><Count value={taskStats.done} animate /><small>de {taskStats.total} tarefas</small></div>
             {tasks ? (
               <SegmentMeter ariaLabel={`${taskStats.done} de ${taskStats.total} tarefas concluídas`}
                 items={tasks.map((task: ChecklistTask) => ({ key: task.id, color: colorOf(task.status), title: `${task.title} · ${STATUS[task.status].label}` }))}
@@ -187,7 +189,7 @@ export default function Fechamento() {
             {p ? (
               <>
                 <div>
-                  <div className="hero-num num"><Money value={p.open_brl} /></div>
+                  <div className="hero-num num"><Money value={p.open_brl} animate /></div>
                   <p className="muted" style={{ marginTop: 6 }}>{plural(p.open_count, 'pendência aberta', 'pendências abertas')} · {plural(p.resolved_count, 'decidida', 'decididas')}</p>
                 </div>
                 <StackedBar tall ariaLabel="Pendências por situação"
@@ -210,22 +212,22 @@ export default function Fechamento() {
         <div className="grid grid-4 section">
           <button className="kpi" onClick={() => openPanel('comissoes', 'CHECKOUT')}>
             <span className="kpi-label">Comissão de checkout <Icon name="arrowRight" className="kpi-go" /></span>
-            <span className="kpi-value"><Money value={s.checkout_brl} /></span>
+            <span className="kpi-value"><Money value={s.checkout_brl} animate /></span>
             <span className="kpi-detail">{count(s.checkout_count)} transações na origem</span>
           </button>
           <button className="kpi" onClick={() => openPanel('comissoes', 'REMESSA')}>
             <span className="kpi-label">Comissão de remessa <Icon name="arrowRight" className="kpi-go" /></span>
-            <span className="kpi-value"><Money value={s.remessa_brl} /></span>
+            <span className="kpi-value"><Money value={s.remessa_brl} animate /></span>
             <span className="kpi-detail">{count(s.remessa_count)} operações únicas</span>
           </button>
           <button className="kpi attention" onClick={() => openPanel('divergencias')}>
             <span className="kpi-label">Divergências de taxa <Icon name="arrowRight" className="kpi-go" /></span>
-            <span className="kpi-value"><Money value={s.divergencias_abs_brl} /></span>
+            <span className="kpi-value"><Money value={s.divergencias_abs_brl} animate /></span>
             <span className="kpi-detail">{count(s.divergencias_count)} diferenças · exposição absoluta</span>
           </button>
           <Link className="kpi" to="/notas-bancos">
             <span className="kpi-label">Notas a emitir <Icon name="arrowRight" className="kpi-go" /></span>
-            <span className="kpi-value"><Money value={s.notas_brl} /></span>
+            <span className="kpi-value"><Money value={s.notas_brl} animate /></span>
             <span className="kpi-detail">{count(s.notas_count)} notas propostas</span>
           </Link>
         </div>
@@ -242,7 +244,7 @@ export default function Fechamento() {
               <HBarChart ariaLabel="Pendências abertas por tipo" labelWidth={240}
                 legend={<><span className="legend-item"><span className="legend-swatch" style={{ background: 'var(--st-critical)' }} />Bloqueante</span><span className="legend-item"><span className="legend-swatch" style={{ background: 'var(--st-warning)' }} />Alerta</span></>}
                 data={(p?.by_type || []).filter(item => item.open_count > 0).map(item => ({
-                  key: item.key, label: item.label, value: Number(item.brl) || 0.01, display: moneyShort(item.brl), sub: plural(item.open_count, 'item', 'itens'),
+                  key: item.key, label: issueNames[item.key] || item.label, value: Number(item.brl) || 0.01, display: moneyShort(item.brl), sub: plural(item.open_count, 'item', 'itens'),
                   color: item.severity === 'bloqueante' ? 'var(--st-critical)' : 'var(--st-warning)',
                 }))}
                 onSelect={latest && ['awaiting_approval', 'approved'].includes(latest.status) ? key => navigate(`/runs/${latest.id}/revisao?tipo=${key}`) : undefined}
@@ -259,7 +261,7 @@ export default function Fechamento() {
                 const id = result?.id || result?.email?.id;
                 if (result) navigate(`/comunicacoes${id ? `?email=${id}` : ''}`);
               }}><Icon name="mail" />Preparar e-mail do relatório</button>
-              {latest && <Link className="link" to={`/runs/${latest.id}/auditoria`} style={{ marginTop: 6 }}>Trilha de auditoria do {latest.id} <Icon name="arrowRight" /></Link>}
+              {latest && <Link className="link" to={`/runs/${latest.id}/auditoria`} style={{ marginTop: 6 }}>Trilha de auditoria do run {shortRunId(latest.id)} <Icon name="arrowRight" /></Link>}
             </div>
           </div>
         </div>
