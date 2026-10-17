@@ -62,9 +62,16 @@ def main():
                 if url.path=='/api/report': return self.respond(200,store.report(),'text/html; charset=utf-8')
                 if url.path=='/api/export.zip': return self.respond(200,store.export_zip(),'application/zip','tarvo-fechamento.zip')
                 if url.path=='/api/health': return self.respond(200,{'ok':True,'mode':'simulation'})
+                if url.path.startswith('/api/'): return self.respond(404,{'error':'Recurso não encontrado.'})
+                index=FRONT/'index.html'
+                if not index.is_file(): return self.respond(503,'Interface não compilada. Rode ./run.sh para gerar front/dist.','text/plain; charset=utf-8')
                 name='index.html' if url.path=='/' else url.path.lstrip('/')
                 path=(FRONT/name).resolve()
-                if not path.is_relative_to((FRONT).resolve()) or not path.is_file(): return self.respond(404,{'error':'Página não encontrada.'})
+                if not path.is_relative_to(FRONT.resolve()): return self.respond(404,{'error':'Página não encontrada.'})
+                if not path.is_file():
+                    # Client-side routes (/runs/R-0001, /pipeline...) fall back to the SPA; missing assets stay 404.
+                    if '.' in Path(url.path).name: return self.respond(404,{'error':'Página não encontrada.'})
+                    path=index
                 return self.respond(200,path.read_bytes(),mimetypes.guess_type(path.name)[0] or 'application/octet-stream')
             except ValueError as e: return self.respond(400,{'error':str(e)})
 
