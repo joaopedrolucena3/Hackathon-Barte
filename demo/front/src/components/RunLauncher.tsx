@@ -1,7 +1,7 @@
 // B3: one click to run the closing. A short panel, not a wizard.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { agent, type InputFile } from '../api/agent';
+import { agent, type InputFile, type PipelineStep } from '../api/agent';
 import { expectedFiles } from '../lib/datapack';
 import { ApiError } from '../api/http';
 import { bytes, count, periodShort } from '../lib/format';
@@ -25,7 +25,7 @@ function OptionCard({ selected, onSelect, title, children }: { selected: boolean
   );
 }
 
-export function RunLauncher({ comp: initial, onClose, draft }: { comp: string; onClose: () => void; draft?: boolean }) {
+export function RunLauncher({ comp: initial, onClose, draft, steps }: { comp: string; onClose: () => void; draft?: boolean; steps?: PipelineStep[] }) {
   const navigate = useNavigate();
   const { data: state } = useAppState();
   const { data: pipeline } = usePipeline();
@@ -42,7 +42,7 @@ export function RunLauncher({ comp: initial, onClose, draft }: { comp: string; o
   async function start() {
     setConflict(null);
     try {
-      const created = await run('start', () => agent.createRun({ comp, source, files, folder, draft }), { rethrow: true, invalidate: [['runs'], ['checklist']] });
+      const created = await run('start', () => agent.createRun({ comp, source, files, folder, draft, steps }), { rethrow: true, invalidate: [['runs'], ['checklist']] });
       if (created) { onClose(); navigate(`/runs/${created.id}`); }
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) setConflict(String(error.data?.run_id || ''));
@@ -125,7 +125,7 @@ export function RunLauncher({ comp: initial, onClose, draft }: { comp: string; o
           <div className="row between">
             <div>
               <p className="muted" style={{ fontSize: 12 }}>Pipeline usado</p>
-              <p style={{ fontWeight: 600 }}>{pipeline ? `${pipeline.name} v${pipeline.version}` : '…'} · {pipeline?.steps.filter(step => step.enabled).length ?? '–'} passos</p>
+              <p style={{ fontWeight: 600 }}>{pipeline ? `${pipeline.name} v${pipeline.version}${steps ? ' + alterações não salvas' : ''}` : '…'} · {(steps || pipeline?.steps)?.filter(step => step.enabled).length ?? '–'} passos</p>
             </div>
             <Link className="link" to="/pipeline" onClick={onClose}>Abrir construtor <Icon name="arrowRight" /></Link>
           </div>

@@ -67,3 +67,11 @@ Depois: "Faça perguntas sobre as mudanças do front e confirmações que você 
 - Novo endpoint no contrato para o lote: `POST /api/runs/{id}/exceptions/decisions` (`decideMany`). No mock, grava cada decisão e recarrega o estado uma vez só.
 - **Auditoria**: linha do tempo (arquivos com SHA-256, pipeline e versão, cada passo com parâmetros, duração e hash de saída, decisões antes → depois com justificativa, aprovação e exportações), "Baixar trilha (JSON)", **Comparar runs** por hash e painel com hipóteses, fontes, histórico de cadastros e saídas oficiais.
 - Verificação no navegador (banco de verificação): exclusão de uma bloqueante pela tela, 56 restantes pela mesma API, 237 alertas aceitos em lote, aprovação (294 de 304 decididas, lote de 184 lançamentos balanceado), 3 arquivos exportados com hash; segundo run R-0002 comparado com R-0001 → "Reprodutível ✓" nos 9 passos comparáveis. Ajustes: tempo do agente para no portão e soma só o processamento; divergências de checkout e remessa em grupos separados.
+
+### Fase 5 — Construtor por passos (C1)
+
+- `/pipeline`: três colunas. Esquerda: passos ordenados com arrastar (mouse e teclado, dnd-kit), ligar/desligar, remover e "Adicionar passo" pelo catálogo. Centro: prévia do passo sobre os dados do último run usando os parâmetros da tela. Direita: formulário gerado do `params_schema`, com ajuda em português e cadeado nos parâmetros fixados pelo financeiro.
+- Validação com debounce a cada mudança: dependência faltando ("Precisa de “Normalizar Orbe” antes."), parâmetro fora do intervalo, aprovação obrigatória e sempre antes da exportação (arrastar que quebre isso é recusado com aviso).
+- Salvar cria nova versão com a lista do que mudou; o painel "Versões" abre versões antigas só para leitura (`?versao=N`). Salvar a tolerância de spread também grava o parâmetro real no motor (`/api/parameters`).
+- **Testar** roda o pipeline em rascunho (inclusive alterações não salvas) até o portão, sem exportar.
+- Verificação no navegador: tolerância de 0,5 p.p. no Conferir MDR reduz as exceções da prévia de 210 para 118; arrastar Conferir MDR para o topo acusa a dependência e bloqueia o Salvar; v2 salva e aparece no histórico.

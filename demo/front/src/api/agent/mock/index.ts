@@ -61,7 +61,8 @@ function describeChanges(before: PipelineStep[], after: PipelineStep[]) {
     if (old.enabled !== step.enabled) changes.push(`${title}: ${step.enabled ? 'ligado' : 'desligado'}.`);
     for (const field of catalogByType.get(step.type)?.params_schema || []) {
       const a = old.params[field.key], b = step.params[field.key];
-      if (String(a) !== String(b)) changes.push(`${title}: ${field.label.toLocaleLowerCase('pt-BR')} ${a}${field.unit ? ` ${field.unit}` : ''} → ${b}${field.unit ? ` ${field.unit}` : ''}.`);
+      const show = (value: ParamValue | undefined) => `${typeof value === 'boolean' ? (value ? 'sim' : 'não') : String(value).replace('.', ',')}${field.unit ? ` ${field.unit}` : ''}`;
+      if (String(a) !== String(b)) changes.push(`${title}: ${field.label.toLocaleLowerCase('pt-BR')} de ${show(a)} para ${show(b)}`);
     }
   }
   return changes;
@@ -69,7 +70,12 @@ function describeChanges(before: PipelineStep[], after: PipelineStep[]) {
 
 async function preview(runId: string, stepId: string, query: Parameters<AgentApi['getPreview']>[2]): Promise<PreviewPage> {
   const run = requireRun(runId);
-  const step = run.steps.find(item => item.id === stepId) || run.steps.find(item => item.type === stepId);
+  let step = run.steps.find(item => item.id === stepId) || run.steps.find(item => item.type === stepId);
+  const item = catalogByType.get(stepId.replace(/^s-/, ''));
+  if (!step && query.params_override && item) {
+    // Builder preview of a step this run did not execute: compute it from the same data.
+    step = { id: stepId, type: item.type, title: item.title, kind: item.kind, status: 'done', metrics: {}, params: {}, code_version: run.code_version };
+  }
   const base: PreviewPage = {
     step_id: stepId, state: 'pending', schema: [], rows: [], total_rows: 0, page: 1, page_size: query.page_size,
     totals: { page: {}, all: {} },

@@ -338,6 +338,8 @@ export interface CreateRunInput {
   files?: InputFile[];
   folder?: string;
   draft?: boolean;
+  /** Builder "Testar": run unsaved steps as a draft (no export). */
+  steps?: PipelineStep[];
 }
 
 export interface AgentApi {

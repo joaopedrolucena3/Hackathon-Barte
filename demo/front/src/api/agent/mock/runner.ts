@@ -39,7 +39,8 @@ export async function createRun(input: CreateRunInput, pipeline: Pipeline): Prom
   const actor = await ensureActor();
   const busy = loadRuns().find(run => run.comp === input.comp && (run.status === 'running' || run.status === 'pending'));
   if (busy) throw new ApiError(`Já existe um run em andamento para ${periodShort(input.comp)}.`, 409, { run_id: busy.id });
-  const steps: StepRun[] = pipeline.steps.filter(step => step.enabled).map(step => ({
+  const source = input.draft && input.steps ? input.steps : pipeline.steps;
+  const steps: StepRun[] = source.filter(step => step.enabled).map(step => ({
     id: step.id, type: step.type, title: stepTitle(step.type), kind: catalogByType.get(step.type)?.kind || 'calc',
     status: 'pending', metrics: {}, params: step.params, code_version: CODE_VERSION,
   }));
