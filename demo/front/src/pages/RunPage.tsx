@@ -16,7 +16,9 @@ export default function RunPage({ tab }: { tab: 'passos' | 'revisao' | 'auditori
   const { runId = '' } = useParams();
   const { data: run, error, isLoading } = useRun(runId);
   useRunEvents(runId);
-  const elapsed = useElapsed(run?.created_at, run?.finished_at);
+  // Agent time stops at the approval gate; waiting for a human is not processing time.
+  const gateAt = run?.status === 'awaiting_approval' ? run.steps.find(step => step.kind === 'gate')?.started_at : undefined;
+  const elapsed = useElapsed(run?.created_at, run?.finished_at || gateAt);
   const reviewable = !!run && ['awaiting_approval', 'approved', 'rejected'].includes(run.status);
   const { data: summary } = useApprovalSummary(runId, reviewable);
 
@@ -48,7 +50,7 @@ export default function RunPage({ tab }: { tab: 'passos' | 'revisao' | 'auditori
           <div className="progress" style={{ height: 8 }}><span style={{ width: `${progress.ratio * 100}%`, background: run.status === 'failed' || run.status === 'rejected' ? 'var(--st-critical)' : undefined }} /></div>
           <div className="row wrap muted" style={{ gap: 16, fontSize: 12.5, marginTop: 8 }}>
             <span className="num"><strong className="text-2">{progress.done} de {progress.total}</strong> passos concluídos</span>
-            <span className="num"><Icon name="clock" size={13} /> {duration(elapsed)}{run.finished_at ? '' : ' decorridos'}</span>
+            <span className="num"><Icon name="clock" size={13} /> {run.finished_at || gateAt ? `processamento ${duration(run.steps.filter(step => step.kind !== 'gate').reduce((sum, step) => sum + (step.duration_ms || 0), 0))}` : `${duration(elapsed)} decorridos`}</span>
             <span>Iniciado por {run.created_by} · {dateTimeBR(run.created_at)}</span>
           </div>
         </div>

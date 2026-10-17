@@ -557,3 +557,41 @@ button.kpi:hover, a.kpi:hover { border-color: var(--border-strong); box-shadow: 
 @media (max-width: 860px) { .run-layout, .run-layout.collapsed { grid-template-columns: 1fr; } .run-steps { position: static; max-height: 320px; } }
 .preview-filter .select, .preview-filter .input { width: auto; }
 .preview-filter .select:first-of-type { min-width: 190px; }
+
+/* ---------- Revisão ---------- */
+.review-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.review-summary .kpi-value { font-size: 22px; }
+.review-summary .kpi-label .badge { height: 20px; font-size: 10.5px; }
+.review-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; align-items: start; }
+.review-list { overflow: hidden; }
+.review-detail { position: sticky; top: 76px; max-height: calc(100vh - 160px); overflow: auto; }
+.bulk-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--st-good-wash); border-bottom: 1px solid #cfe6d8; font-size: 13px; }
+.approval-bar { position: sticky; bottom: 12px; z-index: 12; display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg); font-size: 13px; }
+.download-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.download-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: border-color .15s; }
+a.download-card:hover { border-color: var(--accent); }
+.download-card > .icon { color: var(--accent); width: 18px; height: 18px; }
+.download-card strong { display: block; font-size: 13px; }
+.download-card .muted { display: block; font-size: 11.5px; }
+@media (max-width: 1280px) { .review-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); } .review-layout { grid-template-columns: minmax(0, 1fr) 340px; } }
+@media (max-width: 960px) { .review-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .review-layout { grid-template-columns: 1fr; } .review-detail { position: static; max-height: none; } }
+
+/* ---------- Auditoria ---------- */
+.audit-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 16px; align-items: start; }
+.timeline-v { list-style: none; margin: 0; padding: 0; position: relative; }
+.timeline-v::before { content: ''; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
+.tl-item { position: relative; display: flex; gap: 14px; padding: 8px 0; }
+.tl-icon { position: relative; z-index: 1; width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--surface); border: 1.5px solid var(--border-strong); color: var(--text-2); }
+.tl-icon .icon { width: 15px; height: 15px; }
+.tl-icon.done, .tl-icon.approved { border-color: var(--st-good); color: var(--st-good); background: var(--st-good-wash); }
+.tl-icon.exceptions { border-color: var(--st-warning); color: var(--st-warning-ink); background: var(--st-warning-wash); }
+.tl-icon.failed, .tl-icon.rejected { border-color: var(--st-critical); color: var(--st-critical); background: var(--st-critical-wash); }
+.tl-icon.awaiting_approval { border-color: var(--st-gate); color: var(--st-gate-ink); background: var(--st-gate-wash); }
+.tl-icon.decision { border-color: var(--st-info); color: var(--st-info-ink); background: var(--st-info-wash); }
+.tl-body { flex: 1; min-width: 0; padding-top: 5px; font-size: 13px; }
+.tl-decision { padding: 8px 10px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); }
+.assumption { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 12.5px; }
+.assumption summary { cursor: pointer; font-weight: 580; }
+.assumption p { margin-top: 6px; color: var(--text-2); }
+@media (max-width: 1100px) { .audit-layout { grid-template-columns: 1fr; } }
+.tl-body strong, .tl-body .mono { overflow-wrap: anywhere; }

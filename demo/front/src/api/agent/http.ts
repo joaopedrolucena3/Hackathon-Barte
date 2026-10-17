@@ -68,6 +68,7 @@ export const httpAgent: AgentApi = {
   listExceptions: runId => getJSON(`/api/runs/${enc(runId)}/exceptions`),
   getApprovalSummary: runId => getJSON(`/api/runs/${enc(runId)}/approval-summary`),
   decide: (runId, exceptionId, decision) => sendJSON(`/api/runs/${enc(runId)}/exceptions/${enc(exceptionId)}/decision`, decision),
+  decideMany: (runId, ids, decision) => sendJSON(`/api/runs/${enc(runId)}/exceptions/decisions`, { ids, ...decision }),
   approve: (runId, comment) => sendJSON(`/api/runs/${enc(runId)}/approval`, { decision: 'approve', comment }),
   reject: (runId, comment) => sendJSON(`/api/runs/${enc(runId)}/approval`, { decision: 'reject', comment }),
   getAudit: runId => getJSON(`/api/runs/${enc(runId)}/audit`),

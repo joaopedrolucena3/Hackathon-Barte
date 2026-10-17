@@ -142,3 +142,24 @@ export async function decide(
   if (!updated) throw new ApiError('A exceção mudou depois do recálculo. Recarregue a revisão.', 409);
   return toException(updated, index);
 }
+
+export async function decideMany(run: Run, ids: string[], note: string, onProgress?: (done: number) => void) {
+  await ensureActor();
+  if (run.status !== 'awaiting_approval') throw new ApiError('A revisão só aceita decisões enquanto o run aguarda aprovação.', 409);
+  const byId = new Map((await listExceptions(run)).map(item => [item.id, item]));
+  const blocking = ids.filter(id => byId.get(id)?.severity === 'bloqueante');
+  if (blocking.length) throw new ApiError('Bloqueantes são decididas uma a uma.', 400);
+  let decided = 0;
+  try {
+    for (const id of ids) {
+      if (!byId.has(id)) continue;
+      await core.decide({ id, action: 'confirm', note: note.trim() || `Alerta aceito em lote na revisão do ${run.id}.` });
+      saveAdjustment(id, null);
+      decided += 1;
+      onProgress?.(decided);
+    }
+  } finally {
+    await refreshState();
+  }
+  return { decided };
+}

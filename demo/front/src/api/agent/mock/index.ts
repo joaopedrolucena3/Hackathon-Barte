@@ -12,7 +12,7 @@ import { indexState, loadState, nextPeriod, refreshState } from './data';
 import { buildInsights, emptyInsights } from './insights';
 import { buildOutput, fenixEntries } from './outputs';
 import { queryOutput } from './query';
-import { activePendencias, approvalSummary, decide, excludedRefs, listExceptions } from './review';
+import { activePendencias, approvalSummary, decide, decideMany, excludedRefs, listExceptions } from './review';
 import { createRun, decideGate, fenixCsv, resumeInterrupted, subscribe } from './runner';
 import { getStoredRun, latestPipeline, loadRuns, loadVersions, saveVersion } from './store';
 
@@ -137,6 +137,7 @@ export const mockAgent: AgentApi = {
   listExceptions: async runId => listExceptions(requireRun(runId)),
   getApprovalSummary: async runId => approvalSummary(requireRun(runId)),
   decide: async (runId, exceptionId, decision) => decide(requireRun(runId), exceptionId, decision),
+  decideMany: async (runId, ids, decision, onProgress) => decideMany(requireRun(runId), ids, decision.note, onProgress),
   approve: (runId, comment) => decideGate(runId, 'approved', comment),
   reject: (runId, comment) => decideGate(runId, 'rejected', comment),
   getAudit: async runId => buildAudit(requireRun(runId)),

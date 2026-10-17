@@ -22,7 +22,15 @@ export function DecisionBadge({ exception }: { exception: ReviewException }) {
   return <Badge tone={d.action === 'exclude' ? 'neutral' : d.action === 'adjust' ? 'info' : 'good'} dot>{DECISION_LABEL[d.action]}</Badge>;
 }
 
-export function ExceptionDetail({ exception, run, editable, onClose }: { exception: ReviewException; run: Run; editable: boolean; onClose?: () => void }) {
+export interface DecisionPreset { action: ReviewAction; note: string }
+
+export function ExceptionDetail({ exception, run, editable, onClose, onDecided, preset }: {
+  exception: ReviewException; run: Run; editable: boolean; onClose?: () => void;
+  /** Review flow: called after a decision so the list can move to the next open item. */
+  onDecided?: (exception: ReviewException, decision: DecisionPreset) => void;
+  /** Last decision, offered as a one-click repeat for similar items. */
+  preset?: DecisionPreset | null;
+}) {
   const { data: state } = useAppState();
   const [action, setAction] = useState<ReviewAction>('accept');
   const [note, setNote] = useState('');
@@ -44,8 +52,9 @@ export function ExceptionDetail({ exception, run, editable, onClose }: { excepti
     const result = await act('decide', () => agent.decide(run.id, exception.id, {
       action, note, ...(action === 'adjust' ? { amount: amount || undefined, account_code: exception.bank_line_id && account !== exception.current_account ? account : undefined } : {}),
     }), { success: `Decisão registrada: ${DECISION_LABEL[action].toLowerCase()}.`, invalidate: [keys.exceptions(run.id), keys.approval(run.id), keys.state, ['checklist'], ['insights'], keys.audit(run.id)] });
-    if (result) setChanging(false);
+    if (result) { setChanging(false); onDecided?.(result, { action, note }); }
   };
+  const canRepeat = preset && !(preset.action === 'adjust') && !(preset.action === 'accept' && exception.severity === 'bloqueante' && !preset.note);
 
   return (
     <div className="exception-detail stack-lg">
@@ -91,6 +100,11 @@ export function ExceptionDetail({ exception, run, editable, onClose }: { excepti
 
       {showForm && (
         <div className="decision-form">
+          {preset && canRepeat && (preset.action !== action || preset.note !== note) && (
+            <button type="button" className="btn xs ghost" style={{ alignSelf: 'flex-start' }} onClick={() => { setAction(preset.action); setNote(preset.note); }}>
+              <Icon name="refresh" />Repetir última decisão: {DECISION_LABEL[preset.action].toLowerCase()}{preset.note ? ` · “${preset.note.slice(0, 40)}${preset.note.length > 40 ? '…' : ''}”` : ''}
+            </button>
+          )}
           <Segmented<ReviewAction> value={action} onChange={setAction} label="Decisão" options={ACTIONS} />
           {action === 'accept' && <p className="help">Segue como está. {exception.severity === 'bloqueante' ? 'Bloqueantes são aceitas uma a uma.' : 'A justificativa é opcional.'}</p>}
           {action === 'exclude' && <p className="help">A operação sai do lote exportado para o ERP e continua no relatório de exceções.</p>}

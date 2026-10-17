@@ -82,7 +82,7 @@ function LastRunCard({ run, onRun }: { run?: Run; onRun: () => void }) {
         </div>
         <div className="row between muted" style={{ fontSize: 12.5 }}>
           <span className="num">{progress.done} de {progress.total} passos</span>
-          <span className="num">{duration(elapsed)}</span>
+          <span className="num">{run.finished_at || run.status === 'awaiting_approval' ? `processamento ${duration(run.steps.filter(step => step.kind !== 'gate').reduce((sum, step) => sum + (step.duration_ms || 0), 0))}` : duration(elapsed)}</span>
         </div>
         {run.status === 'awaiting_approval' && summary && (
           <Callout tone="gate" icon="pause">

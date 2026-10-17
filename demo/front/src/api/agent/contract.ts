@@ -359,6 +359,8 @@ export interface AgentApi {
   listExceptions(runId: string): Promise<ReviewException[]>;
   getApprovalSummary(runId: string): Promise<ApprovalSummary>;
   decide(runId: string, exceptionId: string, decision: Omit<ReviewDecision, 'actor' | 'at' | 'before_amount' | 'before_account'>): Promise<ReviewException>;
+  /** Bulk accept of alerts (blocking ones are decided one by one). */
+  decideMany(runId: string, ids: string[], decision: { action: 'accept'; note: string }, onProgress?: (done: number) => void): Promise<{ decided: number }>;
   approve(runId: string, comment: string): Promise<Run>;
   reject(runId: string, comment: string): Promise<Run>;
   getAudit(runId: string): Promise<AuditTrail>;
