@@ -346,7 +346,7 @@ def ponte(data, rates, rng):
 
 def aurora():
     text = (SEPTEMBER / "05a_extrato_banco_aurora_cc4471_set2026.csv").read_bytes().decode("utf-8")
-    lines = text.split("\r\n")
+    lines = text.splitlines()
     header, body = [], []
     for raw in lines:
         cells = raw.split(";")
