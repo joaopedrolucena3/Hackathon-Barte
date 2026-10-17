@@ -148,5 +148,5 @@ export function SegmentMeter({ items, legend, ariaLabel }: {
 export const STATUS_COLORS: Record<string, string> = {
   done: 'var(--st-good)', approved: 'var(--st-good)', exceptions: 'var(--st-warning)', failed: 'var(--st-critical)',
   rejected: 'var(--st-critical)', running: 'var(--st-info)', awaiting_approval: 'var(--st-gate)', pending: 'var(--surface-3)',
-  skipped: '#dfe3df',
+  skipped: '#e4dddd',
 };

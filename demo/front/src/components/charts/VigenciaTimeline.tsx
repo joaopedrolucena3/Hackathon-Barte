@@ -106,7 +106,7 @@ export function VigenciaTimeline({ rates, period, selected, onSelect, onAdd }: {
       </div>
       <div className="legend" style={{ marginTop: 12 }}>
         <span className="legend-item"><span className="legend-swatch" style={{ background: 'var(--series-1)' }} />Vigente na competência</span>
-        <span className="legend-item"><span className="legend-swatch" style={{ background: '#a9c8ef' }} />Outras vigências</span>
+        <span className="legend-item"><span className="legend-swatch" style={{ background: '#a9bdf0' }} />Outras vigências</span>
         <span className="legend-item"><span className="legend-swatch timeline-gap-swatch" />Lacuna sem taxa</span>
         <span className="legend-item"><span className="legend-swatch" style={{ background: 'var(--accent-wash)', border: '1px solid var(--accent)' }} />Competência {period.split('-').reverse().join('/')}</span>
       </div>

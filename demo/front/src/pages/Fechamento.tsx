@@ -25,9 +25,9 @@ const LEGEND: { status: Status[]; label: string; color: string }[] = [
   { status: ['awaiting_approval'], label: 'Aguardando aprovação', color: STATUS_COLORS.awaiting_approval },
   { status: ['running'], label: 'Rodando', color: STATUS_COLORS.running },
   { status: ['failed', 'rejected'], label: 'Falhou ou reprovada', color: STATUS_COLORS.failed },
-  { status: ['pending', 'skipped'], label: 'Pendentes', color: '#d9ded9' },
+  { status: ['pending', 'skipped'], label: 'Pendentes', color: '#e2dbdb' },
 ];
-const colorOf = (status: Status) => LEGEND.find(item => item.status.includes(status))?.color || '#d9ded9';
+const colorOf = (status: Status) => LEGEND.find(item => item.status.includes(status))?.color || '#e2dbdb';
 
 function Stages({ run, closed, reviewDone }: { run?: Run; closed: boolean; reviewDone: boolean }) {
   const finished = (type: string) => !!run?.steps.find(step => step.type === type && ['done', 'exceptions', 'approved'].includes(step.status));
