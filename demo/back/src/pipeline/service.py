@@ -28,6 +28,8 @@ from .steps import execute_step, _adjusted_ledger
 from ..importer import load_data
 
 ROOT = Path(__file__).resolve().parents[2]
+# Repository root, also searched for next-month packs (Tarvo_Data_Pack_*).
+PACKS_ROOT = ROOT.parent.parent
 ACTIVE = {'queued', 'running', 'awaiting_approval', 'approved', 'exporting'}
 TERMINAL = {'done', 'failed', 'rejected'}
 FILE_ROLES = {
@@ -272,7 +274,7 @@ class PipelineService:
                 if period in default_periods:
                     source = self.source_dir
                 else:
-                    roots = {self.source_dir.parent, ROOT.parent.parent}
+                    roots = {self.source_dir.parent, PACKS_ROOT}
                     candidates = sorted({(base / name).resolve() for base in roots for name in names if (base / name).is_dir()})
                     if len(candidates) > 1:
                         raise ServiceError(422, 'SOURCE_DIRECTORY_AMBIGUOUS', 'Mais de uma pasta corresponde à competência; indique source_dir ou envie os seis arquivos.', [{'paths': [str(p) for p in candidates]}])

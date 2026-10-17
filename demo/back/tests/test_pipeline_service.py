@@ -27,6 +27,10 @@ class PipelineServiceTests(unittest.TestCase):
         self.base = Path(self.temp.name)
         self.db = self.base / 'workflow.sqlite3'
         self.runs = self.base / 'runs'
+        # Isolate next-month folder discovery from packs that exist in the repository.
+        packs_root = patch('src.pipeline.service.PACKS_ROOT', self.base)
+        packs_root.start()
+        self.addCleanup(packs_root.stop)
         self.service = PipelineService(self.db, SOURCE, self.runs)
 
     def tearDown(self):

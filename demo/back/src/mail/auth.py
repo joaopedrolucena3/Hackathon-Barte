@@ -245,7 +245,15 @@ class AuthManager:
                 json.dump(self._state, handle, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
                 handle.flush()
                 os.fsync(handle.fileno())
-            os.replace(tmp, self._state_file)
+            # Windows antivirus/indexers can briefly hold the target; retry before failing.
+            for attempt in range(10):
+                try:
+                    os.replace(tmp, self._state_file)
+                    break
+                except PermissionError:
+                    if os.name != "nt" or attempt == 9:
+                        raise
+                    time.sleep(0.05)
             os.chmod(self._state_file, 0o600)
         finally:
             if tmp.exists():

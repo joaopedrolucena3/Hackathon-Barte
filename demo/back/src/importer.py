@@ -29,10 +29,12 @@ CONFIRMED_EC = {
 def decimal_text(value, brazilian=False):
     if value is None or value == "":
         return ""
-    text = str(value).strip()
-    if brazilian:
-        text = text.replace(".", "").replace(",", ".")
-    value = Decimal(text)
+    original = str(value).strip()
+    text = original.replace(".", "").replace(",", ".") if brazilian else original
+    try:
+        value = Decimal(text)
+    except ArithmeticError:
+        raise ValueError(f"Número financeiro ilegível: {original!r}.") from None
     if not value.is_finite():
         raise ValueError("Número financeiro não finito.")
     return format(value, "f")
@@ -114,7 +116,8 @@ def load_data(source_dir):
 
     path = find("02*.xlsx")
     if path:
-        book = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        # In-memory read: read_only workbooks keep the file handle open, which locks it on Windows.
+        book = openpyxl.load_workbook(io.BytesIO(path.read_bytes()), read_only=True, data_only=True)
         if "Taxas vigentes" not in book.sheetnames:
             warning("ABA_AUSENTE", "Aba Taxas vigentes não encontrada.", path.name, "workbook")
         else:

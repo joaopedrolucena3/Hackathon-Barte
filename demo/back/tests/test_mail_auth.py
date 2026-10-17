@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
 import stat
 import tempfile
@@ -21,6 +22,8 @@ CONFIG = {
     "client_id": "oauth-test.apps.googleusercontent.com", "client_secret": "client-secret-sensitive",
     "redirect_uri": "http://127.0.0.1/api/mail/oauth/callback", "test_account": "tarvo.demo@example.com",
 }
+# POSIX modes only: on Windows chmod toggles read-only, and privacy comes from the profile ACLs.
+POSIX_MODES = os.name != "nt"
 MIME = b"From: tarvo.demo@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\n\r\nTest only.\r\n"
 
 
@@ -117,7 +120,8 @@ class MailAuthTests(unittest.TestCase):
                                       "TARVO_GMAIL_TEST_ACCOUNT": CONFIG["test_account"]}, clear=True):
             manager = AuthManager(Path(self.tmp.name) / "web-config", provider=self.provider)
             self.assertTrue(manager.status()["configured"])
-            self.assertEqual(stat.S_IMODE(client_file.stat().st_mode), 0o600)
+            if POSIX_MODES:
+                self.assertEqual(stat.S_IMODE(client_file.stat().st_mode), 0o600)
             manager.close()
             with patch.dict("os.environ", {"TARVO_GOOGLE_REDIRECT_URI": "http://127.0.0.1:9999/api/mail/oauth/callback"}):
                 manager = AuthManager(Path(self.tmp.name) / "bad-redirect", provider=self.provider)
@@ -155,8 +159,9 @@ class MailAuthTests(unittest.TestCase):
         persisted = state_file.read_text()
         self.assertNotIn(login["session_token"], persisted)
         self.assertIn(hashlib.sha256(login["session_token"].encode()).hexdigest(), persisted)
-        self.assertEqual(stat.S_IMODE(self.private.stat().st_mode), 0o700)
-        self.assertEqual(stat.S_IMODE(state_file.stat().st_mode), 0o600)
+        if POSIX_MODES:
+            self.assertEqual(stat.S_IMODE(self.private.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(state_file.stat().st_mode), 0o600)
         for secret in ("access-sensitive", "refresh-sensitive", CONFIG["client_secret"]):
             self.assertNotIn(secret, json.dumps(public))
         self.assertFalse(self.manager.status("forged-token")["authorized"])

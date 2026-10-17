@@ -1,6 +1,6 @@
 # Verificação do fechamento Tarvo
 
-A suíte atual contém 130 testes: 55 do fechamento original, 35 do pipeline versionado e 40 da integração Gmail. A execução completa em 17/10/2026 passou em 51,814 segundos. A verificação anterior ao Gmail tinha 90 testes e passou em 31,823 segundos. Os detalhes novos estão em [TESTES_EMAIL.md](TESTES_EMAIL.md). Usa `unittest` e arquivos temporários para as verificações de persistência. Os arquivos do data pack são somente lidos. Rode a partir da pasta `tarvo-mvp`:
+A suíte atual contém 149 testes, incluindo os 14 do mês novo sintético (outubro), e passa também no Windows. A contagem anterior era de 130 testes: 55 do fechamento original, 35 do pipeline versionado e 40 da integração Gmail. A execução completa em 17/10/2026 passou em 51,814 segundos. A verificação anterior ao Gmail tinha 90 testes e passou em 31,823 segundos. Os detalhes novos estão em [TESTES_EMAIL.md](TESTES_EMAIL.md). Usa `unittest` e arquivos temporários para as verificações de persistência. Os arquivos do data pack são somente lidos. Rode a partir da pasta `tarvo-mvp`:
 
 ```sh
 ./run.sh test
@@ -67,3 +67,24 @@ A revisão de navegador usou banco isolado na porta 8766: disparo real com progr
 ## Limites da verificação
 
 A suíte verifica regras implementadas, rastreabilidade e controles do MVP. Não confirma que hipóteses ainda abertas foram aprovadas pelo financeiro, nem homologa a emissão fiscal no ERP, nem envio real de mensagens. A revisão visual e a navegação pela interface são verificações complementares ao teste automatizado.
+
+## Mês novo: outubro sintético
+
+`tools/gerar_pack_outubro.py` gera `Tarvo_Data_Pack_out2026/` (raiz do repositório) no mesmo leiaute do pack de setembro, com semente fixa. O serviço descobre essa pasta sozinho ao rodar a competência 2026-10. `tests/test_outubro.py` gera o pack numa pasta temporária, confere que é igual ao versionado e verifica como o agente trata cada exceção injetada (catálogo `CENARIOS` do gerador). Os valores esperados saem das linhas brutas, não do motor.
+
+| Situação injetada | Comportamento esperado |
+|---|---|
+| Linha com bruto − taxa ≠ líquido, 14 parcelas, modalidade BOLETO, VENDA negativa | `CHECKOUT_INVALIDO` bloqueante; fora da comissão. |
+| Valor ilegível na Orbe e no extrato | `LINHA_INVALIDA` com mensagem legível e linha física; o resto do arquivo é importado. |
+| EC novo e CNPJ de remessa sem cadastro | `CADASTRO_AUSENTE`; nada faturado. |
+| Duplicata idêntica / conflitante | Conta uma vez e alerta / bloqueia sem escolher versão. |
+| Estornos inválidos (modalidade diferente, maior que a venda, sem data original) e reversão parcial | `CHECKOUT_INVALIDO`; estorno parcial válido segue normal. |
+| Estorno de venda de setembro ausente do arquivo | Usa a taxa da data original (Bridge 2,59%). Estorno da Casa devolvendo 2,69% gera divergência negativa. |
+| Orbe cobra a mais (Rota +0,50 pp) ou a menos (Dublin 1,39% × 1,49%) | Divergência positiva ou negativa de bruto × (aplicada − contratada). |
+| Troca de vigência em 16/10 (EduAbroad 7-12x) | Cada venda usa a taxa da sua data; taxa antiga após a troca gera divergência. |
+| Vigência sobreposta (Vela a partir de 10/10) | `TAXA_SOBREPOSTA` bloqueante; vendas anteriores a 10/10 faturadas normalmente. |
+| Remessa: negativa, EM ANALISE, ressalva, contratada em 30/09, contratada em 31/10 | Negativa e EM ANALISE fora da NF; ressalva entra; 30/09 fica em setembro; 31/10 entra em outubro. NF da Ponte conferida contra a soma calculada das linhas brutas. |
+| Extrato com fornecedor e lojista novos e transferência sem par | `CLASSIFICACAO_PENDENTE` e `TRANSFERENCIA_EM_TRANSITO`; nenhuma conta por aproximação. |
+| Run do pipeline em outubro | Para em aprovação humana; bloqueantes impedem aprovar e exportar para o ERP. |
+
+Limitação registrada em teste: as regras de baixa de provisão (folha, ISS, INSS, FGTS, DARF) e do repasse da Ponte reconhecem só as referências de 08/2026. Em outubro esses lançamentos vão para `CLASSIFICACAO_PENDENTE`: não há erro de conta, mas o analista precisa classificá-los.
