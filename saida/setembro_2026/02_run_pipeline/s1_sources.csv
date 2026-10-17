@@ -1,0 +1,8 @@
+"embedded","encoding","name","rows","rows_discarded","rows_read","sha256","sheets","size"
+,"utf-8-sig","01_orbe_relatorio_comissoes_set2026.csv",1943,0,1943,"fdbc2bad2dd38dde8bf3af9d5c1f21116f0eae8d71d6a5a16b0dfd82de3cc7ec",,221518
+,,"02_tabela_taxas_contratadas.xlsx",25,0,25,"d0c7d2b13ac41c2a036a40362eb26c341666feef74d7199284742c255885dfc4","[""Taxas vigentes"",""ANTIGO 2025 - nao usar""]",10092
+true,,"03_email_ponte_cambio_relatorio_set2026.eml::PonteCambio_Relatorio_TARVO_092026.xlsx",233,0,233,"c7d4e137fe7ee00ae5838cc229bfed87b34aca3e3495518921f6bc19c607fc26",,
+,,"03_email_ponte_cambio_relatorio_set2026.eml",233,0,233,"e36808cab907df4b598d0022ae92af99c9b7c281a5d619d91e64d163f42e6f8f",,42076
+,"cp1252","04_plano_de_contas_fenix_erp.csv",52,0,52,"fb99c63b151c2a029c86475eb2551e4af7722a055dc24137244a2411e7876d72",,3205
+,"utf-8-sig","05a_extrato_banco_aurora_cc4471_set2026.csv",84,0,84,"7303b72fa76d227a863279a36726411605d93fb63237f0cae638c111a70d2d92",,6896
+,"cp1252","05b_extrato_banco_meridiano_cc90233_set2026.ofx",100,0,100,"27f11fae20c1fb69e2ca47885f6082690fe5db5cd13ddf3e407ef3cb29e33283",,18306

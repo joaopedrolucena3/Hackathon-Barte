@@ -1,0 +1,36 @@
+"cnpj","comissao_brl","id_saida","linha_negocio","lojista","quantidade_origens"
+"00520815000100","-5.50","COM-da9e06dc88fe4360a1","CHECKOUT","Casa do Estudante Viagens Ltda",119
+"00520815000100","3075.91","COM-f5d01e87fb5d0e5ab6","REMESSA","Casa do Estudante Viagens Ltda",18
+"03229837000103","7316.07","COM-c547cff5bab801004c","CHECKOUT","Fluente Idiomas Online Ltda",82
+"07752116000126","10711.41","COM-841d7065fe4485c39e","CHECKOUT","Kiwi Experience",85
+"07752116000126","2668.36","COM-72fbf5aa3ff402c2fa","REMESSA","Kiwi Experience",15
+"08780784000120","9336.06","COM-1e56af23ee36706a5a","CHECKOUT","Campus Global Ltda",79
+"14760206000124","2914.18","COM-36646272b6a8928a7b","REMESSA","Nórdica Educação Internacional Ltda",18
+"16181276000153","12070.17","COM-0f48b34af5591a6862","CHECKOUT","EduAbroad",100
+"16181276000153","2520.25","COM-4cde70a3f74159706e","REMESSA","EduAbroad",16
+"17217888000111","18522.09","COM-9f00928a3d7ea847d9","CHECKOUT","Mundo Aberto",168
+"17217888000111","3547.69","COM-f0f1b8a62b3d51e49e","REMESSA","Mundo Aberto",23
+"20987545000140","9315.31","COM-6ed0fceb994bf8a529","CHECKOUT","Vela",51
+"21394880000106","5628.57","COM-ba1b3590340a78765d","CHECKOUT","Trilha Jovem Turismo Ltda",67
+"22224579000109","11916.02","COM-442fc8b2055400345a","CHECKOUT","Escola Bridge de Idiomas Ltda",107
+"23109187000161","16077.90","COM-b4454ddac3872500a7","CHECKOUT","Oxford Prep Cursos Ltda",98
+"34671260000100","15010.78","COM-ad30644be06333db5f","CHECKOUT","Maple Study Assessoria Educacional Ltda",105
+"34671260000100","4295.03","COM-6ec9374cb0c683654d","REMESSA","Maple Study Assessoria Educacional Ltda",25
+"50900987000179","7703.98","COM-0ec3a4e6d1d35cd1fb","CHECKOUT","Bagagem Livre Turismo Ltda",74
+"50900987000179","1292.67","COM-5eb740aeda6af27490","REMESSA","Bagagem Livre Turismo Ltda",8
+"53857560000123","11679.43","COM-7a42a02ae1faa6fcd2","CHECKOUT","Canguru",80
+"53857560000123","3764.05","COM-4b2543cf06beec88a6","REMESSA","Canguru",22
+"61720397000180","8470.78","COM-c6e0bee06cb154e7dd","CHECKOUT","Lisboa Cursos e Viagens Ltda",76
+"61720397000180","3196.36","COM-dc490ff9a39ae06eb6","REMESSA","Lisboa Cursos e Viagens Ltda",16
+"66564512000199","7767.78","COM-259e62c6d7d1105fe2","CHECKOUT","Novo Horizonte Intercambio",73
+"66564512000199","2207.48","COM-54ce3b95afe0b5f951","REMESSA","Novo Horizonte Intercambio",10
+"67869675000142","9259.74","COM-4eaace367d513af685","CHECKOUT","Bem-Vindo Exchange Ltda",76
+"67869675000142","363.22","COM-e12bb94e04987856c5","REMESSA","Bem-Vindo Exchange Ltda",2
+"68567965000102","11906.08","COM-da1a2c1a45ac27619d","CHECKOUT","Dublin Hub Intercâmbio Ltda",111
+"68567965000102","1772.61","COM-2abda18a09730d9a39","REMESSA","Dublin Hub Intercâmbio Ltda",13
+"78576234000179","9014.42","COM-4d90ad545816274f1a","CHECKOUT","Horizonte Viagens",75
+"85694108000184","3819.35","COM-df5ede2672e55435de","CHECKOUT","Andes Expedições Ltda",41
+"89779285000114","5898.02","COM-2864007fc2cd3b5724","CHECKOUT","Sol Nascente Viagens Ltda",60
+"95739378000118","3007.30","COM-8a0546562cfdd9ef1d","REMESSA","Ponte Aérea Estudantil Ltda",14
+"95927868000148","15621.27","COM-e4ea63a87ff73e0269","CHECKOUT","Rota Global Intercâmbio Ltda",159
+"95927868000148","4918.34","COM-8f3638463611fbd6ee","REMESSA","Rota Global Intercâmbio Ltda",28
