@@ -1,11 +1,11 @@
 // Shared desk state for the grid and the chat (same external-store pattern as lib/actor.ts).
 // The grid publishes selection and view; the chat sends highlight/filter commands and reads the context.
 import { useSyncExternalStore } from 'react';
-import type { AskRequest, ChatContext, GridFilter, Highlight, SelectionContext, SortSpec, WorkbenchState } from './contract';
+import type { AskRequest, ChatContext, GridFilter, Highlight, Rid, SelectionContext, SortSpec, WorkbenchState } from './contract';
 
 const empty = (runId = '', stepId = '', dataset = ''): WorkbenchState => ({
   runId, stepId, dataset, filters: [], sort: null, onlyExceptions: false, selection: null, focus: {},
-  highlights: [], chatFilter: null, pendingAsk: null, view: { total: 0, shown: 0 },
+  highlights: [], chatFilter: null, pendingAsk: null, view: { total: 0, shown: 0 }, viewRids: null,
 });
 
 let state = empty();
@@ -34,8 +34,9 @@ export const workbench = {
   setOnlyExceptions: (onlyExceptions: boolean) => set({ onlyExceptions }),
   setSelection: (selection: SelectionContext | null) => set({ selection }),
   focusColumn: (column?: string) => set({ focus: { ...state.focus, column } }),
-  setView: (total: number, shown: number) => {
-    if (state.view.total !== total || state.view.shown !== shown) set({ view: { total, shown } });
+  /** `rids`: the narrowed view in screen order (null when every row shows or rows are synthetic). */
+  setView: (total: number, shown: number, rids: Rid[] | null = null) => {
+    if (state.view.total !== total || state.view.shown !== shown || state.viewRids !== rids) set({ view: { total, shown }, viewRids: rids });
   },
 
   highlight(highlight: Highlight) {
@@ -62,7 +63,7 @@ export const workbench = {
   chatContext(): ChatContext {
     return {
       run_id: state.runId, step_id: state.stepId, dataset: state.dataset, filters: state.filters, sort: state.sort,
-      only_exceptions: state.onlyExceptions, chat_filter_rids: state.chatFilter?.rids ?? null,
+      only_exceptions: state.onlyExceptions, chat_filter_rids: state.chatFilter?.rids ?? null, view_rids: state.viewRids,
       selection: state.selection, focus: state.focus, view: state.view,
     };
   },

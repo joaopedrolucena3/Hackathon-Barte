@@ -26,8 +26,10 @@ from ..engine import calculate
 from .insights import build_insights
 from ..pipeline.service import PipelineService, ServiceError
 from ..chat import semantic, views as desk
+from ..chat.agent import ChatService
 from ..mail.auth import AuthManager, AuthError
 from ..mail.service import MailService
+from .chat import chat_router
 from .mail import mail_router
 
 logger = logging.getLogger(__name__)
@@ -103,7 +105,8 @@ def actor_header(x_user: str | None = Header(default=None), x_user_encoding: str
     return value
 
 
-def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=None, workflow=None, email_service=None, mail_auth=None, mail_private_dir=None):
+def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=None, workflow=None, email_service=None, mail_auth=None, mail_private_dir=None,
+               chat_client=None):
     db_path = Path(db_path or ROOT / "data" / "tarvo.sqlite3")
     source_dir = Path(source_dir or ROOT / "data" / "case")
     runs_dir = Path(runs_dir or ROOT / "saida" / "runs")
@@ -113,6 +116,7 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     private_dir = mail_private_dir or os.environ.get('TARVO_MAIL_PRIVATE_DIR') or (
         Path.home() / '.local' / 'share' / 'tarvo' / 'gmail' / hashlib.sha256(str(db_path.resolve()).encode()).hexdigest()[:16])
     auth = mail_auth or AuthManager(private_dir)
+    chat = ChatService(db_path.with_name(db_path.stem + "-chat.sqlite3"), flow, client=chat_client)
     stop = threading.Event()
 
     def scheduler():
@@ -132,6 +136,7 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
         finally:
             stop.set()
             worker.join(timeout=2)
+            chat.close()
             flow.close()
             mail.close()
             auth.close()
@@ -143,6 +148,7 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     app.state.workflow = flow
     app.state.mail = mail
     app.state.mail_auth = auth
+    app.state.chat = chat
 
     @app.middleware("http")
     async def local_boundary(request: Request, call_next):
@@ -401,6 +407,7 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
         return flow.update_task(task_id, body.model_dump(exclude_none=True), actor)
 
     app.include_router(mail_router(mail, auth, store, actor_header))
+    app.include_router(chat_router(chat, actor_header))
 
     @app.get("/api/health")
     def health():
