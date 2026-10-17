@@ -139,11 +139,11 @@ export default function Fechamento() {
       <TopbarSlot>
         <Icon name="calendar" />
         <span>Competência</span>
-        <select className="select sm" style={{ width: 120 }} value={comp} aria-label="Competência"
+        <select className="select sm" style={{ width: 'auto', minWidth: 120 }} value={comp} aria-label="Competência"
           onChange={event => navigate(`/competencias/${event.target.value}`)}>
           {(comps || [{ comp, has_data: hasData, current: true }]).map(item => <option key={item.comp} value={item.comp}>{periodShort(item.comp)}{item.has_data ? '' : ' · sem dados'}</option>)}
         </select>
-        {closed ? <Badge tone="good" dot>Mês concluído</Badge> : <Badge tone="warning" dot>Em revisão</Badge>}
+        {!hasData ? <Badge tone="neutral" dot>Sem dados</Badge> : closed ? <Badge tone="good" dot>Mês concluído</Badge> : <Badge tone="warning" dot>Em revisão</Badge>}
       </TopbarSlot>
 
       <PageHead

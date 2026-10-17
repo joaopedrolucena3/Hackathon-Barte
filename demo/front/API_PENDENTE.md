@@ -20,7 +20,7 @@ Todo POST/PUT/PATCH recebe `actor`, como os endpoints atuais. Erros: `{error}` c
 | Método | Caminho | Retorno |
 |---|---|---|
 | POST | `/api/files` (multipart, campo `files`) | `{files: InputFile[]}` com nome, tamanho e SHA-256 |
-| POST | `/api/runs` | `{comp, source: pack\|upload\|folder, files?, folder?, draft?}` → `Run`. 409 com `{run_id}` se já houver run rodando. |
+| POST | `/api/runs` | `{comp, source: pack\|upload\|folder, files?, folder?, draft?, steps?}` → `Run`. `steps` só em rascunho (Testar do construtor, inclusive alterações não salvas); rascunho para no portão e não exporta. 409 com `{run_id}` se já houver run rodando. |
 | GET | `/api/runs?comp=` | `RunRef[]`, mais recente primeiro |
 | GET | `/api/runs/{id}` | `Run` consolidado (fonte da verdade após reconexão) |
 | GET | `/api/runs/{id}/events` | SSE com eventos `step_started`, `step_progress`, `step_finished`, `awaiting_approval`, `run_finished` (`RunEvent`) |
@@ -33,6 +33,7 @@ Todo POST/PUT/PATCH recebe `actor`, como os endpoints atuais. Erros: `{error}` c
 | GET | `/api/runs/{id}/exceptions` | `ReviewException[]` |
 | GET | `/api/runs/{id}/approval-summary` | `ApprovalSummary` (bloqueantes, alertas, impacto, lote balanceado) |
 | POST | `/api/runs/{id}/exceptions/{eid}/decision` | `{action: accept\|adjust\|exclude, note, account_code?, amount?}` → `ReviewException`. Justificativa obrigatória em ajustar/excluir. |
+| POST | `/api/runs/{id}/exceptions/decisions` | `{ids, action: accept, note}` → `{decided}`. Aceite de alertas em lote; recusar se houver bloqueante na lista. |
 | POST | `/api/runs/{id}/approval` | `{decision: approve\|reject, comment}` → `Run`. Aprovar falha com 409 se houver bloqueante aberta. |
 | GET | `/api/runs/{id}/exports/{nome}` | `lancamentos_fenix.csv`, `relatorio_excecoes.csv`, `auditoria.json` |
 

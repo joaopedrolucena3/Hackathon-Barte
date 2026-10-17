@@ -75,3 +75,17 @@ Depois: "Faça perguntas sobre as mudanças do front e confirmações que você 
 - Salvar cria nova versão com a lista do que mudou; o painel "Versões" abre versões antigas só para leitura (`?versao=N`). Salvar a tolerância de spread também grava o parâmetro real no motor (`/api/parameters`).
 - **Testar** roda o pipeline em rascunho (inclusive alterações não salvas) até o portão, sem exportar.
 - Verificação no navegador: tolerância de 0,5 p.p. no Conferir MDR reduz as exceções da prévia de 210 para 118; arrastar Conferir MDR para o topo acusa a dependência e bloqueia o Salvar; v2 salva e aparece no histórico.
+
+### Fase 6 — Acabamento e documentação
+
+- Competência nova (10/2026): estado vazio com "Sem dados" e Rodar em destaque; o run falha no primeiro passo listando os quatro arquivos mensais que faltam; os passos seguintes ficam "Pulado".
+- Testes do front: 18 (decimal exato, formatação pt-BR, reducer de eventos, validação do pipeline, paginação/filtros/totais do preview). Back: 55 testes ok. `run.sh` compila o front quando falta `dist` (~6 s) e não recompila quando está em dia.
+- Sem rolagem horizontal nas seis telas na menor largura que a janela permitiu (606 px); a navegação vira barra inferior abaixo de 640 px.
+- README (estrutura, como rodar com Node, modo demonstração do agente, fluxo do analista, arquitetura, outubro, limitações), DEMO.md (roteiro novo com os números do case) e API_PENDENTE.md (lote de decisões e `steps` no run de rascunho) atualizados.
+
+## Limitações e pendências para o time
+
+- O agente roda em modo demonstração no navegador até o back implementar `demo/front/API_PENDENTE.md`; depois, `VITE_AGENT_API=http npm run build`.
+- "Ajustar valor" é registrado no texto da justificativa (o back não aceita número solto) e "Excluir do lote" como ajuste com o prefixo `[Excluído do lote]`.
+- Bloqueantes são decididas uma a uma, como pede a spec; a revisão avança sozinha e permite repetir a última decisão.
+- Identidade visual: o Claude Doc enviado não estava acessível; os tokens de cor e tipografia estão concentrados no início de `demo/front/src/styles/app.css` para troca rápida.
