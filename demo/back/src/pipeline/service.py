@@ -1,7 +1,8 @@
 """Persisted deterministic workflow with immutable inputs and a human approval gate.
 
 Execution metadata (run IDs, actors and clocks) is deliberately separate from
-reproducible dataset/content hashes. No network or LLM is used by this service.
+reproducible dataset/content hashes. Steps use no network or LLM. An optional
+notification callback runs after a worker result has been committed.
 """
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ import csv
 import hashlib
 import io
 import json
+import logging
 import re
 import shutil
 import sqlite3
@@ -25,7 +27,10 @@ from pathlib import Path
 
 from . import registry, datasets as dataset_io
 from .steps import execute_step, _adjusted_ledger
+from .recommendations import POLICY_VERSION, capture_assumptions, build_recommendations
 from ..importer import load_data
+from ..inputs import inspect_bytes, discover_files, operation_fingerprint
+from ..catalog import reconcile_catalog
 
 ROOT = Path(__file__).resolve().parents[2]
 # Repository root, also searched for next-month packs (Tarvo_Data_Pack_*).
@@ -70,7 +75,7 @@ def _sha(path):
 def _source_code_snapshot(destination=None):
     """Read each file once so archived bytes and their hash cannot diverge."""
     items = []
-    paths = sorted((ROOT / 'src').rglob('*.py')) + sorted((ROOT / 'src' / 'config').glob('*.json'))
+    paths = sorted((ROOT / 'src').rglob('*.py')) + sorted((ROOT / 'src').rglob('*.json'))
     for path in paths:
         relative = path.relative_to(ROOT).as_posix()
         content = path.read_bytes()
@@ -99,8 +104,9 @@ class ServiceError(ValueError):
 
 
 class PipelineService:
-    def __init__(self, db_path, source_dir, runs_dir):
+    def __init__(self, db_path, source_dir, runs_dir, on_run=None):
         self.lock = threading.RLock()
+        self.on_run = on_run
         self.loaded_code_hash = _IMPORTED_CODE_HASH
         self.source_dir = Path(source_dir).expanduser().resolve()
         self.runs_dir = Path(runs_dir).expanduser().resolve()
@@ -122,6 +128,7 @@ class PipelineService:
           CREATE TABLE IF NOT EXISTS wf_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, data TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS wf_exceptions (run_id TEXT, id TEXT, data TEXT NOT NULL, PRIMARY KEY(run_id,id));
           CREATE TABLE IF NOT EXISTS wf_decisions (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, exception_id TEXT, data TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS wf_recommendation_batches (run_id TEXT, preview_token TEXT, data TEXT NOT NULL, PRIMARY KEY(run_id,preview_token));
           CREATE TABLE IF NOT EXISTS wf_tasks (id TEXT PRIMARY KEY, competencia TEXT, data TEXT NOT NULL);
         ''')
         self.threads = {}
@@ -219,76 +226,114 @@ class PipelineService:
             self._audit(None, 'pipeline_saved', actor, {'pipeline_id': ident, 'version': saved['version'], 'content_hash': _hash(saved)})
         return self.get_pipeline(ident, saved['version'])
 
-    @staticmethod
-    def _role(name):
-        if Path(name).name != name or '\\' in name or not name or len(name) > 200:
-            raise ServiceError(422, 'INVALID_FILENAME', 'Use somente o nome original do arquivo, sem diretórios.')
-        matches = [role for role, pattern in FILE_ROLES.items() if pattern.fullmatch(name)]
-        if len(matches) != 1:
-            raise ServiceError(422, 'UNSUPPORTED_FILE', 'Arquivo não corresponde a uma das seis fontes do fechamento.')
-        return matches[0]
-
-    def upload_file(self, filename, content, actor):
+    def upload_file(self, filename, content, actor, role=None):
         actor = self._actor(actor)
-        role = self._role(filename)
-        if not isinstance(content, bytes) or not content or len(content) > 64 * 1024 * 1024:
-            raise ServiceError(422, 'INVALID_FILE', 'Arquivo vazio ou maior que 64 MB.')
+        if Path(filename).name != filename or '\\' in filename or not filename or len(filename) > 200:
+            raise ServiceError(422, 'INVALID_FILENAME', 'Use somente o nome original, sem diretórios.')
+        if not isinstance(content, bytes) or len(content) > 64 * 1024 * 1024:
+            raise ServiceError(422, 'INVALID_FILE', 'Arquivo maior que 64 MB.')
         ident = 'file-' + uuid.uuid4().hex
         directory = self.upload_dir / ident
         directory.mkdir()
         path = directory / filename
         path.write_bytes(content)
         path.chmod(0o444)
-        record = {'id': ident, 'file_id': ident, 'name': filename, 'role': role, 'path': str(path), 'sha256': _sha(path), 'size': len(content), 'created_at': _now(), 'actor': actor}
+        record = {**inspect_bytes(filename, content, role=role, file_id=ident), 'id': ident,
+                  'file_id': ident, 'name': filename, 'path': str(path), 'created_at': _now(), 'actor': actor}
         with self.lock, self.db:
             self.db.execute('INSERT INTO wf_files VALUES (?,?)', (ident, _json(record)))
             self._audit(None, 'file_uploaded', actor, {k: v for k, v in record.items() if k != 'path'})
         return {k: v for k, v in record.items() if k != 'path'}
 
+    def available_packs(self):
+        paths = {self.source_dir}
+        for base in {self.source_dir.parent, PACKS_ROOT}:
+            paths.update(p for p in base.glob('Tarvo_Data_Pack_*') if p.is_dir())
+        records = []
+        for path in sorted(paths):
+            try:
+                data = load_data(path)
+                periods = {r.get('date', '')[:7] for r in data.get('checkout', []) + data.get('bank', [])}
+                periods |= {r.get('contracted_date', '')[:7] for r in data.get('remittances', [])}
+                records.extend({'comp': period, 'path': str(path)} for period in sorted(periods) if period)
+            except (ValueError, OSError):
+                continue
+        return records
+
     def _input_files(self, payload, period):
+        files = []
+        parent_id = payload.get('parent_run_id')
+        if parent_id:
+            parent = self._run(parent_id)
+            if parent['competencia'] != period:
+                raise ServiceError(422, 'PARENT_PERIOD_MISMATCH', 'A execução anterior deve pertencer à mesma competência.')
+            files = [{**s, 'path': s['snapshot_path'], 'inherited_from': parent_id} for s in parent['snapshot']['sources']]
         if payload.get('file_ids') is not None:
             ids = payload['file_ids']
-            if not isinstance(ids, list) or not ids or any(not isinstance(item, str) for item in ids) or len(ids) != len(set(ids)):
-                raise ServiceError(422, 'INVALID_FILE_SELECTION', 'Selecione seis arquivos distintos.')
-            files = []
+            if not isinstance(ids, list) or any(not isinstance(item, str) for item in ids):
+                raise ServiceError(422, 'INVALID_FILE_SELECTION', 'Selecione arquivos enviados.')
             for ident in ids:
-                row = self.db.execute('SELECT data FROM wf_files WHERE id=?', (str(ident),)).fetchone()
-                if not row: raise ServiceError(404, 'FILE_NOT_FOUND', 'Um arquivo selecionado não existe.', [{'file_id': ident}])
+                row = self.db.execute('SELECT data FROM wf_files WHERE id=?', (ident,)).fetchone()
+                if not row: raise ServiceError(404, 'FILE_NOT_FOUND', 'Arquivo não encontrado.', [{'file_id': ident}])
                 record = json.loads(row['data'])
                 if _sha(record['path']) != record['sha256']:
-                    raise ServiceError(409, 'INPUT_CHANGED', 'Arquivo enviado mudou desde o upload; envie uma nova cópia.')
+                    raise ServiceError(409, 'INPUT_CHANGED', 'Arquivo mudou desde o upload.')
                 files.append(record)
-        else:
+        elif payload.get('source_dir') or not parent_id:
             if payload.get('source_dir'):
                 source = Path(payload['source_dir']).expanduser().resolve()
             else:
-                month_names = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-                names = [f'Tarvo_Data_Pack_{period}', f'Tarvo_Data_Pack_{month_names[int(period[5:])-1]}{period[:4]}']
-                default_periods = set()
-                if self.source_dir.is_dir():
-                    try:
-                        existing = load_data(self.source_dir)
-                        default_periods = {r.get('date', '')[:7] for r in existing.get('checkout', []) + existing.get('bank', [])}
-                        default_periods |= {r.get('contracted_date', '')[:7] for r in existing.get('remittances', [])}
-                    except Exception as exc:
-                        raise ServiceError(422, 'INPUT_UNREADABLE', 'A fonte padrão não pôde ser interpretada; indique uma pasta válida.', [{'reason': str(exc)}]) from exc
-                if period in default_periods:
-                    source = self.source_dir
-                else:
-                    roots = {self.source_dir.parent, PACKS_ROOT}
-                    candidates = sorted({(base / name).resolve() for base in roots for name in names if (base / name).is_dir()})
-                    if len(candidates) > 1:
-                        raise ServiceError(422, 'SOURCE_DIRECTORY_AMBIGUOUS', 'Mais de uma pasta corresponde à competência; indique source_dir ou envie os seis arquivos.', [{'paths': [str(p) for p in candidates]}])
-                    source = candidates[0] if candidates else self.source_dir
+                candidates = [Path(p['path']) for p in self.available_packs() if p['comp'] == period]
+                if self.source_dir in candidates: source = self.source_dir
+                elif len(candidates) == 1: source = candidates[0]
+                elif len(candidates) > 1:
+                    raise ServiceError(422, 'SOURCE_DIRECTORY_AMBIGUOUS', 'Mais de um pack corresponde à competência; selecione a pasta.', [{'paths': [str(p) for p in candidates]}])
+                else: source = self.source_dir
             if not source.is_dir(): raise ServiceError(422, 'SOURCE_NOT_FOUND', 'Pasta de fontes não encontrada.')
-            files = []
-            for path in sorted(source.iterdir()):
-                if path.is_file() and any(p.fullmatch(path.name) for p in FILE_ROLES.values()):
-                    files.append({'name': path.name, 'path': str(path), 'role': self._role(path.name), 'sha256': _sha(path), 'size': path.stat().st_size})
-        grouped = {role: [f for f in files if f['role'] == role] for role in FILE_ROLES}
-        errors = [{'role': role, 'count': len(rows), 'message': 'Fonte obrigatória ausente.' if not rows else 'Fontes ambíguas para a mesma função.'} for role, rows in grouped.items() if len(rows) != 1]
-        if errors: raise ServiceError(422, 'REQUIRED_SOURCES', 'São necessárias as seis fontes, sem duplicidades.', errors)
-        return sorted(files, key=lambda f: f['name'])
+            files.extend(discover_files(source))
+        # Every receipt gets its own snapshot directory, even repeated IDs/names/bytes.
+        files = [{**f, 'receipt_id': 'receipt-' + uuid.uuid4().hex} for f in files]
+        errors = []
+        for role in FILE_ROLES:
+            valid = [f for f in files if f.get('role') == role and f.get('status', f.get('validation', {}).get('status')) == 'valid']
+            distinct = {f['sha256'] for f in valid}
+            if not distinct or (role != 'orbe' and len(distinct) > 1):
+                errors.append({'role': role, 'count': len(valid), 'message': 'Fonte obrigatória ausente ou inválida.' if not distinct else 'Fontes distintas para uma função única; seleção necessária.'})
+        if errors:
+            manifest = [{k: v for k, v in f.items() if k != 'path'} for f in files]
+            self._audit(None, 'input_selection_rejected', payload.get('actor', 'Sistema'), {'manifest': manifest, 'errors': errors})
+            self.db.commit()
+            raise ServiceError(422, 'REQUIRED_SOURCES', 'Revise as fontes obrigatórias e as ambiguidades.', errors + [{'manifest': manifest}])
+        return files
+
+    def _history(self, period):
+        rows = []
+        sources = []
+        # Default pack is an available historical source, including on a clean October database.
+        if self.source_dir.is_dir():
+            data = load_data(self.source_dir)
+            rows.extend(data.get('checkout', []))
+            sources.extend(data.get('sources', []))
+        provider = getattr(self, 'history_provider', None)
+        if provider:
+            for imported in provider():
+                rows.extend(imported.get('checkout', []))
+                sources.extend(imported.get('sources', []))
+        for record in self.db.execute('SELECT data FROM wf_runs WHERE competencia<=? ORDER BY rowid', (period,)):
+            run = json.loads(record['data'])
+            meta = run.get('datasets', {}).get('raw_orbe')
+            if meta:
+                rows.extend(self._rows(meta))
+                sources.extend(run['snapshot']['sources'])
+        grouped = {}
+        for row in rows:
+            if row.get('date', '')[:7] > period: continue
+            key = (row.get('id'), operation_fingerprint(row))
+            item = grouped.setdefault(key, copy.deepcopy(row))
+            origins = item.setdefault('provenances', [])
+            origin = {k: row.get(k) for k in ('source_file', 'source_id', 'source_sha256', 'source_ref', 'physical_row')}
+            if origin not in origins: origins.append(origin)
+        return {'checkout': list(grouped.values()), 'sources': sources}
 
     def _code_snapshot(self, destination=None):
         return _source_code_snapshot(destination)
@@ -310,7 +355,7 @@ class PipelineService:
             self._assert_loaded_code()
             draft = payload.get('draft', False)
             if not isinstance(draft, bool): raise ServiceError(422, 'INVALID_DRAFT', 'draft deve ser booleano.')
-            active = [json.loads(row['data']) for row in self.db.execute("SELECT data FROM wf_runs WHERE competencia=? AND status IN ('queued','running','awaiting_approval','approved','exporting')", (period,))]
+            active = [json.loads(row['data']) for row in self.db.execute("SELECT data FROM wf_runs WHERE competencia=? AND status IN ('queued','running','approved','exporting')", (period,))]
             active = next((run for run in active if not run.get('draft')), None)
             if active and not draft: raise ServiceError(409, 'PERIOD_BUSY', 'Já existe uma execução ativa ou aguardando revisão nesta competência.', [{'id': active['id'], 'status': active['status']}])
             definition = self.get_pipeline(payload.get('pipeline_id', 'fechamento-tarvo'), payload.get('version', payload.get('pipeline_version')))
@@ -325,20 +370,21 @@ class PipelineService:
             input_dir.mkdir(parents=True)
             sources = []
             for source in files:
-                target = input_dir / source['name']
+                target = input_dir / source['receipt_id'] / source['name']
+                target.parent.mkdir()
                 shutil.copyfile(source['path'], target)
                 if _sha(target) != source['sha256']:
                     raise ServiceError(409, 'INPUT_CHANGED', 'Fonte mudou durante a captura; tente novamente.')
                 target.chmod(0o444)
                 sources.append({**{k: v for k, v in source.items() if k != 'path'}, 'original_path': source['path'], 'snapshot_path': str(target)})
-            try: imported = load_data(input_dir)
+            try: imported = load_data(input_dir, files=[{**s, 'path': s['snapshot_path']} for s in sources])
             except Exception as exc: raise ServiceError(422, 'INPUT_UNREADABLE', 'Uma fonte não pôde ser interpretada.', [{'reason': str(exc)}]) from exc
             observed = {r.get('date', '')[:7] for r in imported.get('checkout', []) + imported.get('bank', [])}
             observed |= {r.get('contracted_date', '')[:7] for r in imported.get('remittances', [])}
             if period not in observed:
                 raise ServiceError(422, 'PERIOD_WITHOUT_INPUTS', 'Os arquivos enviados não contêm movimentos desta competência.', [{'competencia': period, 'observed_periods': sorted(observed - {''})}])
             for source in sources:
-                info = next((s for s in imported.get('sources', []) if s['name'] == source['name']), {})
+                info = next((s for s in imported.get('sources', []) if s.get('id') == source.get('id')), {})
                 discarded = sum(w.get('source_file') == source['name'] and w.get('type') == 'LINHA_INVALIDA' for w in imported.get('import_warnings', []))
                 source.update(rows_read=info.get('rows', 0), rows_discarded=discarded)
             code = self._assert_loaded_code(self._code_snapshot(directory / 'code_snapshot'))
@@ -347,15 +393,19 @@ class PipelineService:
                 commit = result.stdout.strip() if result.returncode == 0 else None
             except (OSError, subprocess.TimeoutExpired): commit = None
             snapshot = {'definition': pure_definition, 'pipeline_hash': _hash(pure_definition), 'sources': sources, 'source_content_hash': _hash([{'name': s['name'], 'sha256': s['sha256']} for s in sources]), 'code': code, 'loaded_code_hash': self.loaded_code_hash, 'git_commit': commit, 'step_versions': {c['type']: c['version'] for c in self.catalog()}, 'effective_parameters': {s['id']: registry.effective_params(s['type'], s.get('params', {})) for s in pure_definition['steps']}, 'reference_source': 'Cópia imutável dos seis arquivos; cadastros do fechamento legado não são usados.', 'import_warnings': imported.get('import_warnings', [])}
-            if references is not None:
-                expected = references.get('source_hashes', {})
-                actual = {s['name']: s['sha256'] for s in sources}
-                if expected != actual:
-                    raise ServiceError(409, 'REFERENCE_SOURCE_CHANGED', 'As fontes do cadastro e da execução diferem. Reimporte o pacote antes de executar com os cadastros revisados.')
-                snapshot['references'] = copy.deepcopy(references)
-                snapshot['references_hash'] = _hash(references)
-                snapshot['reference_source'] = 'Cadastros, taxas e parâmetros revisados, capturados de forma imutável nesta execução.'
-            run = {'draft': draft, 'source': 'upload' if payload.get('file_ids') is not None else 'folder' if payload.get('source_dir') else 'pack', 'source_dir': payload.get('source_dir'), 'id': ident, 'run_id': ident, 'competencia': period, 'period': period, 'status': 'queued', 'pipeline_id': definition['id'], 'pipeline_version': definition['version'], 'created_at': _now(), 'created_by': actor, 'started_at': None, 'finished_at': None, 'directory': str(directory), 'snapshot': snapshot, 'datasets': {}, 'approval': None, 'exports': [], 'steps': [{'id': s['id'], 'type': s['type'], 'params': snapshot['effective_parameters'][s['id']], 'status': 'pending', 'metrics': {}, 'outputs': [], 'datasets': [], 'started_at': None, 'finished_at': None} for s in pure_definition['steps']]}
+            reconciled = reconcile_catalog(imported, references)
+            snapshot['references'] = {k: copy.deepcopy(v) for k, v in reconciled.items() if k in ('merchants', 'rates', 'parameters', 'catalog_revision', 'catalog_conflicts', 'catalog_transitions', 'import_warnings')}
+            snapshot['references_hash'] = _hash(snapshot['references'])
+            snapshot['reference_source'] = 'Catálogo reconciliado com revisões humanas e proveniência, capturado nesta execução.'
+            snapshot['history'] = self._history(period)
+            snapshot['history_hash'] = _hash(snapshot['history'])
+            snapshot['parent_run_id'] = payload.get('parent_run_id')
+            snapshot['input_manifest'] = imported.get('input_manifest', sources)
+            snapshot['ingestion_counts'] = imported.get('ingestion_counts', {})
+            snapshot['assumptions'] = capture_assumptions(ROOT)
+            snapshot['assumptions_hash'] = _hash(snapshot['assumptions'])
+            snapshot['recommendation_policy_version'] = POLICY_VERSION
+            run = {'parent_run_id': payload.get('parent_run_id'), 'draft': draft, 'source': 'upload' if payload.get('file_ids') is not None else 'folder' if payload.get('source_dir') else 'pack', 'source_dir': payload.get('source_dir'), 'id': ident, 'run_id': ident, 'competencia': period, 'period': period, 'status': 'queued', 'pipeline_id': definition['id'], 'pipeline_version': definition['version'], 'created_at': _now(), 'created_by': actor, 'started_at': None, 'finished_at': None, 'directory': str(directory), 'snapshot': snapshot, 'datasets': {}, 'approval': None, 'exports': [], 'steps': [{'id': s['id'], 'type': s['type'], 'params': snapshot['effective_parameters'][s['id']], 'status': 'pending', 'metrics': {}, 'outputs': [], 'datasets': [], 'started_at': None, 'finished_at': None} for s in pure_definition['steps']]}
             (directory / 'snapshot.json').write_text(_json(snapshot), encoding='utf-8')
             (directory / 'snapshot.json').chmod(0o444)
             self._save_run(run)
@@ -387,7 +437,7 @@ class PipelineService:
             if _sha(path) != meta['sha256']:
                 raise ServiceError(409, 'DATASET_CHANGED', 'Uma saída imutável foi alterada; inicie novo run.', [{'dataset': name}])
             data[name] = dataset_io.read_dataset(path)
-        return {'references': copy.deepcopy(run['snapshot'].get('references', {})), 'period': run['competencia'], 'source_dir': str(Path(run['directory']) / 'inputs'), 'datasets': data, 'scratch': {}, 'run_dir': run['directory'], 'export_dir': str(Path(run['directory']) / 'export'), 'exceptions': self._exceptions(run['id']), 'adjustments': self._adjustments(run['id']), 'approved': bool(run.get('approval') and run['approval']['decisao'] == 'aprovar')}
+        return {'input_files': [{**s, 'path': s['snapshot_path']} for s in run['snapshot']['sources']], 'history_checkout': copy.deepcopy(run['snapshot'].get('history', {}).get('checkout', [])), 'references': copy.deepcopy(run['snapshot'].get('references', {})), 'period': run['competencia'], 'source_dir': str(Path(run['directory']) / 'inputs'), 'datasets': data, 'scratch': {}, 'run_dir': run['directory'], 'export_dir': str(Path(run['directory']) / 'export'), 'exceptions': self._exceptions(run['id']), 'adjustments': self._adjustments(run['id']), 'approved': bool(run.get('approval') and run['approval']['decisao'] == 'aprovar')}
 
     def _assert_snapshot(self, run):
         for source in run['snapshot']['sources']:
@@ -398,6 +448,7 @@ class PipelineService:
 
     def _execute(self, ident):
         current_step = None
+        notification_run = None
         try:
             with self.lock, self.db:
                 run = self._run(ident)
@@ -419,6 +470,8 @@ class PipelineService:
                     if state['status'] in ('done', 'done_with_exceptions'): continue
                     if fresh['status'] not in ('running', 'exporting'): return
                     if fresh.get('draft') and definition['type'] in ('aprovacao', 'exportar_erp'):
+                        if definition['type'] == 'aprovacao':
+                            self._capture_recommendations(fresh)
                         state.update(status='skipped', finished_at=_now(), logs=['Teste de pipeline: aprovação e exportação indisponíveis.'])
                         self._save_run(fresh)
                         self._event(ident, 'step_finished', step_id=current_step, status='skipped', metrics={}, duration_ms=0)
@@ -440,10 +493,12 @@ class PipelineService:
                             gate_outputs.append(meta)
                             ctx['datasets'][name] = rows
                         state.update(outputs=gate_outputs, datasets=[m['name'] for m in gate_outputs], metrics=gate_result.get('metrics', {}), logs=gate_result.get('logs', []))
+                        self._capture_recommendations(fresh)
                         fresh['status'] = 'awaiting_approval'
                         self._save_run(fresh)
                         self._audit(ident, 'approval_requested', 'Sistema', {'step_id': current_step, 'datasets': gate_outputs})
                         self._event(ident, 'awaiting_approval', step_id=current_step, exceptions_open=sum(e['status'] == 'open' for e in self._exceptions(ident)), exceptions_total=len(self._exceptions(ident)), blocking_open=sum(e['status'] == 'open' and e.get('severidade') == 'bloqueante' for e in self._exceptions(ident)))
+                        notification_run = self.get_run(ident)
                         return
                     state.update(status='running', started_at=_now())
                     self._save_run(fresh)
@@ -505,6 +560,7 @@ class PipelineService:
                 self._audit(ident, 'run_finished', 'Sistema', {'status': 'done', 'exports': final['exports']})
                 self._event(ident, 'run_finished', status='done')
                 if not final.get('draft'): self._write_audit_export(final)
+                notification_run = self.get_run(ident)
         except Exception as exc:
             with self.lock, self.db:
                 failed = self._run(ident)
@@ -515,9 +571,19 @@ class PipelineService:
                 self._save_run(failed)
                 self._audit(ident, 'run_failed', 'Sistema', {'error': failed['error'], 'traceback': traceback.format_exc()})
                 self._event(ident, 'run_finished', status='failed', error=failed['error'])
+                notification_run = self.get_run(ident)
         finally:
-            with self.lock:
-                if self.threads.get(ident) is threading.current_thread(): self.threads.pop(ident, None)
+            try:
+                # Keep the worker registered while the callback runs so close()
+                # waits for it. No workflow lock or transaction spans network I/O.
+                if self.on_run is not None and notification_run is not None:
+                    self.on_run(notification_run)
+            except Exception:
+                # An email outage cannot roll back or fail a financial run.
+                logging.getLogger(__name__).warning('Run notification could not be recorded for %s', ident)
+            finally:
+                with self.lock:
+                    if self.threads.get(ident) is threading.current_thread(): self.threads.pop(ident, None)
 
     def _collect_exports(self, run, produced):
         folder = Path(run['directory']) / 'export'
@@ -669,7 +735,12 @@ class PipelineService:
                     if not ref or not filename: continue
                     candidates = [row for row in sources if row.get('source_file') == filename and ref in (row.get('source_ref'), row.get('ref_origem'), row.get('id')) and (line in (None, '') or str(row.get('physical_row')) == str(line))]
                     if len(candidates) == 1 and candidates[0] not in matches: matches.append(candidates[0])
-                if len(matches) == 1:
+                if item.get('group_scope') == 'merchant_period':
+                    item['merchant'] = item.get('merchant_name') or item.get('cnpj', '')
+                    # A company-level issue has no representative transaction amount/date.
+                    item.pop('date', None)
+                    item.pop('amount', None)
+                elif len(matches) == 1:
                     source = matches[0]
                     item['merchant'] = source.get('name') or source.get('description') or ''
                     item['date'] = source.get('date') or source.get('contracted_date')
@@ -688,7 +759,125 @@ class PipelineService:
             except (TypeError, ValueError): raise ServiceError(422, 'INVALID_PAGINATION', 'Página e tamanho devem ser inteiros.')
             return {'items': rows[(page - 1) * size:page * size], 'total': len(rows), 'page': page, 'page_size': size}
 
-    def decision(self, ident, exception_id, payload, actor, *, _commit=True, _context=None):
+    def _capture_recommendations(self, run):
+        """Freeze policy output once; reads never reinterpret a historical run."""
+        if run.get('recommendation_snapshot'):
+            raise ServiceError(409, 'RECOMMENDATIONS_ALREADY_CAPTURED', 'As recomendações desta execução já foram preservadas.')
+        exceptions = self._exceptions(run['id'])
+        document = {
+            'policy_version': run['snapshot']['recommendation_policy_version'],
+            'snapshot_hash': _hash(run['snapshot']),
+            'exception_basis_hash': _hash([{k: v for k, v in item.items() if k not in ('status', 'decision')} for item in exceptions]),
+            'assumptions': copy.deepcopy(run['snapshot']['assumptions']),
+            'recommendations': build_recommendations(exceptions, run['snapshot']['assumptions']),
+        }
+        path = Path(run['directory']) / 'recommendations.json'
+        with path.open('x', encoding='utf-8') as handle:
+            handle.write(_json(document))
+        path.chmod(0o444)
+        run['recommendation_snapshot'] = {'path': str(path), 'sha256': _sha(path), 'policy_version': document['policy_version']}
+        self._audit(run['id'], 'recommendations_captured', 'Sistema', {
+            'policy_version': document['policy_version'], 'sha256': run['recommendation_snapshot']['sha256'],
+            'assumptions_hash': run['snapshot']['assumptions_hash'], 'count': len(document['recommendations'])})
+
+    def _read_recommendations(self, run):
+        meta = run.get('recommendation_snapshot')
+        if not meta:
+            return None
+        try:
+            content = Path(meta['path']).read_bytes()
+            if hashlib.sha256(content).hexdigest() != meta['sha256']:
+                raise ValueError('hash')
+            document = json.loads(content)
+            initial = json.loads((Path(run['directory']) / 'snapshot.json').read_text(encoding='utf-8'))
+            basis = [{k: v for k, v in item.items() if k not in ('status', 'decision')} for item in self._exceptions(run['id'])]
+            if (document['snapshot_hash'] != _hash(run['snapshot']) or _hash(initial) != _hash(run['snapshot'])
+                    or document['exception_basis_hash'] != _hash(basis)
+                    or document['policy_version'] != meta['policy_version']
+                    or document['policy_version'] != run['snapshot']['recommendation_policy_version']
+                    or _hash(document['assumptions']) != run['snapshot']['assumptions_hash']):
+                raise ValueError('basis')
+            return document
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise ServiceError(409, 'RECOMMENDATIONS_CHANGED', 'As recomendações ou sua base preservada foram alteradas. Inicie uma nova execução.') from exc
+
+    def recommendations(self, ident):
+        with self.lock:
+            run = self._run(ident)
+            document = self._read_recommendations(run)
+            empty_effects = {key: None for key in ('entries_before', 'entries_after', 'debit_before', 'debit_after', 'credit_before', 'credit_after', 'balanced')}
+            if document is None:
+                return {'run_id': ident, 'policy_version': None, 'snapshot_status': 'legacy_unavailable',
+                        'can_apply': False, 'preview_token': None, 'assumptions': [], 'recommendations': [],
+                        'summary': {'total': 0, 'eligible': 0, 'waiting': 0, 'decided': 0}, 'effects': empty_effects,
+                        'warning': 'Esta execução não preservou recomendações e hipóteses para esta página. Inicie uma nova execução e aguarde a revisão; nenhum dado histórico foi reinterpretado.'}
+            current = self._exceptions(ident)
+            by_id = {item['id']: item for item in current}
+            reviewable = run['status'] == 'awaiting_approval' and not run.get('draft')
+            items = []
+            for recommendation in document['recommendations']:
+                item = copy.deepcopy(recommendation)
+                exception = by_id.get(item['exception_id'])
+                decided = bool(exception and (exception.get('status') != 'open' or exception.get('decision')))
+                eligible = bool(item.get('eligible') and item.get('suggested_action') == 'accept' and exception and not decided and reviewable)
+                reason = ('Já existe uma decisão registrada para esta ocorrência.' if decided else
+                          'A execução não está aguardando revisão.' if not reviewable else
+                          '' if eligible else item.get('reason', 'Exige análise individual.'))
+                item.update(status='decided' if decided else 'open', eligible=eligible, ineligible_reason=reason)
+                items.append(item)
+            summary = {'total': len(items), 'eligible': sum(item['eligible'] for item in items),
+                       'waiting': sum(item['status'] == 'open' and not item['eligible'] for item in items),
+                       'decided': sum(item['status'] == 'decided' for item in items)}
+            batch = self.approval_summary(ident)['batch']
+            effects = {'entries_before': batch['entries'], 'entries_after': batch['entries'],
+                       'debit_before': batch['debit_brl'], 'debit_after': batch['debit_brl'],
+                       'credit_before': batch['credit_brl'], 'credit_after': batch['credit_brl'], 'balanced': batch['balanced']}
+            token = _hash({'run_id': ident, 'status': run['status'], 'snapshot': run['snapshot'],
+                           'recommendation_snapshot': document, 'exceptions': current, 'effects': effects})
+            return {'run_id': ident, 'policy_version': document['policy_version'], 'snapshot_status': 'captured',
+                    'can_apply': bool(reviewable and summary['eligible'] and effects['balanced']), 'preview_token': token,
+                    'assumptions': document['assumptions'], 'recommendations': items, 'summary': summary, 'effects': effects,
+                    'warning': None if effects['balanced'] else 'Não há um lote contábil equilibrado disponível. Revise os lançamentos antes de aplicar sugestões em conjunto.'}
+
+    def apply_recommendations(self, ident, preview_token, actor):
+        actor = self._actor(actor)
+        if not isinstance(preview_token, str) or not re.fullmatch(r'[a-f0-9]{64}', preview_token):
+            raise ServiceError(422, 'INVALID_PREVIEW_TOKEN', 'Consulte as recomendações antes de confirmar o lote.')
+        with self.lock, self.db:
+            run = self._run(ident)
+            receipt = self.db.execute('SELECT data FROM wf_recommendation_batches WHERE run_id=? AND preview_token=?', (ident, preview_token)).fetchone()
+            if receipt:
+                return {**json.loads(receipt['data']), 'replayed': True, 'already_applied': True}
+            if run['status'] != 'awaiting_approval' or run.get('draft'):
+                raise ServiceError(409, 'RUN_NOT_REVIEWABLE', 'As recomendações só podem ser aplicadas enquanto a execução aguarda revisão.')
+            self._assert_snapshot(run)
+            preview = self.recommendations(ident)
+            if preview['snapshot_status'] != 'captured':
+                raise ServiceError(409, 'RECOMMENDATIONS_UNAVAILABLE', preview['warning'])
+            if preview['preview_token'] != preview_token:
+                raise ServiceError(409, 'STALE_RECOMMENDATIONS', 'A revisão mudou desde a prévia. Consulte novamente as sugestões antes de aplicar.')
+            if preview['effects']['balanced'] is not True:
+                raise ServiceError(409, 'UNBALANCED_RECOMMENDATION_BATCH', preview['warning'])
+            selected = [item for item in preview['recommendations'] if item['eligible']]
+            if not selected:
+                raise ServiceError(409, 'NO_ELIGIBLE_RECOMMENDATIONS', 'Não há sugestões elegíveis para aplicar nesta execução.')
+            for item in selected:
+                reason = '\n'.join((f"Fato: {item['fact']}", f"Regra: {item['rule']}", f"Decisão: {item['reason']}",
+                                    f"Efeito: {item['effect']}", f"Encaminhamento PENDENTE: {item.get('follow_up') or 'Revisão final do responsável.'}"))
+                self.decision(ident, item['exception_id'], {'acao': 'aceitar', 'justificativa': reason}, actor,
+                              _commit=False, _recommendation={'id': item['id'], 'policy_version': preview['policy_version'],
+                                  'preview_token': preview_token, 'evidence': item['evidence'], 'assumption_ids': item['assumption_ids'],
+                                  'follow_up_status': 'pending', 'follow_up': item.get('follow_up') or 'Revisão final do responsável.'})
+            receipt = {'run_id': ident, 'applied': len(selected), 'exception_ids': [item['exception_id'] for item in selected],
+                       'policy_version': preview['policy_version'], 'preview_token': preview_token,
+                       'effects': preview['effects'], 'actor': actor, 'at': _now(), 'replayed': False, 'already_applied': False}
+            self.db.execute('INSERT INTO wf_recommendation_batches VALUES (?,?,?)', (ident, preview_token, _json(receipt)))
+            self._audit(ident, 'recommendations_applied', actor, {**receipt,
+                        'recommendations': [{'id': item['id'], 'evidence': item['evidence'], 'assumption_ids': item['assumption_ids']} for item in selected]})
+            self._event(ident, 'recommendations_applied', count=len(selected), policy_version=preview['policy_version'])
+            return receipt
+
+    def decision(self, ident, exception_id, payload, actor, *, _commit=True, _recommendation=None, _context=None):
         actor = self._actor(actor)
         with self.lock, (self.db if _commit else nullcontext()):
             run = self._run(ident)
@@ -702,6 +891,16 @@ class PipelineService:
             reason = str(payload.get('justificativa', payload.get('note', ''))).strip()
             if not reason: raise ServiceError(422, 'JUSTIFICATION_REQUIRED', 'Registre a justificativa da decisão.')
             after = {'exception_id': exception_id, 'acao': action, 'justificativa': reason, 'actor': actor, 'at': _now(), 'ref_origem': exception.get('ref_origem'), 'origens': exception.get('origens', []), 'step_id': exception['step_id']}
+            if exception.get('group_scope') == 'merchant_period':
+                if action == 'ajustar':
+                    raise ServiceError(422, 'REGISTRATION_REQUIRES_REPROCESSING', 'Regularize o cadastro e o contrato e crie uma nova execução. A ressalva não autoriza faturamento.')
+                after.update({key: copy.deepcopy(exception.get(key)) for key in
+                              ('group_scope', 'period', 'cnpj', 'merchant_name', 'operation_count', 'affected_operations', 'source_fingerprint',
+                               'exposure_status', 'known_exposure_brl', 'missing_exposure_count')})
+                after['billing_authorized'] = False
+            if _recommendation is not None:
+                after['recommendation'] = copy.deepcopy(_recommendation)
+                after.update(recommendation_id=_recommendation['id'], follow_up_status='pending', follow_up=_recommendation['follow_up'])
             if payload.get('entry_id'): after['entry_id'] = str(payload['entry_id'])
             if action == 'ajustar':
                 if payload.get('valor') is None and not payload.get('conta'):
@@ -839,16 +1038,21 @@ class PipelineService:
             rows = original
             if original:
                 rows, _ = _adjusted_ledger(context, self._adjustments(ident))
-            amount = lambda item: abs(Decimal(str(item.get('impacto_rs', '0.00'))))
+            def exposure(items):
+                known = sum((abs(Decimal(str(item['impacto_rs'] if item.get('impacto_rs') is not None else item.get('known_exposure_brl', '0.00')))) for item in items), Decimal(0))
+                missing = sum(item.get('impacto_rs') is None for item in items)
+                return (None if missing else format(known, '.2f'), format(known, '.2f'), missing)
             blocking = [e for e in issues if e.get('severidade') == 'bloqueante']
             opened = [e for e in issues if e['status'] == 'open']
+            total_exposure, known_exposure, unknown_exposure = exposure(issues)
+            open_exposure, known_open_exposure, unknown_open_exposure = exposure(opened)
             debit = sum((Decimal(str(r['debito'])) for r in rows), Decimal(0))
             credit = sum((Decimal(str(r['credito'])) for r in rows), Decimal(0))
             return {'total': len(issues), 'blocking': len(blocking), 'alerts': len(issues) - len(blocking),
                     'decided': len(issues) - len(opened), 'open_blocking': sum(e.get('severidade') == 'bloqueante' for e in opened),
                     'open_alerts': sum(e.get('severidade') != 'bloqueante' for e in opened),
-                    'impact_brl': format(sum(map(amount, issues), Decimal(0)), '.2f'),
-                    'open_impact_brl': format(sum(map(amount, opened), Decimal(0)), '.2f'),
+                    'impact_brl': total_exposure, 'known_impact_brl': known_exposure, 'unknown_impact_count': unknown_exposure,
+                    'open_impact_brl': open_exposure, 'known_open_impact_brl': known_open_exposure, 'unknown_open_impact_count': unknown_open_exposure,
                     'batch': {'entries': len(rows), 'excluded': len(original) - len(rows), 'debit_brl': format(debit, '.2f'),
                               'credit_brl': format(credit, '.2f'), 'balanced': bool(original) and debit == credit}}
 
@@ -867,8 +1071,33 @@ class PipelineService:
             comparable = [step for step in steps if step['type'] not in ('aprovacao', 'exportar_erp')]
             snapshots_match = all(first['snapshot'].get(key) == second['snapshot'].get(key)
                                   for key in ('source_content_hash', 'pipeline_hash', 'references_hash', 'loaded_code_hash'))
+            def business(run):
+                data = self._context(run)['datasets']
+                required = ('comissoes', 'notas', 'divergencias', 'rastro')
+                if not all(name in data for name in required): return None
+                def stable(rows, fields):
+                    return sorted([{key: row.get(key) for key in fields} for row in rows], key=_json)
+                result = {'period': run['competencia'], 'parameters': run['snapshot'].get('references', {}).get('parameters', {}),
+                          'pipeline': run['snapshot']['definition']}
+                for name in ('raw_orbe', 'raw_remittances', 'raw_bank'):
+                    result[name] = sorted({operation_fingerprint(row) for row in data.get(name, [])})
+                result['contracts'] = stable(data.get('raw_rates', []), ('logical_id', 'revision_id', 'cnpj', 'product', 'start', 'end', 'rate_pct'))
+                result['merchants'] = stable(data.get('raw_merchants', []), ('cnpj','ec','name','active','candidate'))
+                result['commissions'] = stable(data['comissoes'], ('cnpj','linha_negocio','comissao_brl'))
+                result['notes'] = stable(data['notas'], ('tomador_cnpj','linha_negocio','valor_brl','discriminacao'))
+                result['divergences'] = stable(data['divergencias'], ('cnpj','linha_negocio','ref_origem','taxa_contratada_pct','taxa_aplicada_pct','diferenca_brl','produto','vigencia_inicio','vigencia_fim'))
+                result['ledger'] = stable(data.get('lancamentos', []), ('data','conta_codigo','natureza','debito','credito','valor','ref_origem','event_type','cnpj'))
+                financial_ids = {r['id_saida'] for key in ('comissoes','notas','divergencias') for r in data[key]}
+                result['rules'] = stable([r for r in data['rastro'] if r['id_saida'] in financial_ids], ('ref_origem','valor','regra'))
+                return result
+            left_business, right_business = business(first), business(second)
+            hash_a = _hash(left_business) if left_business else None
+            hash_b = _hash(right_business) if right_business else None
             return {'a': first, 'b': second, 'steps': steps,
-                    'reproducible': bool(comparable) and snapshots_match and all(step['match'] for step in comparable)}
+                    'reproducible': bool(hash_a and hash_b and hash_a == hash_b),
+                    'business_hash_a': hash_a, 'business_hash_b': hash_b,
+                    'binary_identical': bool(comparable) and snapshots_match and all(step['match'] for step in comparable),
+                    'comparison_basis': 'Dados econômicos únicos, contratos, parâmetros, regras, valores e partidas; proveniência e recebimentos permanecem auditáveis separadamente.'}
 
     def export_file(self, ident, name):
         with self.lock:
@@ -885,7 +1114,7 @@ class PipelineService:
                 raise ServiceError(409, 'EXPORT_CHANGED', 'Arquivo exportado foi alterado após a auditoria.')
             return content
 
-    def checklist(self, competencia):
+    def checklist(self, competencia, run_id=None):
         period = self._period(competencia)
         with self.lock, self.db:
             template_path = ROOT / 'src' / 'config' / 'checklist.json'
@@ -900,6 +1129,9 @@ class PipelineService:
                 self.db.execute('INSERT OR IGNORE INTO wf_tasks VALUES (?,?,?)', (ident, period, _json(entry)))
             candidates = self.db.execute('SELECT data FROM wf_runs WHERE competencia=? ORDER BY rowid DESC', (period,)).fetchall()
             run = next((r for r in (json.loads(row['data']) for row in candidates) if not r.get('draft')), None)
+            if run_id:
+                run = self._run(run_id)
+                if run['competencia'] != period: raise ServiceError(422, 'RUN_PERIOD_MISMATCH', 'Execução pertence a outra competência.')
             entries = [json.loads(r['data']) for r in self.db.execute('SELECT data FROM wf_tasks WHERE competencia=? ORDER BY rowid', (period,))]
             for task in entries:
                 if task['manual']: continue

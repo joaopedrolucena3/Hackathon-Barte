@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Overlay';
 import { Badge, Callout, Empty, Field, Loading, Money, PageHead, ReasonInput, Segmented, Tabs, Toggle } from '../components/ui';
 import { cnpj, count, dateBR, moneyShort, percent, plural, productNames } from '../lib/format';
-import { keys, useAppState, useInsights } from '../state/queries';
+import { keys, useAppState, useInsights, useOperationalConfig } from '../state/queries';
 import { useAction } from '../state/useAction';
 
 type Tab = 'lojistas' | 'contatos' | 'contas' | 'prazos';
@@ -280,18 +280,22 @@ function Contatos({ state }: { state: AppState }) {
 }
 
 function Prazos({ state }: { state: AppState }) {
-  const [deadline, setDeadline] = useState(state.parameters.closing_deadline || '');
+  const [comp, setComp] = useState(state.period);
+  const { data: config } = useOperationalConfig(comp);
+  const [deadline, setDeadline] = useState<string | undefined>();
+  const effectiveDeadline = deadline ?? config?.closing_deadline ?? '';
   const [reason, setReason] = useState('');
   const { run, busy } = useAction();
   return (
     <div className="grid grid-2">
       <div className="card">
-        <div className="card-head"><div><h3 className="card-title">Prazo do fechamento</h3><p className="card-sub">Usado nos avisos internos de prazo</p></div></div>
+        <div className="card-head"><div><h3 className="card-title">Prazo do fechamento</h3><p className="card-sub">Configuração operacional por competência. Snapshots anteriores são preservados.</p></div></div>
         <div className="card-body stack-lg">
-          <Field label="Data limite"><input className="input" type="date" value={deadline} onChange={event => setDeadline(event.target.value)} style={{ maxWidth: 220 }} /></Field>
-          {deadline !== (state.parameters.closing_deadline || '') && <Field label="Justificativa" required><ReasonInput value={reason} onChange={setReason} suggestions={['Calendário do financeiro', 'Ajuste combinado com a contabilidade']} /></Field>}
-          <div><button className="btn primary" disabled={!!busy || !reason.trim() || deadline === state.parameters.closing_deadline}
-            onClick={() => run('deadline', () => core.saveParameters({ remittance_tolerance_pp: state.parameters.remittance_tolerance_pp || '0', closing_deadline: deadline, reason }), { success: 'Prazo salvo.', invalidate: [keys.state] })}>Salvar prazo</button></div>
+          <Field label="Competência"><input className="input" type="month" value={comp} onChange={event => { setComp(event.target.value); setDeadline(undefined); setReason(''); }} /></Field>
+          <Field label="Data limite"><input className="input" type="date" value={effectiveDeadline} onChange={event => setDeadline(event.target.value)} style={{ maxWidth: 220 }} /></Field>
+          {effectiveDeadline !== (config?.closing_deadline || '') && <Field label="Justificativa" required><ReasonInput value={reason} onChange={setReason} suggestions={['Calendário do financeiro', 'Ajuste combinado com a contabilidade']} /></Field>}
+          <div><button className="btn primary" disabled={!!busy || !config || !reason.trim() || effectiveDeadline === (config.closing_deadline || '')}
+            onClick={() => run('deadline', () => core.saveOperationalConfig(comp, { closing_deadline: effectiveDeadline || null, reason }), { success: 'Prazo da competência salvo.', invalidate: [keys.state, keys.config(comp)] })}>Salvar prazo</button></div>
         </div>
       </div>
       <div className="card">
@@ -307,7 +311,7 @@ function Prazos({ state }: { state: AppState }) {
 }
 
 export default function Cadastros() {
-  const { data: state } = useAppState();
+  const { data: state } = useAppState({});
   const [params, setParams] = useSearchParams();
   const tab = (params.get('aba') as Tab) || 'lojistas';
   if (!state) return <Loading page />;

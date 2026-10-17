@@ -4,10 +4,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from copy import deepcopy
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .importer import load_data, SLACK_SOURCE
+from .inputs import operation_fingerprint, canonical_operation
 
 
 ZERO = Decimal("0")
@@ -62,11 +64,12 @@ class Closing:
         self.groups = defaultdict(list)
         self.counts = {"checkout": 0, "remessa": 0, "bank": 0}
         self.issue_ids = set()
+        self.registration_groups = defaultdict(dict)
 
     def trace(self, output_id, row, value, rule, formula, **extra):
         ref = row.get("source_ref") or row.get("ref_origem") or row.get("id") or "arquivo"
         source = row.get("source_file", "Fonte não informada")
-        item = {"id_saida": output_id, "arquivo_origem": source, "ref_origem": ref, "valor": money(value), "source_row": row.get("physical_row", ""), "regra": rule}
+        item = {"id_saida": output_id, "arquivo_origem": source, "ref_origem": ref, "valor": money(value) if value is not None else None, "source_row": row.get("physical_row", ""), "regra": rule}
         self.out["rastro"].append(item)
         self.out["details"].append({**item, "formula": formula, "entrada": dict(row), **extra})
 
@@ -91,13 +94,13 @@ class Closing:
         for row in rows:
             grouped[row.get("id", "")].append(row)
         result = []
-        ignored = {"observation", "physical_row", "source_file", "source_ref"}
-        for key, copies in grouped.items():
+        for key, copies in sorted(grouped.items()):
+            copies = sorted(copies, key=lambda r: (r.get('source_sha256', ''), r.get('source_file', ''), str(r.get('physical_row', ''))))
             if not key:
                 self.issue("ID_AUSENTE", copies, ZERO, "Identificador de origem ausente.")
                 continue
             if len(copies) > 1:
-                signatures = {json.dumps({k: v for k, v in r.items() if k not in ignored}, sort_keys=True, ensure_ascii=False) for r in copies}
+                signatures = {operation_fingerprint(r) for r in copies}
                 if len(signatures) > 1:
                     self.issue("DUPLICIDADE_CONFLITANTE", copies, ZERO, f"{kind}: mesmo ID possui valores distintos; nenhuma versão foi contabilizada.", suggestion="Solicitar versão correta ao fornecedor.", rule="Nunca escolher silenciosamente uma versão conflitante.")
                     continue
@@ -107,7 +110,13 @@ class Closing:
                     self.issue("DUPLICIDADE_INVALIDA", copies, ZERO, f"{kind}: duplicata contém número financeiro inválido; valor indisponível e nenhuma versão contabilizada.")
                     continue
                 self.issue("DUPLICIDADE", copies, amount, f"{kind}: ID repetido em {len(copies)} linhas; contabilizado uma única vez.", severity="atencao", suggestion="Contestar a duplicata junto ao fornecedor.", rule=SLACK_SOURCE + ": duplicata por operação conta uma vez")
-            result.append(copies[0])
+            selected = dict(copies[0])
+            origins = {}
+            for item in copies:
+                for origin in [{k: item.get(k) for k in ('source_file', 'source_id', 'source_sha256', 'source_receipt_id', 'source_ref', 'physical_row')}] + (item.get('provenances') or []):
+                    origins[json.dumps(origin, sort_keys=True)] = origin
+            selected['provenances'] = list(origins.values())
+            result.append(selected)
         return result
 
     def merchant(self, row, by_ec=False):
@@ -124,14 +133,75 @@ class Closing:
             self.issue("CNPJ_INVALIDO", row, ZERO, "CNPJ ausente ou sem os 14 dígitos necessários.", owner="Comercial e cadastro")
             return None
         if merchant.get("candidate") or not merchant.get("active", True):
+            business = "CHECKOUT" if by_ec else "REMESSA"
+            exposure_field = "reported_fee" if by_ec else "spread_brl"
             try:
-                exposure = dec(row.get("reported_fee", "0"))
+                exposure = rounded(row.get(exposure_field))
             except (InvalidOperation, ValueError, TypeError):
+                exposure = None
                 self.issue("VALOR_INVALIDO", row, ZERO, "Valor financeiro inválido, exposição monetária indisponível.")
-                return None
-            self.issue("CADASTRO_NAO_CONFIRMADO", row, exposure, "Cadastro candidato ou inativo. Atlas não possui contrato vigente e a aba histórica não autoriza faturamento.", owner="Comercial e cadastro", suggestion="Confirmar identidade e cadastrar contrato vigente antes de faturar.", rule=SLACK_SOURCE + ": Atlas não faturar até comercial", cnpj=merchant["cnpj"])
+            # unique() has already collapsed economic duplicates, retaining every receipt.
+            self.registration_groups[merchant["cnpj"]][(business, row["id"])] = {
+                "row": deepcopy(row), "merchant": deepcopy(merchant), "business": business,
+                "exposure": exposure, "exposure_basis": exposure_field,
+            }
             return None
         return merchant
+
+    def registration_issues(self):
+        """One cause per exact merchant and period; all affected operations remain blocked."""
+        kind = "CADASTRO_NAO_CONFIRMADO"
+        rule = "Cadastro candidato ou inativo não autoriza faturamento; confirmar identidade e contrato vigente."
+        reason = "Cadastro candidato ou inativo. As operações vinculadas permanecem sem faturamento até a confirmação da identidade e de contrato vigente."
+        serialize = lambda value: json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+        provenance_fields = ("source_file", "source_ref", "physical_row", "source_id", "source_sha256", "source_receipt_id")
+        for cnpj, members in sorted(self.registration_groups.items()):
+            iid = uid("PEND", self.period, kind, cnpj)
+            operations, evidence, fingerprints, traces = [], {}, [], []
+            known, missing = ZERO, 0
+            merchant = None
+            for _, member in sorted(members.items()):
+                row, merchant, exposure = member["row"], member["merchant"], member["exposure"]
+                ref = row.get("source_ref") or row.get("ref_origem") or row["id"]
+                origins = [{k: row.get(k) for k in provenance_fields}]
+                origins.extend(row.get("provenances") or [])
+                origins = sorted({serialize(origin): origin for origin in origins}.values(), key=serialize)
+                # Both the displayed evidence and original provenance metadata participate in identity.
+                for origin in origins:
+                    item = {**deepcopy(origin), "arquivo": origin.get("source_file") or row.get("source_file", ""),
+                            "ref": origin.get("source_ref") or ref,
+                            "linha": origin.get("physical_row") if origin.get("physical_row") is not None else row.get("physical_row", "")}
+                    evidence[serialize(item)] = item
+                operation = {"id": row["id"], "ref": ref, "arquivo": row.get("source_file", ""),
+                             "linha": row.get("physical_row", ""), "date": row.get("date") or row.get("contracted_date", ""),
+                             "business": member["business"], "exposure_brl": money(exposure) if exposure is not None else None,
+                             "exposure_basis": member["exposure_basis"]}
+                operations.append(operation)
+                if exposure is None: missing += 1
+                else: known += exposure
+                fingerprints.append({"operation": canonical_operation(row), "provenances": origins,
+                                     "business": member["business"], "merchant": merchant})
+                trace_row = {**row, "provenances": origins}
+                traces.append((trace_row, exposure, operation))
+            evidence = sorted(evidence.values(), key=serialize)
+            self.issue_ids.add(iid)
+            self.out["pendencias"].append({
+                "id_saida": iid, "tipo": kind, "ref_origem": operations[0]["ref"],
+                "valor_brl": money(known) if not missing else None, "motivo": reason,
+                "quem_decide": "Comercial e cadastro", "severity": "bloqueante",
+                "suggestion": "Confirmar identidade e cadastrar contrato vigente; recalcular para validar todas as operações.",
+                "evidence": evidence, "rule": rule, "cnpj": cnpj, "merchant_name": merchant.get("name", ""),
+                "group_scope": "merchant_period", "period": self.period,
+                "operation_count": len(operations), "affected_operations": operations,
+                "known_exposure_brl": money(known), "missing_exposure_count": missing,
+                "exposure_status": "complete" if not missing else "unavailable" if missing == len(operations) else "partial",
+                "source_fingerprint": hashlib.sha256(serialize({"period": self.period, "cnpj": cnpj,
+                    "members": fingerprints, "evidence": evidence}).encode()).hexdigest(),
+            })
+            for row, exposure, operation in traces:
+                self.trace(iid, row, exposure, rule,
+                           "Exposição reportada por operação econômica; nenhuma receita reconhecida por esta pendência.",
+                           motivo=reason, affected_operation=operation, group_scope="merchant_period", period=self.period)
 
     def rate(self, cnpj, product, when, row):
         choices = [rate for rate in self.data.get("rates", []) if rate.get("cnpj") == cnpj and rate.get("product") == product
@@ -165,7 +235,16 @@ class Closing:
         originals = {r.get("original_id") for r in source_rows if r.get("date", "")[:7] == self.period and r.get("original_id")}
         relevant_rows = [r for r in source_rows if r.get("date", "")[:7] == self.period or r.get("id") in originals]
         all_rows = self.unique(relevant_rows, "Orbe")
-        index = {r["id"]: r for r in all_rows}
+        # Historical evidence is indexed separately: it never enters monthly receipts or billing.
+        history = self.data.get('history_checkout', [])
+        candidates = defaultdict(dict)
+        reversals = defaultdict(dict)
+        for item in source_rows + history:
+            if item.get('date', '')[:7] > self.period:
+                continue
+            candidates[item.get('id')].setdefault(operation_fingerprint(item), []).append(item)
+            if item.get('type') in ('ESTORNO', 'REVERSAO ANTECIPACAO'):
+                reversals[item.get('original_id')].setdefault(item.get('id'), {})[operation_fingerprint(item)] = item
         for row in all_rows:
             if row.get("date", "")[:7] != self.period:
                 continue
@@ -186,21 +265,68 @@ class Closing:
                     raise ValueError("Bruto menos taxa reportada não coincide com o líquido da fonte.")
                 if kind in ("ESTORNO", "REVERSAO ANTECIPACAO") and not when:
                     raise ValueError("Estorno/reversão sem data original.")
-                if kind == "REVERSAO ANTECIPACAO":
-                    original = index.get(row.get("original_id"))
-                    if not original or original.get("type") != "ANTECIPACAO" or original.get("ec") != row.get("ec"):
-                        raise ValueError("Reversão sem antecipação original válida da mesma loja.")
-                    if gross != -dec(original["gross"]):
-                        raise ValueError("Reversão parcial ou excedente requer confirmação; o caso fornecido documenta apenas reversões integrais.")
-                    if when != original["date"]:
-                        raise ValueError("Data original da reversão não coincide com a antecipação referenciada.")
-                    when = original["date"]
-                if kind == "ESTORNO" and row.get("original_id") in index:
-                    original = index[row["original_id"]]
-                    if original.get("ec") != row.get("ec") or original.get("type") != "VENDA" or original.get("date") != when:
-                        raise ValueError("Estorno diverge da identidade, tipo ou data da venda original.")
-                    if original.get("modality") != row.get("modality") or original.get("installments") != row.get("installments") or abs(gross) > dec(original["gross"]):
-                        raise ValueError("Estorno diverge da modalidade/parcelas ou excede o bruto da venda original.")
+                if kind in ('ESTORNO', 'REVERSAO ANTECIPACAO'):
+                    versions = candidates.get(row.get('original_id'), {})
+                    if len(versions) > 1:
+                        self.issue('ORIGINAL_AMBIGUO', [row] + [v for group in versions.values() for v in group], ZERO,
+                                   'Operação original possui versões conflitantes; confirmar a versão correta.')
+                        continue
+                    if not versions:
+                        self.issue('ORIGINAL_AUSENTE', row, ZERO,
+                                   'Operação original não encontrada nas fontes atuais ou históricas. Confirmar vínculo e atributos; cálculo por data declarada, quando aplicável, é provisório.',
+                                   suggestion='Importar a fonte histórica e criar nova versão para validar o vínculo.')
+                        # The documented case prices prior-period refunds by their declared original date.
+                        # Preserve that provisional calculation while making the missing evidence blocking.
+                        if kind != 'ESTORNO' or when[:7] >= self.period:
+                            continue
+                    else:
+                        copies = next(iter(versions.values()))
+                        original = copies[0]
+                        original_gross = dec(original['gross'])
+                        expected = 'ANTECIPACAO' if kind == 'REVERSAO ANTECIPACAO' else 'VENDA'
+                        compatible = (original.get('ec') == row.get('ec') and original.get('type') == expected
+                                      and original.get('date') == when and when <= row['date'] and original_gross > 0
+                                      and canonical_operation(original).get('modality') == canonical_operation(row).get('modality')
+                                      and str(original.get('installments')) == str(row.get('installments'))
+                                      and abs(gross) <= original_gross
+                                      and original_gross - dec(original['reported_fee']) == dec(original['net']))
+                        if kind == 'REVERSAO ANTECIPACAO': compatible &= gross == -original_gross
+                        if not compatible:
+                            self.issue('ORIGINAL_INCOMPATIVEL', [row, original], ZERO,
+                                       'Original incompatível com EC, natureza, sinal, valor, modalidade, parcelas ou datas; linha retida.')
+                            continue
+                        accumulated = ZERO
+                        contributing = []
+                        conflict = False
+                        for versions_of_reversal in reversals[row.get('original_id')].values():
+                            if len(versions_of_reversal) != 1:
+                                conflict = True
+                                continue
+                            reversal = next(iter(versions_of_reversal.values()))
+                            if reversal.get('ec') == original.get('ec') and reversal.get('type') == kind:
+                                try:
+                                    reversal_gross = dec(reversal['gross'])
+                                    contributing.append(reversal)
+                                    if (reversal_gross >= 0 or reversal.get('original_date') != original.get('date')
+                                            or reversal.get('date', '') < original.get('date', '')
+                                            or canonical_operation(reversal).get('modality') != canonical_operation(original).get('modality')
+                                            or str(reversal.get('installments')) != str(original.get('installments'))):
+                                        conflict = True
+                                    else:
+                                        accumulated += abs(reversal_gross)
+                                except (InvalidOperation, ValueError, KeyError): conflict = True
+                        if conflict or accumulated > original_gross:
+                            self.issue('REVERSAO_ACUMULADA_EXCEDENTE' if accumulated > original_gross else 'REVERSAO_ACUMULADA_AMBIGUA',
+                                       [row, original] + contributing, ZERO, f'Reversões econômicas únicas acumuladas: {money(accumulated)}; bruto original: {money(original_gross)}. Revisão necessária.')
+                            continue
+                        row['original_evidence'] = {**original, 'provenances': [
+                            {k: item.get(k) for k in ('source_file', 'source_id', 'source_sha256', 'physical_row')} for item in copies]}
+                        row['original_resolution'] = 'current' if any(item in source_rows for item in copies) else 'historical'
+                        row['accumulated_reversal_brl'] = money(accumulated)
+                        row['reversal_evidence'] = contributing
+                        if original.get('brand') != row.get('brand'):
+                            self.issue('BANDEIRA_DIVERGENTE', [row, original], ZERO,
+                                       'Bandeira difere da operação original. Alerta de qualidade; não altera tarifa ou cálculo.', severity='atencao')
                 if "ANTECIPACAO" in kind:
                     product = "ANTECIPACAO"
                 elif row["modality"] == "CREDITO PARCELADO":
@@ -393,6 +519,7 @@ class Closing:
             self.issue(warning.get("type", "IMPORTACAO"), warning, ZERO, warning.get("message", "Falha de importação"), rule="Arquivo preservado; linhas inválidas exigem correção.")
         self.checkout()
         self.remittances()
+        self.registration_issues()
         self.commissions_and_invoices()
         self.bank()
         if not any(self.counts.values()):

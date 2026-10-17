@@ -327,7 +327,10 @@ class OfficialCaseRegression(unittest.TestCase):
         atlas = [r for r in self.data['checkout'] if 'ATLAS' in r['name'].upper()]
         self.assertEqual(len(atlas), 57)
         self.assertFalse([n for n in self.result['notas'] if n['tomador_cnpj'] == '39566044000119'])
-        refs = {str(p['ref_origem']) for p in self.result['pendencias']}
+        grouped = [p for p in self.result['pendencias'] if p['tipo'] == 'CADASTRO_NAO_CONFIRMADO' and p['cnpj'] == '39566044000119']
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]['operation_count'], 57)
+        refs = {str(p['ref']) for p in grouped[0]['affected_operations']}
         self.assertTrue(all(r['id'] in refs for r in atlas))
 
     def test_every_output_amount_reconciles_to_its_source_trace(self):

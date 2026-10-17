@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
 
-from ..pipeline.datasets import column_type
+from ..pipeline.datasets import column_type, has_unknown_exposure
 
 PATH = Path(__file__).with_name("semantica.json")
 NUMERIC = {"money", "percent", "decimal", "number", "integer"}
@@ -85,7 +85,8 @@ def totals(dataset, columns, rows):
     configured = load()["datasets"].get(dataset, {}).get("totais_controle")
     names = {c["name"] for c in columns}
     chosen = [name for name in configured if name in names] if configured else [c["name"] for c in columns if c["kind"] == "money"]
-    return [{"column": name, "label": label(dataset, name), "value": money(column_sum(rows, name))} for name in chosen]
+    return [{"column": name, "label": label(dataset, name), "value": money(column_sum(rows, name))}
+            for name in chosen if not has_unknown_exposure(dataset, name, rows)]
 
 
 def invariants(steps, rows_of, only=None):

@@ -15,7 +15,7 @@ from urllib.parse import unquote
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from fastapi import Body, Depends, FastAPI, File, Header, Request, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, Header, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
@@ -24,11 +24,15 @@ from starlette.exceptions import HTTPException
 from ..store import ConflictError, ROOT, Store
 from ..engine import calculate
 from .insights import build_insights
+from . import conference
 from ..pipeline.service import PipelineService, ServiceError
 from ..chat import semantic, views as desk
 from ..chat.agent import ChatService
 from ..mail.auth import AuthManager, AuthError
 from ..mail.service import MailService
+from ..mail.demo import DemoMailService
+from ..mail.notifications import NotificationService
+from ..mail.suggestions import SuggestionService
 from .chat import chat_router
 from .mail import mail_router
 
@@ -40,8 +44,9 @@ class RunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     pipeline_id: str = Field(min_length=1, max_length=160)
     competencia: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
-    file_ids: list[str] | None = Field(default=None, min_length=6, max_length=6)
+    file_ids: list[str] | None = Field(default=None, max_length=200)
     source_dir: str | None = None
+    parent_run_id: str | None = None
     pipeline_version: int | None = Field(default=None, ge=1)
     draft: bool = False
     steps: list[dict] | None = None
@@ -61,6 +66,11 @@ class BatchDecisionRequest(BaseModel):
     ids: list[str] = Field(min_length=1, max_length=500)
     acao: Literal["aceitar", "excluir"]
     justificativa: str = Field(min_length=1, max_length=10000)
+
+
+class ApplyRecommendationsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    preview_token: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class ApprovalRequest(BaseModel):
@@ -116,8 +126,28 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     private_dir = mail_private_dir or os.environ.get('TARVO_MAIL_PRIVATE_DIR') or (
         Path.home() / '.local' / 'share' / 'tarvo' / 'gmail' / hashlib.sha256(str(db_path.resolve()).encode()).hexdigest()[:16])
     auth = mail_auth or AuthManager(private_dir)
+    mail_db = db_path.with_name(db_path.stem + '-email.sqlite3')
+    demo_mail = DemoMailService(mail_db, auth)
+    notifications = NotificationService(mail_db, auth)
+    suggestions = SuggestionService(mail_db, flow, mail, auth)
+
+    def after_run(run):
+        # Preparing a suggestion never grants permission to send a contestation.
+        # Internal run notices retain their separate, explicit opt-in setting.
+        for callback in (suggestions.on_run, notifications.on_run):
+            try:
+                callback(run)
+            except Exception:
+                logger.warning('Não foi possível atualizar uma comunicação da run %s.', run.get('id'))
+
+    flow.on_run = after_run
     chat = ChatService(db_path.with_name(db_path.stem + "-chat.sqlite3"), flow, client=chat_client)
     stop = threading.Event()
+
+    def legacy_history():
+        with store.lock:
+            return [json.loads(row['data']) for row in store.db.execute('SELECT data FROM imports ORDER BY id')]
+    flow.history_provider = legacy_history
 
     def scheduler():
         while not stop.is_set():
@@ -138,6 +168,9 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
             worker.join(timeout=2)
             chat.close()
             flow.close()
+            suggestions.close()
+            notifications.close()
+            demo_mail.close()
             mail.close()
             auth.close()
             store.close_db()
@@ -148,6 +181,9 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     app.state.workflow = flow
     app.state.mail = mail
     app.state.mail_auth = auth
+    app.state.demo_mail = demo_mail
+    app.state.mail_notifications = notifications
+    app.state.mail_suggestions = suggestions
     app.state.chat = chat
 
     @app.middleware("http")
@@ -230,22 +266,16 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
         return flow.save_pipeline(pipeline_id, body, actor)
 
     @app.post("/api/files", status_code=201)
-    async def upload(file: UploadFile = File(...), actor: str = Depends(actor_header)):
+    async def upload(file: UploadFile = File(...), role: str | None = Form(default=None), actor: str = Depends(actor_header)):
         data = await file.read(MAX_UPLOAD + 1)
         await file.close()
         if len(data) > MAX_UPLOAD:
             raise ServiceError(413, "FILE_TOO_LARGE", "Cada arquivo pode ter até 25 MB.")
-        return flow.upload_file(file.filename or "", data, actor)
+        return flow.upload_file(file.filename or "", data, actor, role=role)
 
     @app.post("/api/runs", status_code=202)
     def start(body: RunRequest, actor: str = Depends(actor_header)):
-        references = None
-        if body.file_ids is None and not body.source_dir:
-            with store.lock:
-                if body.competencia == store.get('period'):
-                    references = {'merchants': store.records('merchants'), 'rates': store.records('rates'),
-                                  'parameters': store.get('parameters', {}),
-                                  'source_hashes': {item['name']: item['sha256'] for item in store.get('source_data', {}).get('sources', []) if not item.get('embedded')}}
+        references = store.reference_snapshot(body.competencia)
         result = flow.start_run(body.model_dump(exclude_none=True), actor, references=references)
         return {"run_id": result} if isinstance(result, str) else result
 
@@ -264,6 +294,14 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     @app.get("/api/runs/{run_id}/approval-summary")
     def approval_summary(run_id: str):
         return flow.approval_summary(run_id)
+
+    @app.get("/api/runs/{run_id}/recommendations")
+    def recommendations(run_id: str):
+        return flow.recommendations(run_id)
+
+    @app.post("/api/runs/{run_id}/recommendations/apply")
+    def apply_recommendations(run_id: str, body: ApplyRecommendationsRequest, actor: str = Depends(actor_header)):
+        return flow.apply_recommendations(run_id, body.preview_token, actor)
 
     @app.get("/api/runs/{run_id}/exports/{name}")
     def export_file(run_id: str, name: str):
@@ -380,59 +418,83 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
 
     @app.get("/api/competencias")
     def competencias():
-        periods = source_periods()
+        packs = flow.available_packs()
+        runs = flow.list_runs()
         current = store.get('period')
-        all_periods = periods | {run['competencia'] for run in flow.list_runs()} | {current}
-        return [{'comp': period, 'has_data': period in periods, 'current': period == current} for period in sorted(all_periods, reverse=True)]
+        periods = source_periods() | {r['competencia'] for r in runs} | {p['comp'] for p in packs} | {current}
+        records = []
+        for period in sorted(periods, reverse=True):
+            versions = [r for r in runs if r['competencia'] == period and not r.get('draft')]
+            available = [p['path'] for p in packs if p['comp'] == period]
+            records.append({'comp': period, 'current': period == current, 'has_data': bool(versions) or period in source_periods(),
+                            'has_pack': bool(available), 'origin': available, 'status': versions[0]['status'] if versions else 'available' if available else 'no_inputs',
+                            'latest_run_id': versions[0]['id'] if versions else None, 'runs': [{'id': r['id'], 'status': r['status']} for r in versions]})
+        return records
+
+    def scoped_state(comp=None, run_id=None):
+        if run_id: return conference.run_state(flow, store, run_id, comp)
+        period = flow._period(comp) if comp else store.get('period')
+        versions = [r for r in flow.list_runs(period) if not r.get('draft')]
+        if versions: return conference.run_state(flow, store, versions[0]['id'], period)
+        if period == store.get('period'):
+            return {**store.state(), 'run_id': None, 'competencia': period, 'scope': {'competencia': period, 'run_id': None}, 'has_data': True, 'read_only': False}
+        raise ServiceError(404, 'PERIOD_WITHOUT_INPUTS', 'Inicie uma execução para conferir esta competência.')
 
     @app.get("/api/insights")
-    def insights(comp: str):
-        flow._period(comp)
-        with store.lock:
-            if comp == store.get('period'):
-                result = store._results()
-            elif comp in source_periods():
-                result = calculate(store._data(), {**store.get('parameters', {}), 'period': comp})
-            else:
-                raise ServiceError(404, 'PERIOD_WITHOUT_INPUTS', 'A conferência atual não possui fontes desta competência.')
-        return build_insights(comp, result)
+    def insights(comp: str | None = None, run_id: str | None = None):
+        state = scoped_state(comp, run_id)
+        return {**build_insights(state['period'], state['results']), 'run_id': state['run_id'], 'source': 'workflow_snapshot' if state['run_id'] else 'current_conference'}
 
     @app.get("/api/competencias/{competencia}/checklist")
-    def checklist(competencia: str):
-        result = flow.checklist(competencia)
-        return result if isinstance(result, dict) else {"competencia": competencia, "tasks": result}
+    def checklist(competencia: str, run_id: str | None = None):
+        return flow.checklist(competencia, run_id)
+
+    @app.get("/api/competencias/{competencia}/config")
+    def operational_config(competencia: str):
+        return store.operational_config(flow._period(competencia))
+
+    @app.put("/api/competencias/{competencia}/config")
+    def save_operational_config(competencia: str, body: dict = Body(...), actor: str = Depends(actor_header)):
+        return store.set_operational_config(flow._period(competencia), body, actor)
 
     @app.patch("/api/checklist/{task_id}")
     def update_task(task_id: str, body: ChecklistRequest, actor: str = Depends(actor_header)):
         return flow.update_task(task_id, body.model_dump(exclude_none=True), actor)
 
-    app.include_router(mail_router(mail, auth, store, actor_header))
+    app.include_router(mail_router(mail, auth, store, actor_header, demo_mail=demo_mail, notifications=notifications,
+                                   suggestions=suggestions, workflow=flow))
     app.include_router(chat_router(chat, actor_header))
 
     @app.get("/api/health")
     def health():
-        return {"ok": True, "mode": "local", "workflow": True, "legacy_emails": "simulation", "gmail_configured": auth.status().get("configured", False)}
+        index = ROOT.parent / 'front' / 'dist' / 'index.html'
+        return {"ok": True, "mode": "local", "workflow": True, "legacy_emails": "simulation", "gmail_configured": auth.status().get("configured", False),
+                'backend_content_hash': flow.loaded_code_hash,
+                'frontend_index_sha256': hashlib.sha256(index.read_bytes()).hexdigest() if index.exists() else None}
 
     @app.get("/api/state")
-    def state():
-        return store.state()
+    def state(comp: str | None = None, run_id: str | None = None):
+        return scoped_state(comp, run_id)
 
     @app.get("/api/trace")
-    def trace(id: str = ""):
-        return store.trace(id)
+    def trace(id: str = "", comp: str | None = None, run_id: str | None = None):
+        state = scoped_state(comp, run_id)
+        return {'run_id': state['run_id'], 'period': state['period'], 'rows': [r for r in state['results']['rastro'] if r['id_saida'] == id],
+                'details': [r for r in state['results']['details'] if r['id_saida'] == id]}
 
     @app.get("/api/export")
-    def legacy_csv(file: str = ""):
-        content = store.export_csv(file)
+    def legacy_csv(file: str = "", comp: str | None = None, run_id: str | None = None):
+        state = scoped_state(comp, run_id)
+        content = conference.official_csv(state, file)
         return Response(content, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{file}"'})
 
     @app.get("/api/report")
-    def report():
-        return Response(store.report(), media_type="text/html")
+    def report(comp: str | None = None, run_id: str | None = None):
+        return Response(conference.report(scoped_state(comp, run_id)), media_type="text/html")
 
     @app.get("/api/export.zip")
-    def legacy_export():
-        return Response(store.export_zip(), media_type="application/zip", headers={"Content-Disposition": 'attachment; filename="tarvo-conferencia.zip"'})
+    def legacy_export(comp: str | None = None, run_id: str | None = None):
+        return Response(conference.export_zip(scoped_state(comp, run_id)), media_type="application/zip", headers={"Content-Disposition": 'attachment; filename="tarvo-conferencia.zip"'})
 
     @app.post("/api/emails/{action}")
     def legacy_email_action(action: str, body: dict = Body(...)):

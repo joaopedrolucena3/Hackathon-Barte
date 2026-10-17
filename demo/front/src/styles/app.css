@@ -769,6 +769,22 @@ a.download-card:hover { border-color: var(--accent); }
 .wb-menu-item .muted { font-size: 11px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 960px) { .wb { grid-template-columns: 1fr; height: auto; } .wb-side { max-height: 360px; } .wb-card { height: 78vh; } }
 
+/* Run-scoped decision guidance: the preview stays distinct from final approval. */
+.recommendation-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.recommendations-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 370px); gap: 20px; align-items: start; }
+.recommendation-card, .recommendation-assumptions { min-width: 0; }
+.recommendation-card .card-title { font-size: 15px; }
+.recommendation-explanation { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.recommendation-explanation dt { font-size: 11px; color: var(--muted); font-weight: 650; margin-bottom: 3px; }
+.recommendation-explanation dd { margin: 0; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.recommendation-evidence { padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; }
+.recommendation-evidence summary { cursor: pointer; color: var(--text-2); }
+.recommendation-evidence .table-wrap { margin-top: 10px; }
+.recommendation-assumptions .assumption { scroll-margin-top: 90px; overflow-wrap: anywhere; }
+.recommendation-assumptions .assumption:target { outline: 2px solid var(--accent); outline-offset: 4px; }
+@media (max-width: 1100px) { .recommendations-layout { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .recommendation-summary { grid-template-columns: 1fr; } }
+
 /* ---------- Chat de consulta (sob a planilha da aba Passos) ---------- */
 /* On short screens the thread gives way first, so an answer never squeezes the grid below a few rows. */
 .chat-dock { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; border-top: 1px solid var(--border); background: var(--surface); }

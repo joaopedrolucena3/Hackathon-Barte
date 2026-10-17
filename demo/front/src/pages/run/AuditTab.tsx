@@ -6,7 +6,11 @@ import { downloads, OFFICIAL_EXPORTS } from '../../api/core';
 import { Icon, type IconName } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { Badge, Callout, Empty, HashChip, Loading, RunId, Segmented, StatusBadge } from '../../components/ui';
-import { count, dateTimeBR, duration, plural, readable, timeBR } from '../../lib/format';
+import { cnpj, count, dateTimeBR, duration, periodShort, plural, readable, timeBR } from '../../lib/format';
+import { operationCountLabel } from '../../lib/reviewScope';
+import { IngestionSummary, InputManifest } from '../../components/InputManifest';
+import { ComparisonOutcome } from './ComparisonOutcome';
+import { adaptFile } from '../../api/agent/adapters';
 import { useAppState, useAudit, useCatalog, useRuns } from '../../state/queries';
 
 const ACTION_LABEL: Record<string, string> = { accept: 'Aceita', adjust: 'Ajustada', exclude: 'Excluída do lote', reject: 'Rejeitada' };
@@ -71,6 +75,7 @@ function Timeline({ run }: { run: Run }) {
                   <div key={`${item.exception_id}-${item.at}`} className="tl-decision">
                     <div className="row between wrap"><span><strong>{item.actor}</strong> · {ACTION_LABEL[item.action]} · {readable(item.title)}</span><span className="muted num" style={{ fontSize: 11.5 }}>{dateTimeBR(item.at)}</span></div>
                     <p className="muted" style={{ fontSize: 12 }}>{item.before} → <span className="text-2">{item.after}</span></p>
+                    {item.group_scope === 'merchant_period' && <p className="help">Escopo registrado: {operationCountLabel(item)} · {periodShort(item.period)} · CNPJ {cnpj(item.cnpj)}. Válido somente para as operações preservadas nesta decisão.</p>}
                     {item.note && <p style={{ fontSize: 12.5 }}>“{item.note}”</p>}
                     <Link className="link" style={{ fontSize: 11.5 }} to={`/runs/${run.id}/revisao?ex=${item.exception_id}`}>{item.exception_id}</Link>
                   </div>
@@ -82,11 +87,8 @@ function Timeline({ run }: { run: Run }) {
         switch (entry.kind) {
           case 'input_file':
             return (
-              <Entry key={`f-${entry.file.name}`} icon="file" at={entry.at} title={<span className="mono" style={{ fontSize: 12.5 }}>{entry.file.name}</span>}>
-                <div className="row wrap" style={{ gap: 10, fontSize: 12.5 }}>
-                  <span className="muted">{entry.file.rows !== undefined ? `${count(entry.file.rows)} linhas lidas` : 'linhas não informadas'}{entry.file.discarded ? ` · ${count(entry.file.discarded)} descartadas` : ''}</span>
-                  <HashChip hash={entry.file.sha256} size={12} />
-                </div>
+              <Entry key={`f-${entry.file.id || entry.file.sha256}-${index}`} icon="file" at={entry.at} title={<span className="mono" style={{ fontSize: 12.5 }}>{entry.file.name}</span>}>
+                <InputManifest files={[entry.file]} compact />
               </Entry>
             );
           case 'pipeline':
@@ -126,7 +128,7 @@ function Compare({ run }: { run: Run }) {
   const options = (runs || []).filter(item => item.id !== run.id);
   return (
     <div className="card">
-      <div className="card-head"><div><h3 className="card-title row"><Icon name="compare" />Comparar runs</h3><p className="card-sub">Mesmos arquivos e parâmetros devem gerar o mesmo hash em cada passo</p></div></div>
+      <div className="card-head"><div><h3 className="card-title row"><Icon name="compare" />Comparar runs</h3><p className="card-sub">Equivalência dos resultados e identidade dos arquivos são verificadas separadamente</p></div></div>
       <div className="card-body stack" style={{ gap: 12 }}>
         {options.length ? (
           <div className="row wrap">
@@ -142,15 +144,13 @@ function Compare({ run }: { run: Run }) {
         ) : <p className="muted" style={{ fontSize: 13 }}>Rode o fechamento mais uma vez nesta competência para comparar.</p>}
         {result && (
           <>
-            {result.reproducible
-              ? <Callout tone="good" icon="check"><strong>Reprodutível ✓</strong> Os hashes de saída batem em todos os passos comparáveis.</Callout>
-              : <Callout tone="warning" icon="alert"><strong>Resultados diferentes.</strong> Algum passo gerou saída diferente: confira arquivos, parâmetros e decisões.</Callout>}
+            <ComparisonOutcome result={result} />
             <table className="table">
-              <thead><tr><th>Passo</th><th>{result.a.id}</th><th>{result.b.id}</th><th className="c">Igual?</th></tr></thead>
+              <thead><tr><th>Passo</th><th>{result.a.id}</th><th>{result.b.id}</th><th className="c">Arquivo idêntico?</th></tr></thead>
               <tbody>{result.steps.map(step => (
                 <tr key={step.type}>
                   <td>{step.title}</td><td><HashChip hash={step.hash_a} /></td><td><HashChip hash={step.hash_b} /></td>
-                  <td className="c">{!step.hash_a || !step.hash_b ? <span className="muted">não rodou nos dois</span> : step.match ? <Badge tone="good" dot>Igual</Badge> : <Badge tone="critical" dot>Diferente</Badge>}</td>
+                  <td className="c">{!step.hash_a || !step.hash_b ? <span className="muted">não rodou nos dois</span> : step.match ? <Badge tone="good" dot>Igual</Badge> : <Badge tone="neutral" dot>Arquivo diferente</Badge>}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -163,8 +163,8 @@ function Compare({ run }: { run: Run }) {
 
 type Side = 'hipoteses' | 'fontes' | 'historico' | 'downloads';
 
-function Evidence() {
-  const { data: state } = useAppState();
+function Evidence({ run }: { run: Run }) {
+  const { data: state } = useAppState({ comp: run.comp, run_id: run.id });
   const [side, setSide] = useState<Side>('hipoteses');
   if (!state) return null;
   const history = state.audit.filter(row => row.action !== 'decision');
@@ -187,13 +187,7 @@ function Evidence() {
         {side === 'fontes' && (
           <>
             {state.validation.trace_ok ? <Callout tone="good" icon="check">Conferência de integridade do rastro aprovada pelo motor.</Callout> : <Callout tone="warning" icon="alert">O rastro exige revisão.</Callout>}
-            {state.sources.map(source => (
-              <div key={source.name} className="contact-row">
-                <Icon name="file" />
-                <div className="grow" style={{ minWidth: 0 }}><strong className="mono" style={{ fontSize: 11.5, overflowWrap: 'anywhere' }}>{source.name}</strong><p className="muted" style={{ fontSize: 12 }}>{source.rows !== undefined ? `${count(source.rows)} linhas` : 'arquivo identificado'}</p></div>
-                <HashChip hash={source.sha256} />
-              </div>
-            ))}
+            <IngestionSummary counts={run.ingestion_counts || state.ingestion_counts} /><InputManifest files={run.files.length ? run.files : state.sources.map(adaptFile)} compact />
             {state.validation.warnings.map((warning, index) => <Callout key={index} tone="warning" icon="alert">{typeof warning === 'string' ? warning : JSON.stringify(warning)}</Callout>)}
           </>
         )}
@@ -206,10 +200,10 @@ function Evidence() {
         {side === 'downloads' && (
           <>
             {OFFICIAL_EXPORTS.map(([file, title, subtitle]) => (
-              <a key={file} className="download-card" href={downloads.csv(file)} download><Icon name="download" /><div className="grow"><strong>{title}</strong><span className="muted">{subtitle} · {file}</span></div></a>
+              <a key={file} className="download-card" href={downloads.csv(file, { comp: run.comp, run_id: run.id })} download><Icon name="download" /><div className="grow"><strong>{title}</strong><span className="muted">{subtitle} · {file}</span></div></a>
             ))}
-            <a className="download-card" href={downloads.report} target="_blank" rel="noopener"><Icon name="file" /><div className="grow"><strong>Relatório imprimível</strong><span className="muted">Resultados, decisões e hipóteses</span></div></a>
-            <a className="download-card" href={downloads.zip} download><Icon name="download" /><div className="grow"><strong>Pacote completo</strong><span className="muted">6 CSVs + relatório + hipóteses</span></div></a>
+            <a className="download-card" href={downloads.report({ comp: run.comp, run_id: run.id })} target="_blank" rel="noopener"><Icon name="file" /><div className="grow"><strong>Relatório imprimível</strong><span className="muted">Resultados, decisões e hipóteses</span></div></a>
+            <a className="download-card" href={downloads.zip({ comp: run.comp, run_id: run.id })} download><Icon name="download" /><div className="grow"><strong>Pacote completo</strong><span className="muted">6 CSVs + relatório + hipóteses</span></div></a>
           </>
         )}
       </div>
@@ -226,11 +220,11 @@ export default function AuditTab({ run }: { run: Run }) {
           <div><h3 className="card-title row" style={{ gap: 8 }}>Trilha de auditoria <RunId id={run.id} /></h3><p className="card-sub">Arquivos, pipeline, passos, decisões, aprovação e exportação · mais recente embaixo</p></div>
           <button className="btn sm" onClick={() => agent.downloadExport(run.id, 'auditoria.json').catch(toast.error)}><Icon name="download" />Baixar trilha (JSON)</button>
         </div>
-        <div className="card-body"><Timeline run={run} /></div>
+        <div className="card-body"><IngestionSummary counts={run.ingestion_counts} /><Timeline run={run} /></div>
       </section>
       <div className="stack-lg">
         <Compare run={run} />
-        <Evidence />
+        <Evidence run={run} />
       </div>
     </div>
   );

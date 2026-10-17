@@ -20,7 +20,7 @@
     "question": "Como usar a identidade da Atlas presente só em2025?",
     "source": "Slack20h24 e aba ANTIGO2025",
     "decision": "Cadastro candidato mantém CNPJ e nome como evidência, sem autorizar vínculo ou taxas antigas. Comercial precisa confirmar identidade e contrato vigente pela interface.",
-    "impact": "57 movimentos ficam sem comissão autorizada até confirmação; totais do fechamento são provisórios e fechamento exige resolver ou aceitar ressalvas.",
+    "impact": "Movimentos sem identidade e contrato confirmados permanecem sem comissão autorizada. A aplicação em lote não confirma esses dados nem resolve a pendência comercial.",
     "status": "pendencia"
   },
   {
@@ -28,7 +28,7 @@
     "question": "O prazo de contestação venceu pelo calendário real?",
     "source": "EML02/10 e Slack22h34",
     "decision": "Prevalece o cenário esclarecido pelo financeiro: considerar prazo aberto. Não encerrar contestação por cálculo automático de cinco dias úteis. Prazo do fechamento é parâmetro separado.",
-    "impact": "Antes de uso real, confirmar datas e destinatário com financeiro. Nenhum e-mail real é disparado.",
+    "impact": "Antes de uso real, confirmar datas e destinatário com o financeiro. Aplicar sugestões de revisão não envia mensagens.",
     "status": "esclarecido"
   },
   {
@@ -49,10 +49,10 @@
   },
   {
     "id": "H07",
-    "question": "Como enviar e-mails e identificar o analista na demo?",
+    "question": "Como separar revisão do lote, comunicação e autoria na demo?",
     "source": "Pedido do usuário",
-    "decision": "Sandbox local com registro de destinatário, conteúdo, aprovação e horário. Ator informado pelo operador. Cobranças/contestações exigem aprovação da versão exata; editar invalida a aprovação. Avisos internos seguem preferências e dispensam aprovação.",
-    "impact": "Não há SMTP real nem autenticação corporativa; o registro do ator não prova identidade. Uso de produção exige autenticação e provedor de e-mail.",
+    "decision": "Ator informado pelo operador no ambiente local. O painel Gmail permite envio real quando configurado e conectado, com destinatário cadastrado e aprovação da versão exata. Aplicar sugestões na run só registra decisões de revisão: não prepara, aprova nem envia e-mail.",
+    "impact": "Não há autenticação corporativa; a autoria é declarada. Encaminhamento recomendado não comprova envio nem resposta do parceiro.",
     "status": "limite_mvp"
   },
   {
@@ -91,8 +91,24 @@
     "id": "H12",
     "question": "As edições do cadastro antigo alteram uma execução versionada?",
     "source": "Requisito de imutabilidade e reexecução por competência.",
-    "decision": "Cada run usa cópias dos arquivos e a definição versionada. Ao executar o pack atual, os cadastros, taxas e parâmetros revisados entram em snapshot próprio somente se os hashes dos seis arquivos coincidirem com as fontes do fechamento atual. Uploads e outras pastas usam suas próprias referências; execuções existentes nunca são reescritas.",
-    "impact": "Após revisar uma referência, iniciar outro run do pack atual para incorporá-la. A auditoria registra as referências efetivas; a evidência de execuções anteriores continua imutável.",
+    "decision": "Cada run preserva arquivos e catálogo efetivos. Pack, upload e pasta reconciliam as referências recebidas com o catálogo revisado: conteúdo idêntico acrescenta proveniência; identidades novas ampliam o catálogo; conflitos permanecem explícitos sem substituir silenciosamente referências revisadas. Alterações posteriores não reescrevem a execução.",
+    "impact": "Após revisar contrato ou cadastro, iniciar nova execução. A revisão de uma pendência não cria identidade nem contrato. A auditoria conserva o catálogo efetivo e as evidências de cada versão.",
     "status": "arquitetura"
+  },
+  {
+    "id": "H13",
+    "question": "Como tratar estorno sem operação original disponível?",
+    "source": "ENGINE_NOTES.md, regra original 2, e comportamento atual de engine.py em ORIGINAL_AUSENTE.",
+    "decision": "A documentação original do case aceitava os atributos declarados de vendas de agosto. A implementação atual registra bloqueio quando a origem não é encontrada e, em alguns estornos anteriores ao mês, preserva cálculo provisório pela data declarada. Essa diferença de política precisa de validação do financeiro; seguir sugestões não dispensa a evidência.",
+    "impact": "Importar o histórico e criar nova execução para validar o vínculo. Nenhuma sugestão em lote encerra ORIGINAL_AUSENTE ou transforma cálculo provisório em evidência confirmada.",
+    "status": "pendencia_validacao"
+  },
+  {
+    "id": "H14",
+    "question": "O que significa seguir as sugestões do agente nesta execução?",
+    "source": "Política determinística review-guidance-v1; solicitação de revisão assistida do usuário.",
+    "decision": "Aplicar em lote somente alertas de divergência de taxa ou duplicata idêntica com evidência, regra e hipóteses preservadas, sem bloqueante vinculada à mesma origem. A decisão mantém o cálculo existente. Outras ocorrências mostram orientação e continuam em revisão individual. Contestação e contato com terceiros permanecem pendentes.",
+    "impact": "Não altera taxa, conta, valor, contrato ou aprovação final. Duplicata já deduplicada mantém a operação válida. Valores relacionados não são somados como perdas nem representam a variação do lote. Evidência alterada ou decisão posterior invalida a prévia.",
+    "status": "politica_operacional"
   }
 ]

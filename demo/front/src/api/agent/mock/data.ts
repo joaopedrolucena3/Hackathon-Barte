@@ -9,12 +9,12 @@ import type {
 export const STATE_KEY = ['state'] as const;
 
 export function loadState(): Promise<AppState> {
-  return queryClient.fetchQuery({ queryKey: STATE_KEY, queryFn: core.state, staleTime: 15_000 });
+  return queryClient.fetchQuery({ queryKey: STATE_KEY, queryFn: () => core.state(), staleTime: 15_000 });
 }
 
 export async function refreshState(): Promise<AppState> {
   await queryClient.invalidateQueries({ queryKey: STATE_KEY });
-  return queryClient.fetchQuery({ queryKey: STATE_KEY, queryFn: core.state, staleTime: 0 });
+  return queryClient.fetchQuery({ queryKey: STATE_KEY, queryFn: () => core.state(), staleTime: 0 });
 }
 
 export interface DataIndex {
@@ -68,7 +68,7 @@ export function indexState(state: AppState): DataIndex {
       const rows = remittanceRows.get(entry.id) || new Set<number>();
       if (entry.physical_row) rows.add(entry.physical_row);
       remittanceRows.set(entry.id, rows);
-      if (detail.id_saida.startsWith('NF-') && detail.valor !== undefined) participationByOp.set(detail.ref_origem, detail.valor);
+      if (detail.id_saida.startsWith('NF-') && detail.valor != null) participationByOp.set(detail.ref_origem, detail.valor);
     } else if (file.startsWith('05')) {
       bankByRef.set(detail.ref_origem, entry as BankEntry);
     }

@@ -18,7 +18,30 @@
 .gmail-history { display: grid; gap: 16px; padding: 0; list-style: none; }
 .gmail-history li { padding-left: 14px; border-left: 2px solid var(--line, #e3e6e9); }
 .gmail-history p { margin: 5px 0; font-size: 12px; overflow-wrap: anywhere; }
+.gmail-step-title { display: flex; align-items: center; gap: 14px; }
+.gmail-step-number { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-2, #f1f5f4); color: var(--text, #142a25); font-size: 14px; font-weight: 700; border: 1px solid var(--line, #e3e6e9); }
+.gmail-login-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.gmail-demo-connect .field a, .gmail-advanced a { text-decoration: underline; }
+.gmail-connected { padding: 14px 16px; border: 1px solid var(--line, #e3e6e9); border-radius: 8px; overflow-wrap: anywhere; }
+.gmail-connected strong { flex: 1; }
+.gmail-advanced summary { padding: 8px 0; cursor: pointer; font-size: 13px; }
+.gmail-advanced > .stack, .gmail-advanced > .gmail-history { margin-top: 12px; }
+.gmail-issue-workflow > summary { cursor: pointer; padding: 18px 0; font-weight: 600; }
+.gmail-issue-workflow > summary .muted { display: block; font-size: 12px; font-weight: 400; margin-top: 6px; }
+.gmail-deliveries { border-top: 1px solid var(--line, #e3e6e9); padding-top: 10px; }
+.gmail-suggestion-toolbar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.gmail-suggestion-toolbar .field { flex: 1; min-width: 240px; }
+.gmail-suggestion-list { display: grid; gap: 14px; }
+.gmail-suggestion-card { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--line, #e3e6e9); border-radius: 10px; }
+.gmail-suggestion-card.is-related { border-color: var(--accent, #1a6d5a); box-shadow: 0 0 0 1px var(--accent, #1a6d5a); }
+.gmail-suggestion-items, .gmail-excluded { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
+.gmail-suggestion-items p { margin: 4px 0; }
+.gmail-permission { display: flex; align-items: flex-start; gap: 10px; padding: 16px; border: 1px solid var(--line, #e3e6e9); border-radius: 8px; cursor: pointer; }
+.gmail-permission input { flex: 0 0 auto; margin-top: 3px; }
+.gmail-permission-preview { max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 650px) {
+  .gmail-login-grid { grid-template-columns: 1fr; gap: 14px; }
+  .gmail-connected strong { flex-basis: calc(100% - 40px); }
   .gmail-contact-grid { grid-template-columns: 1fr; }
   .gmail-attachment { flex-wrap: wrap; }
   .gmail-attachment .grow { flex-basis: calc(100% - 40px); }

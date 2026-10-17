@@ -60,13 +60,19 @@ def build_evidence(store, issue_id, counterparty=None, counterparty_reason=""):
         details = [copy.deepcopy(d) for d in details if d.get("id_saida") in linked_ids]
         parameters = store.get("parameters", {})
     links = list(issue.get("evidence", []))
-    links += [{"arquivo": r.get("arquivo_origem", ""), "ref": r.get("ref_origem", ""), "linha": r.get("source_row", "")} for r in traces]
+    # Trace amounts are per economic operation; evidence may contain more receipts.
+    # Do not weaken a precise receipt link by adding a second, less specific trace link.
+    origin_key = lambda row: (str(row.get("arquivo", "")), str(row.get("ref", "")), str(row.get("linha", "")))
+    linked_origins = {origin_key(link) for link in links}
+    links += [link for r in traces if origin_key(link := {"arquivo": r.get("arquivo_origem", ""), "ref": r.get("ref_origem", ""), "linha": r.get("source_row", "")}) not in linked_origins]
     rows, matched = [], set()
     for dataset, party in (("checkout", "orbe"), ("remittances", "ponte"), ("bank", None)):
         for original in source.get(dataset, []):
             relevant = [i for i, link in enumerate(links) if str(link.get("arquivo", "")) == str(original.get("source_file", ""))
                         and str(link.get("ref", "")) == _ref(original)
-                        and (not link.get("linha") or str(link["linha"]) == str(original.get("physical_row", "")))]
+                        and (not link.get("linha") or str(link["linha"]) == str(original.get("physical_row", "")))
+                        and all(not link.get(key) or str(link[key]) == str(original.get(key, ""))
+                                for key in ("source_id", "source_sha256", "source_receipt_id"))]
             if relevant:
                 matched.update(relevant)
                 rows.append({"dataset": dataset, "counterparty": party, "evidence_role": "ocorrencia", **_clean(copy.deepcopy(original))})
@@ -114,7 +120,7 @@ def build_evidence(store, issue_id, counterparty=None, counterparty_reason=""):
     for detail in details:
         contract = detail.get("contract")
         if contract and _clean(contract) not in contracts: contracts.append(_clean(contract))
-    safe_details = [{k: _clean(d[k]) for k in ("arquivo_origem", "ref_origem", "source_row", "valor", "regra", "formula", "contract", "motivo") if k in d} for d in details]
+    safe_details = [{k: _clean(d[k]) for k in ("arquivo_origem", "ref_origem", "source_row", "valor", "regra", "formula", "contract", "motivo", "affected_operation", "group_scope", "period") if k in d} for d in details]
     snapshot = {"issue": _clean(issue), "period": period, "counterparty": selected, "routing_method": "structured" if automatic else "human_review" if selected else "unresolved",
                 "counterparty_reason": str(counterparty_reason).strip(), "rows": rows, "merchants": related_merchants, "contracts": contracts,
                 "trace": _clean(traces), "calculation": safe_details,
@@ -133,6 +139,11 @@ LABELS = {"id": "Identificador", "id_saida": "Pendência", "ref_origem": "Refer�
           "dataset": "Origem estruturada", "counterparty": "Contraparte", "evidence_role": "Papel na evidência", "bank": "Banco",
           "motivo": "Descrição da ocorrência", "rule": "Regra utilizada", "regra": "Regra utilizada", "formula": "Fórmula de cálculo", "contract": "Referência contratual",
           "product": "Produto", "rate_pct": "Taxa contratada (%)", "start": "Início da vigência", "end": "Fim da vigência", "active": "Cadastro ativo", "confirmed": "Identidade confirmada"}
+LABELS.update({"period": "Competência", "merchant_name": "Empresa", "operation_count": "Operações afetadas",
+               "known_exposure_brl": "Subtotal conhecido (R$)", "missing_exposure_count": "Operações sem valor conhecido",
+               "exposure_status": "Disponibilidade da exposição", "exposure_brl": "Exposição reportada (R$)",
+               "exposure_basis": "Base da exposição", "business": "Linha de negócio", "ref": "Referência de origem",
+               "arquivo": "Arquivo de origem", "linha": "Linha no arquivo"})
 
 
 def _table(rows):
@@ -140,6 +151,7 @@ def _table(rows):
     if not rows: return "<p>Nenhuma linha disponível nesta seção.</p>"
     priority = ("id_saida", "id", "type", "tipo", "date", "contracted_date", "gross", "applied_rate_pct", "reported_fee", "net", "spread_brl", "valor_brl", "amount", "motivo", "source_file", "source_ref", "physical_row")
     def cell(value):
+        if value is None: return "Não informado"
         if isinstance(value, bool): return "Sim" if value else "Não"
         return html.escape(canonical(value) if isinstance(value, (dict, list)) else str(value if value is not None else ""))
     blocks = []
@@ -156,8 +168,9 @@ def attachments_for(evidence):
     content = ("<!doctype html><html lang='pt-BR'><meta charset='utf-8'><title>Evidências Tarvo</title>"
                "<style>body{font:15px/1.5 system-ui;margin:32px auto;padding:0 24px;max-width:1100px;color:#18232c;background:#f8fafb}h1,h2{color:#183f48}h2{margin-top:36px}h3{margin:0 0 12px;font-size:16px;color:#183f48}p{max-width:950px}.evidence-card{background:white;border:1px solid #ccd5dd;border-radius:10px;padding:18px;margin:14px 0;break-inside:avoid}dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px;margin:0}dt{font-size:12px;font-weight:650;color:#536771}dd{margin:3px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}.field{min-width:0}@media(max-width:650px){dl{grid-template-columns:1fr}body{margin:16px auto;padding:0 12px}}@media print{body{background:white;margin:0;font-size:11px}.evidence-card{padding:12px}h2{break-after:avoid}}</style>"
                "<h1>Tarvo · Evidências da pendência</h1><p>Competência: " + html.escape(evidence["period"]) + " · Contraparte: " + html.escape(evidence.get("counterparty") or "a revisar") + "</p>"
-               "<h2>Ocorrência</h2>" + _table([{k: issue.get(k, "") for k in ("id_saida", "tipo", "ref_origem", "valor_brl", "motivo", "rule")}])
+               "<h2>Ocorrência</h2>" + _table([{k: issue[k] for k in ("id_saida", "tipo", "ref_origem", "valor_brl", "motivo", "rule", "period", "cnpj", "merchant_name", "operation_count", "known_exposure_brl", "missing_exposure_count", "exposure_status") if k in issue}])
                + "<p>O valor exposto é o informado para esta ocorrência; não representa automaticamente cobrança, crédito recebido ou soma de outras pendências.</p>"
+               + ("<h2>Operações afetadas pelo cadastro</h2>" + _table(issue.get("affected_operations", [])) if issue.get("group_scope") == "merchant_period" else "")
                + "<h2>Linhas de origem relacionadas</h2>" + _table(evidence["rows"])
                + "<h2>Identificação e referências contratuais</h2>" + _table(evidence["merchants"]) + _table(evidence["contracts"])
                + "<h2>Regra e cálculo</h2>" + _table(evidence["calculation"])
@@ -188,8 +201,14 @@ def template(evidence):
     references = list(dict.fromkeys(_ref(r) for r in evidence["rows"] if r.get("evidence_role") == "ocorrencia"))
     lines = [f"Olá, equipe {party}.", "", f"Durante a conferência da competência {evidence['period']}, registramos a seguinte ocorrência:",
              issue.get("motivo", "Descrição indisponível; revisar antes do envio."), "", f"Identificador da pendência: {issue['id_saida']}",
-             f"Tipo: {kind}", f"Valor exposto na pendência (R$): {issue.get('valor_brl', 'não informado')}",
+             f"Tipo: {kind}", f"Valor exposto na pendência (R$): {issue.get('valor_brl') if issue.get('valor_brl') is not None else 'não informado integralmente'}",
              "Operações relacionadas: " + (", ".join(references[:10]) + (f" e outras {len(references) - 10}; lista completa nos anexos." if len(references) > 10 else "") if references else "origem a confirmar"), ""]
+    if issue.get("group_scope") == "merchant_period":
+        lines += [f"Empresa: {issue.get('merchant_name', '')} · CNPJ: {issue.get('cnpj', '')}",
+                  f"Operações afetadas nesta competência: {issue.get('operation_count', 0)}."]
+        if issue.get("valor_brl") is None:
+            lines.append(f"Subtotal conhecido (R$): {issue.get('known_exposure_brl', 'não informado')}; {issue.get('missing_exposure_count', 0)} operação(ões) sem valor conhecido. Esse subtotal não representa o total exposto.")
+        lines += ["Solicitamos a confirmação documental da identidade e do contrato vigente nas datas das operações. O registro desta ressalva não libera faturamento.", ""]
     if confirmed: lines.append("Solicitamos a conferência da taxa aplicada em relação à referência contratual indicada e o esclarecimento ou correção da divergência.")
     elif kind in {"DUPLICIDADE", "DUPLICIDADE_CONFLITANTE"}: lines.append("Solicitamos a confirmação das linhas repetidas e, se necessário, o relatório corrigido, preservando o identificador da operação.")
     elif kind == "CONFERIR_REPASSE_PONTE": lines.append("Solicitamos o demonstrativo do repasse e a confirmação do valor e da data efetivamente creditados. O valor acima corresponde à base faturada a conferir, não a uma TED já confirmada.")

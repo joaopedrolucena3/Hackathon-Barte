@@ -1,2 +1,5 @@
 Enunciado/
 .DS_Store
+
+# Local verification snapshots, databases and browser captures
+/evidence/

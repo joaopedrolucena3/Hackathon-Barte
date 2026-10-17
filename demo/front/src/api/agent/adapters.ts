@@ -3,7 +3,7 @@ import { readable } from '../../lib/format';
 import type {
   Approval, Area, AuditEntry, AuditTrail, ChecklistTask, ColumnSchema, ExportFile, InputFile,
   ParamField, ParamValue, Pipeline, PreviewPage, PreviewQuery, PreviewRow, ReviewDecision,
-  ReviewException, Run, RunEvent, Status, StepCatalogItem, StepKind, StepMetrics, StepRun, ValidationIssue,
+  RegistrationScope, ReviewException, Run, RunEvent, Status, StepCatalogItem, StepKind, StepMetrics, StepRun, ValidationIssue,
 } from './contract';
 
 export type RecordData = Record<string, unknown>;
@@ -46,8 +46,14 @@ export const stepKind = (type: string): StepKind => type === 'aprovacao' ? 'gate
 export function adaptFile(value: unknown): InputFile {
   const raw = object(value);
   return {
-    id: optionalString(raw.file_id ?? raw.id), name: string(raw.name), sha256: string(raw.sha256),
-    size: optionalNumber(raw.size), rows: optionalNumber(raw.rows_read ?? raw.rows), discarded: optionalNumber(raw.rows_discarded ?? raw.discarded),
+    id: optionalString(raw.file_id ?? raw.id), name: string(raw.original_name ?? raw.name ?? raw.filename), sha256: string(raw.sha256),
+    role: optionalString(raw.role ?? object(raw.validation).role), status: optionalString(raw.validation_status ?? raw.status ?? object(raw.validation).status),
+    validation_reason: optionalString(raw.validation_reason ?? raw.reason ?? object(raw.validation).reason ?? object(raw.validation).message),
+    rows_received: optionalNumber(raw.rows_received ?? object(raw.validation).rows_received), rows_valid: optionalNumber(raw.rows_valid ?? object(raw.validation).rows_valid), rows_unique: optionalNumber(raw.rows_unique),
+    rows_duplicated: optionalNumber(raw.rows_duplicated ?? raw.rows_duplicate ?? raw.duplicate_rows), rows_conflicting: optionalNumber(raw.rows_conflicting ?? raw.conflicting_rows),
+    import_action: optionalString(raw.import_action), duplicate_of: optionalString(raw.duplicate_of),
+    inherited: raw.inherited === true || !!raw.inherited_from,
+    size: optionalNumber(raw.size), rows: optionalNumber(raw.rows_read ?? raw.rows ?? raw.row_count), discarded: optionalNumber(raw.rows_discarded ?? raw.discarded),
   };
 }
 export function adaptExport(value: unknown, runId: string): ExportFile {
@@ -90,7 +96,8 @@ export function adaptRun(value: unknown): Run {
     created_at: string(raw.created_at), created_by: string(raw.created_by), finished_at: optionalString(raw.finished_at), draft: raw.draft === true,
     pipeline: { id: string(raw.pipeline_id ?? definition.id), name: string(definition.title, 'Fechamento mensal Tarvo'), version: numeric(raw.pipeline_version ?? definition.version, 1) },
     code_version: string(object(snapshot.code).content_hash, string(snapshot.git_commit)), source,
-    folder: optionalString(raw.source_dir), files: array(snapshot.sources).map(adaptFile),
+    parent_run_id: optionalString(raw.parent_run_id ?? snapshot.parent_run_id), folder: optionalString(raw.source_dir), files: array(snapshot.input_manifest ?? snapshot.sources).map((value, index) => adaptFile({ ...object(array(snapshot.sources)[index]), ...object(value) })),
+    ingestion_counts: (snapshot.ingestion_counts ?? object(object(array(raw.steps).find(value => object(value).type === 'ler_arquivos')).metrics).ingestion_counts) as Run['ingestion_counts'],
     steps: array(raw.steps).map(step => adaptStep(step, snapshot, status)), approval: adaptApproval(raw.approval),
     exports: array(raw.exports).map(file => adaptExport(file, string(raw.id ?? raw.run_id))),
   };
@@ -157,20 +164,43 @@ export function adaptChecklist(value: unknown): ChecklistTask {
     comment: optionalString(raw.comentario ?? raw.comment), updated_at: optionalString(raw.updated_at), updated_by: optionalString(raw.updated_by),
   };
 }
+function registrationScope(raw: RecordData): RegistrationScope {
+  if (raw.group_scope !== 'merchant_period') return {};
+  return {
+    group_scope: 'merchant_period', period: optionalString(raw.period), cnpj: optionalString(raw.cnpj),
+    operation_count: optionalNumber(raw.operation_count), source_fingerprint: optionalString(raw.source_fingerprint),
+    affected_operations: array(raw.affected_operations).map(value => {
+      const operation = object(value);
+      return {
+        id: string(operation.id), ref: string(operation.ref), arquivo: string(operation.arquivo), linha: Number(operation.linha) || 0,
+        date: optionalString(operation.date), business: string(operation.business),
+        exposure_brl: operation.exposure_brl == null ? null : string(operation.exposure_brl),
+        exposure_basis: operation.exposure_basis === 'reported_fee' || operation.exposure_basis === 'spread_brl' ? operation.exposure_basis : undefined,
+      };
+    }),
+  };
+}
+
 export function adaptDecision(value: unknown): ReviewDecision | null {
   if (!value) return null;
   const raw = object(value);
   const action = ({ aceitar: 'accept', ajustar: 'adjust', excluir: 'exclude' } as const)[string(raw.acao) as 'aceitar' | 'ajustar' | 'excluir'];
   if (!action) throw new Error('Decisão de revisão não reconhecida.');
-  return { action, actor: string(raw.actor), at: string(raw.at), note: string(raw.justificativa), account_code: optionalString(raw.conta), amount: optionalString(raw.valor), entry_id: optionalString(raw.entry_id) };
+  return { action, actor: string(raw.actor), at: string(raw.at), note: string(raw.justificativa), account_code: optionalString(raw.conta), amount: optionalString(raw.valor), entry_id: optionalString(raw.entry_id),
+    ...registrationScope(raw), billing_authorized: typeof raw.billing_authorized === 'boolean' ? raw.billing_authorized : undefined };
 }
 export function adaptException(value: unknown, run: Run): ReviewException {
   const raw = object(value), step = run.steps.find(step => step.id === raw.step_id), kind = string(raw.tipo ?? raw.kind), ref = string(raw.ref_origem);
+  const scope = registrationScope(raw), grouped = scope.group_scope === 'merchant_period';
+  const impact = raw.impacto_rs !== undefined ? raw.impacto_rs : raw.valor_brl;
   return {
     id: string(raw.id ?? raw.id_saida), step_type: step?.type || string(raw.step_type), step_title: step?.title || string(raw.step_id),
     kind, title: readable(kind), severity: raw.severidade === 'bloqueante' ? 'bloqueante' : 'alerta', original_severity: string(raw.severity ?? raw.severidade),
-    merchant: string(raw.lojista ?? raw.merchant, 'Não informado'), cnpj: optionalString(raw.cnpj), date: optionalString(raw.data ?? raw.date),
-    amount: optionalString(raw.amount ?? raw.valor_operacao), impact_brl: string(raw.impacto_rs ?? raw.valor_brl), description: string(raw.descricao ?? raw.motivo),
+    ...scope,
+    merchant: string(raw.merchant_name ?? raw.lojista ?? raw.merchant, 'Não informado'), cnpj: optionalString(raw.cnpj), date: grouped ? undefined : optionalString(raw.data ?? raw.date),
+    amount: grouped ? undefined : optionalString(raw.amount ?? raw.valor_operacao), impact_brl: impact == null ? null : string(impact), description: string(raw.descricao ?? raw.motivo),
+    exposure_status: raw.exposure_status === 'complete' || raw.exposure_status === 'partial' || raw.exposure_status === 'unavailable' ? raw.exposure_status : undefined,
+    known_exposure_brl: optionalString(raw.known_exposure_brl), missing_exposure_count: optionalNumber(raw.missing_exposure_count),
     suggestion: optionalString(raw.sugestao ?? raw.suggestion), rule: optionalString(raw.regra ?? raw.rule), who_decides: optionalString(raw.quem_decide ?? raw.who_decides), ref_origem: ref,
     evidence: array(raw.origens ?? raw.evidence).map(value => { const origin = object(value); return { arquivo: string(origin.arquivo ?? origin.source_file), linha: Number(origin.linha ?? origin.physical_row) || 0, ref: string(origin.ref ?? origin.ref_origem) }; }),
     associated_entries: array(raw.associated_entries).map(value => { const entry = object(value); return { entry_id: string(entry.entry_id), account_code: string(entry.account_code), amount: string(entry.amount), event: string(entry.event) }; }),
@@ -234,8 +264,9 @@ export function adaptAudit(value: unknown, run: Run): AuditTrail {
     } else if (record.action === 'exception_decision') {
       const before = object(detail.before), after = object(detail.after), decision = adaptDecision(after.decision);
       if (decision) entries.push({
+        ...registrationScope(object(after.decision)),
         kind: 'decision', at, actor, exception_id: string(after.id), title: string(after.tipo), action: decision.action,
-        before: string(object(before.decision).acao, 'Aberta'), after: [decision.action === 'accept' ? 'Aceita' : decision.action === 'adjust' ? 'Ajustada' : 'Excluída', decision.amount, decision.account_code].filter(Boolean).join(' · '), note: decision.note,
+        before: string(object(before.decision).acao, 'Aberta'), after: [decision.action === 'accept' ? decision.group_scope === 'merchant_period' ? 'Aceita como ressalva; sem faturamento' : 'Aceita' : decision.action === 'adjust' ? 'Ajustada' : decision.group_scope === 'merchant_period' ? 'Grupo excluído do lote' : 'Excluída', decision.amount, decision.account_code].filter(Boolean).join(' · '), note: decision.note,
       });
     } else if (record.action === 'approval_decision') {
       const approval = adaptApproval(detail.after);

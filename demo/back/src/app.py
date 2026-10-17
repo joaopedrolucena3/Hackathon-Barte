@@ -30,7 +30,7 @@ def main():
     import uvicorn
     from .api.app import create_app
     app = create_app(args.db, args.data_dir, args.runs_dir)
-    print(f'Tarvo disponível em http://127.0.0.1:{args.port} · avisos internos e cobranças em simulação', flush=True)
+    print(f'Tarvo disponível em http://127.0.0.1:{args.port} · e-mail real disponível em Comunicações', flush=True)
     uvicorn.run(app, host='127.0.0.1', port=args.port, log_level='warning', access_log=False)
 
 

@@ -1,4 +1,4 @@
-// Communications log: drafts and simulated sends, internal notices and who receives them.
+// Real demo email, audited issue messages and separate simulated communication logs.
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { core } from '../api/core';
@@ -17,13 +17,13 @@ type Tab = 'gmail' | 'envios' | 'avisos' | 'destinatarios';
 type Filter = 'all' | 'draft' | 'approved' | 'sent';
 
 export default function Comunicacoes() {
-  const { data: state } = useAppState();
+  const { data: state } = useAppState({});
   const [params, setParams] = useSearchParams();
   const [filter, setFilter] = useState<Filter>('all');
   const [notice, setNotice] = useState<Notification | null>(null);
   const { run, busy } = useAction();
   if (!state) return <Loading page />;
-  const tab = (params.get('aba') as Tab) || 'envios';
+  const tab = (params.get('aba') as Tab) || (params.get('email') ? 'envios' : 'gmail');
   const emailId = params.get('email');
   const emails = [...state.emails].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
   const visible = emails.filter(email => filter === 'all' || (filter === 'sent' ? ['simulated', 'sent'].includes(email.status) : email.status === filter));
@@ -36,8 +36,8 @@ export default function Comunicacoes() {
       <PageHead
         eyebrow="Comunicação com controle"
         title="Comunicações"
-        sub="Mensagens de pendências pelo Gmail, cobranças simuladas e avisos internos, com revisão e histórico."
-        actions={<>
+        sub="Revise sugestões justificadas para Orbe e Ponte e dê permissão para cada envio."
+        actions={tab !== 'gmail' && <>
           <button className="btn" disabled={!!busy} onClick={() => run('notify', () => core.runNotifications(), { success: 'Avisos processados em modo simulação.', invalidate: [keys.state] })}><Icon name="bell" />Processar avisos</button>
           <button className="btn primary" disabled={!!busy} onClick={async () => {
             const result = await run('report', () => core.draftEmail({ report: true }), { success: 'Rascunho do relatório preparado.', invalidate: [keys.state] });
@@ -46,15 +46,15 @@ export default function Comunicacoes() {
           }}><Icon name="mail" />E-mail do relatório</button>
         </>}
       />
-      {tab !== 'gmail' && <div style={{ marginBottom: 16 }}><Callout tone="info"><strong>Envios simulados.</strong> Cobranças, relatórios e avisos desta aba não enviam mensagens reais. O envio de pendências pela conta autorizada fica na aba Gmail.</Callout></div>}
-      <Tabs<Tab> value={tab} onChange={value => setParams({ aba: value })} items={[
-        { value: 'gmail', label: 'Gmail · pendências', icon: 'mail' },
+      {tab !== 'gmail' && <div style={{ marginBottom: 16 }}><Callout tone="info"><strong>Envios simulados.</strong> Cobranças, relatórios e avisos desta aba não enviam mensagens reais. O envio real e os avisos por e-mail ficam na aba E-mail real.</Callout></div>}
+      <Tabs<Tab> value={tab} onChange={value => setParams(current => { current.set('aba', value); current.delete('email'); return current; })} items={[
+        { value: 'gmail', label: 'E-mail real', icon: 'mail' },
         { value: 'envios', label: 'Envios simulados', count: emails.length, icon: 'mail' },
         { value: 'avisos', label: 'Avisos internos', count: state.notifications.length, icon: 'bell' },
         { value: 'destinatarios', label: 'Quem recebe', count: internal.length, icon: 'user' },
       ]} />
 
-      {tab === 'gmail' && <GmailPanel issues={state.results.pendencias} issueId={params.get('pendencia')} />}
+      {tab === 'gmail' && <GmailPanel issues={state.results.pendencias} issueId={params.get('pendencia')} runId={params.get('run_id')} onRunChange={id => setParams(current => { current.set('run_id', id); current.delete('pendencia'); return current; })} />}
 
       {tab === 'envios' && (
         <div className="card">

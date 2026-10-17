@@ -36,7 +36,7 @@ export function DivergencesPanel({ state, insights, run, onClose }: { state: App
       onClose={onClose}
       headerExtra={trace
         ? <button className="btn sm" onClick={() => setTrace(null)}><Icon name="arrowLeft" />Voltar à lista</button>
-        : <a className="btn sm" href={downloads.csv('divergencias_taxa.csv')} download><Icon name="download" />CSV</a>}
+        : <a className="btn sm" href={downloads.csv('divergencias_taxa.csv', { comp: state.period, run_id: state.run_id })} download><Icon name="download" />CSV</a>}
     >
       {trace ? <TraceView id={trace.id_saida} /> : (
         <div className="stack-lg">

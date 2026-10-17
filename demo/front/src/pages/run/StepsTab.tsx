@@ -8,7 +8,8 @@ import { Icon } from '../../components/Icon';
 import { Sheet } from '../../components/Overlay';
 import { StepList } from '../../components/StepList';
 import { Callout, Empty, HashChip, StatusBadge } from '../../components/ui';
-import { count, dateTimeBR, duration, plural, readable } from '../../lib/format';
+import { count, dateTimeBR, duration, periodShort, plural, readable } from '../../lib/format';
+import { isRegistrationGroup, operationCountLabel } from '../../lib/reviewScope';
 import { useCatalog, useExceptions, useRunEvents } from '../../state/queries';
 import { ChatDock } from '../../chat/ChatDock';
 import { RunSummaryCard } from '../../workbench/RunSummaryCard';
@@ -58,7 +59,7 @@ function StepDetail({ run, step, onException }: { run: Run; step: StepRun; onExc
             {list.slice(0, 12).map(exception => (
               <button key={exception.id} type="button" className="exception-mini" onClick={() => onException(exception.id)}>
                 <span className={`mark-dot ${exception.severity}`} />
-                <span className="grow" style={{ minWidth: 0 }}><strong>{readable(exception.kind)}</strong><span className="muted">{exception.merchant} · {exception.ref_origem}</span></span>
+                <span className="grow" style={{ minWidth: 0 }}><strong>{readable(exception.kind)}</strong><span className="muted">{exception.merchant} · {isRegistrationGroup(exception) ? `${operationCountLabel(exception)} · ${periodShort(exception.period)}` : exception.ref_origem}</span></span>
                 {exception.decision ? <Icon name="check" className="muted" /> : null}
               </button>
             ))}

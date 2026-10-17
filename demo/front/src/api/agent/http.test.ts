@@ -112,7 +112,7 @@ describe('real HTTP contract', () => {
 
   it('requires server file identifiers instead of treating a local checksum as an upload', async () => {
     vi.stubGlobal('fetch', vi.fn());
-    await expect(httpAgent.createRun({ comp: '2026-09', source: 'upload', files: [{ name: 'a.csv', sha256: 'hash' }] })).rejects.toThrow('Envie os seis arquivos');
+    await expect(httpAgent.createRun({ comp: '2026-09', source: 'upload', files: [{ name: 'a.csv', sha256: 'hash' }] })).rejects.toThrow('Envie os arquivos ao servidor');
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -185,6 +185,82 @@ describe('real HTTP contract', () => {
 });
 
 describe('resumable run stream', () => {
+  it('coalesces 238 decisions and the batch receipt into one refresh while preserving the cursor and cleanup', () => {
+    vi.useFakeTimers();
+    class Stream {
+      static instances: Stream[] = [];
+      handlers = new Map<string, (event: MessageEvent) => void>();
+      onopen: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      close = vi.fn();
+      constructor(readonly url: string) { Stream.instances.push(this); }
+      addEventListener(type: string, handler: (event: MessageEvent) => void) { this.handlers.set(type, handler); }
+      emit(type: string, sequence: number, data: object = {}) { this.handlers.get(type)?.({ data: JSON.stringify(data), lastEventId: String(sequence) } as MessageEvent); }
+    }
+    vi.stubGlobal('EventSource', Stream);
+    const refresh = vi.fn(), onEvent = vi.fn();
+    const unsubscribe = httpAgent.subscribeRun('run-1', onEvent, refresh);
+    const first = Stream.instances[0];
+    for (let sequence = 1; sequence <= 238; sequence++) {
+      first.emit('exception_decided', sequence, { run_id: 'run-1', exception_id: `exception-${sequence}` });
+      vi.advanceTimersByTime(1);
+    }
+    first.emit('recommendations_applied', 239, { run_id: 'run-1', applied: 238 });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(onEvent).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(99);
+    expect(refresh).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    first.onerror?.();
+    vi.advanceTimersByTime(1000);
+    const second = Stream.instances[1];
+    expect(second.url).toBe('/api/runs/run-1/events?after=239');
+    second.onopen?.();
+    expect(refresh).toHaveBeenCalledTimes(2);
+    second.emit('recommendations_applied', 239);
+    vi.advanceTimersByTime(100);
+    expect(refresh).toHaveBeenCalledTimes(2);
+
+    second.emit('exception_decided', 240);
+    unsubscribe();
+    vi.advanceTimersByTime(1000);
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(second.close).toHaveBeenCalled();
+  });
+
+  it('refreshes immediately on malformed events and flushes pending decisions on completion without later callbacks', () => {
+    vi.useFakeTimers();
+    class Stream {
+      static instance: Stream;
+      handlers = new Map<string, (event: MessageEvent) => void>();
+      onopen: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      close = vi.fn();
+      constructor() { Stream.instance = this; }
+      addEventListener(type: string, handler: (event: MessageEvent) => void) { this.handlers.set(type, handler); }
+      emit(type: string, sequence: number, data: object = {}) { this.handlers.get(type)?.({ data: JSON.stringify(data), lastEventId: String(sequence) } as MessageEvent); }
+    }
+    vi.stubGlobal('EventSource', Stream);
+    const refresh = vi.fn(), onEvent = vi.fn();
+    const unsubscribe = httpAgent.subscribeRun('run-1', onEvent, refresh);
+    const stream = Stream.instance;
+    stream.emit('exception_decided', 1);
+    stream.handlers.get('exception_decided')?.({ data: '{', lastEventId: '2' } as MessageEvent);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(100);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    stream.emit('exception_decided', 3);
+    stream.emit('run_finished', 4, { status: 'done', at: 'now' });
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(onEvent).toHaveBeenCalledOnce();
+    vi.advanceTimersByTime(1000);
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(stream.close).toHaveBeenCalled();
+    unsubscribe();
+  });
+
   it('resumes after the last event, deduplicates replay and stops reconnecting once finished', () => {
     vi.useFakeTimers();
     class Stream {
@@ -201,6 +277,8 @@ describe('resumable run stream', () => {
     const events: RunEvent[] = [], reconnected = vi.fn();
     const unsubscribe = httpAgent.subscribeRun('run-1', event => events.push(event), reconnected);
     const first = Stream.instances[0];
+    first.emit('step_started', 99, { run_id: 'another-run', step_id: 'wrong', at: 'now' });
+    expect(events).toHaveLength(0);
     first.emit('step_started', 12, { step_id: 's4', at: 'now' });
     first.onerror?.();
     vi.advanceTimersByTime(1000);
@@ -216,5 +294,9 @@ describe('resumable run stream', () => {
     vi.advanceTimersByTime(60_000);
     expect(Stream.instances).toHaveLength(2);
     unsubscribe();
+    second.emit('step_started', 14, { run_id: 'run-1', step_id: 'late', at: 'now' });
+    second.onopen?.();
+    expect(events).toHaveLength(2);
+    expect(reconnected).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,10 +1,11 @@
 // Shapes returned by the existing backend (GET /api/state). See back/docs/CONTRACT.md.
+import type { RegistrationScope } from './agent/contract';
 
 export type Severity = 'informativo' | 'atencao' | 'bloqueante';
 export type IssueStatus = 'open' | 'resolved' | 'rejected';
 export type LineOfBusiness = 'CHECKOUT' | 'REMESSA';
 
-export interface Decision {
+export interface Decision extends RegistrationScope {
   action: 'confirm' | 'reject' | 'adjust';
   actor: string;
   at: string;
@@ -14,11 +15,15 @@ export interface Decision {
 
 export interface Evidence { arquivo: string; linha: number; ref: string }
 
-export interface Pendencia {
+export interface Pendencia extends RegistrationScope {
   id_saida: string;
   tipo: string;
   ref_origem: string;
-  valor_brl: string;
+  valor_brl: string | null;
+  merchant_name?: string;
+  exposure_status?: 'complete' | 'partial' | 'unavailable';
+  known_exposure_brl?: string;
+  missing_exposure_count?: number;
   motivo: string;
   quem_decide: string;
   cnpj?: string;
@@ -87,7 +92,7 @@ export interface RastroRow {
   ref_origem: string;
   regra?: string;
   source_row?: number;
-  valor: string;
+  valor: string | null;
 }
 
 export interface OrbeEntry {
@@ -150,6 +155,9 @@ export interface Contract {
   source_ref?: string;
 }
 
+export interface Provenance { source_file?: string; source_id?: string; source_sha256?: string; source_ref?: string; physical_row?: number }
+export interface OriginalEvidence extends Partial<OrbeEntry> { provenances?: Provenance[]; source_file?: string; source_sha256?: string; physical_row?: number }
+
 export interface Detail {
   id_saida: string;
   arquivo_origem: string;
@@ -158,9 +166,9 @@ export interface Detail {
   formula?: string;
   motivo?: string;
   source_row?: number;
-  valor?: string;
+  valor?: string | null;
   contract?: Contract;
-  entrada?: Partial<OrbeEntry & RemittanceEntry & BankEntry> & { id: string };
+  entrada?: Partial<OrbeEntry & RemittanceEntry & BankEntry> & { id: string; provenances?: Provenance[]; original_evidence?: OriginalEvidence; original_resolution?: string; accumulated_reversal_brl?: string };
 }
 
 export interface Summary {
@@ -290,7 +298,12 @@ export interface Parameters {
 }
 
 export interface AppState {
+  ingestion_counts?: import('./agent/contract').IngestionCounts;
   period: string;
+  run_id?: string;
+  read_only?: boolean;
+  has_data?: boolean;
+  scope?: { competencia?: string; run_id?: string | null };
   closing: Closing;
   summary: Summary;
   results: {
