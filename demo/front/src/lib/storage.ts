@@ -23,7 +23,11 @@ export async function sha256(text: string | ArrayBuffer): Promise<string> {
 }
 
 export function downloadText(filename: string, content: string, type = 'text/plain;charset=utf-8') {
-  const url = URL.createObjectURL(new Blob([content], { type }));
+  downloadBlob(filename, new Blob([content], { type }));
+}
+
+export function downloadBlob(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
   const link = Object.assign(document.createElement('a'), { href: url, download: filename });
   document.body.append(link);
   link.click();

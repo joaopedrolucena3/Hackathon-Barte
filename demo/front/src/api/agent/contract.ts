@@ -71,6 +71,48 @@ export interface PreviewPage {
   message?: string;
 }
 
+/** Data desk: the whole output table of a step, read-only. Decimals stay strings; `rid` is the row index in the file. */
+export type DataKind = 'money' | 'percent' | 'decimal' | 'number' | 'integer' | 'boolean' | 'date' | 'json' | 'text';
+export type DataValue = string | number | boolean | null | unknown[] | { [key: string]: unknown };
+
+export interface DataColumn {
+  name: string;
+  label: string;
+  kind: DataKind;
+  description: string;
+  /** Technical columns (e.g. `__exception_ids`) travel with the rows but are not shown as columns. */
+  hidden: boolean;
+}
+
+export interface ControlTotal { column: string; label: string; value: string }
+
+export interface InvariantSide { step_id: string; step_number: number; step_title: string; dataset: string | null; label: string; value: string }
+export interface InvariantCheck { id: string; title: string; ok: boolean; sides: InvariantSide[] }
+
+export interface StepTable {
+  run_id: string;
+  step_id: string;
+  step_number: number;
+  dataset: string;
+  datasets: { name: string; rows: number; title?: string }[];
+  sha256: string;
+  row_count: number;
+  columns: DataColumn[];
+  rows: DataValue[][];
+  totals: ControlTotal[];
+  invariants: InvariantCheck[];
+}
+
+export interface ViewExportInput {
+  dataset: string;
+  /** Rows in the order shown on screen. */
+  rids: number[];
+  columns: string[];
+  formato: 'xlsx' | 'csv';
+  /** Human description of the filters and sort, written into the file. */
+  descricao: string;
+}
+
 export interface StepMetrics {
   rows_in?: number;
   rows_out?: number;
@@ -364,6 +406,9 @@ export interface AgentApi {
   /** Live events (SSE). `onReconnect` fires after a dropped stream comes back: reload the consolidated run. */
   subscribeRun(id: string, onEvent: (event: RunEvent) => void, onReconnect?: () => void): () => void;
   getPreview(runId: string, stepId: string, query: PreviewQuery): Promise<PreviewPage>;
+  getStepTable(runId: string, stepId: string, dataset?: string): Promise<StepTable>;
+  /** Downloads the rows on screen as XLSX or CSV. */
+  exportView(runId: string, stepId: string, input: ViewExportInput): Promise<void>;
 
   listExceptions(runId: string): Promise<ReviewException[]>;
   getApprovalSummary(runId: string): Promise<ApprovalSummary>;

@@ -14,6 +14,7 @@ export const keys = {
   run: (id: string) => ['run', id] as const,
   runAccounts: (id: string) => ['run-accounts', id] as const,
   preview: (runId: string, stepId: string, query?: PreviewQuery) => ['preview', runId, stepId, ...(query ? [query] : [])] as const,
+  stepTable: (runId: string, stepId: string, dataset?: string) => ['step-table', runId, stepId, dataset || ''] as const,
   exceptions: (runId: string) => ['exceptions', runId] as const,
   approval: (runId: string) => ['approval', runId] as const,
   audit: (runId: string) => ['audit', runId] as const,
@@ -47,6 +48,16 @@ export function usePreview(runId: string | undefined, stepId: string | undefined
     enabled: !!runId && !!stepId && enabled,
     placeholderData: keepPreviousData,
     staleTime: 10_000,
+  });
+}
+
+/** Whole output table of a step. Outputs are immutable, so it never goes stale. */
+export function useStepTable(runId: string, stepId: string | undefined, dataset: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: keys.stepTable(runId, stepId || '', dataset),
+    queryFn: () => agent.getStepTable(runId, stepId!, dataset),
+    enabled: !!runId && !!stepId && enabled,
+    staleTime: Infinity,
   });
 }
 

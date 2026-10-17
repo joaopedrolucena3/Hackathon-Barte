@@ -3,7 +3,8 @@ import {
   adaptAudit, adaptCatalog, adaptChecklist, adaptException, adaptFile, adaptPipeline, adaptPreview,
   adaptRun, adaptRunEvent, adaptValidation, array, object, type RecordData,
 } from './adapters';
-import type { AgentApi, PipelineStep, PreviewPage, PreviewQuery, ReviewDecision, ReviewException, Run, RunComparison } from './contract';
+import { downloadBlob } from '../../lib/storage';
+import type { AgentApi, PipelineStep, PreviewPage, PreviewQuery, ReviewDecision, ReviewException, Run, RunComparison, StepTable } from './contract';
 
 const PIPELINE = 'fechamento-tarvo';
 const enc = encodeURIComponent;
@@ -188,9 +189,17 @@ export const httpAgent: AgentApi = {
   async downloadExport(runId, name) {
     const response = await fetch(`${runPath(runId)}/exports/${enc(name)}`, { cache: 'no-store' });
     if (!response.ok) { await parseResponse(response); return; }
-    const href = URL.createObjectURL(await response.blob()), link = document.createElement('a');
-    link.href = href; link.download = name; document.body.append(link); link.click(); link.remove();
-    setTimeout(() => URL.revokeObjectURL(href), 1000);
+    downloadBlob(name, await response.blob());
+  },
+  getStepTable: (runId, stepId, dataset) =>
+    getJSON<StepTable>(`${runPath(runId)}/steps/${enc(stepId)}/data${dataset ? `?dataset=${enc(dataset)}` : ''}`),
+  async exportView(runId, stepId, input) {
+    const response = await fetch(`${runPath(runId)}/steps/${enc(stepId)}/export`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    if (!response.ok) { await parseResponse(response); return; }
+    const name = /filename="([^"]+)"/.exec(response.headers.get('content-disposition') || '')?.[1] || `${input.dataset}.${input.formato}`;
+    downloadBlob(name, await response.blob());
   },
   async compareRuns(a, b) {
     const response = await getJSON<RecordData>(`/api/runs/compare?a=${enc(a)}&b=${enc(b)}`);
