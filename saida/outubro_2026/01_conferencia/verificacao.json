@@ -1,0 +1,92 @@
+{
+  "period": "2026-10",
+  "summary": {
+    "bank_count": 189,
+    "checkout_brl": "47967.50",
+    "checkout_count": 611,
+    "divergencias_abs_brl": "1227.75",
+    "divergencias_brl": "842.41",
+    "divergencias_count": 39,
+    "notas_brl": "73111.46",
+    "notas_count": 21,
+    "pendencias_count": 113,
+    "period": "2026-10",
+    "remessa_brl": "25143.96",
+    "remessa_count": 140,
+    "remittance_tolerance_pp": "0.002",
+    "open_issues": 113,
+    "resolved_issues": 0,
+    "blocking_issues": 67
+  },
+  "validation": {
+    "errors": [],
+    "warnings": [
+      {
+        "message": "Número financeiro ilegível: '1.234,5,6'.",
+        "source_file": "01_orbe_relatorio_comissoes_out2026.csv",
+        "source_ref": "L103",
+        "type": "LINHA_INVALIDA"
+      },
+      {
+        "message": "Número financeiro ilegível: '12.3x4,00'.",
+        "source_file": "05a_extrato_banco_aurora_cc4471_out2026.csv",
+        "source_ref": "L55",
+        "type": "LINHA_INVALIDA"
+      }
+    ],
+    "trace_ok": true,
+    "source_count": 7
+  },
+  "sources": [
+    {
+      "encoding": "utf-8-sig",
+      "name": "01_orbe_relatorio_comissoes_out2026.csv",
+      "path": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\Tarvo_Data_Pack_out2026\\01_orbe_relatorio_comissoes_out2026.csv",
+      "rows": 615,
+      "sha256": "6d2e090123c37a12e6168567e7388a8b6bedf10cf226ecb492af5a54838b6b88"
+    },
+    {
+      "name": "02_tabela_taxas_contratadas.xlsx",
+      "path": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\Tarvo_Data_Pack_out2026\\02_tabela_taxas_contratadas.xlsx",
+      "rows": 25,
+      "sha256": "3f1f921b688374f891a409866e882f44e65641916d6b8c440d1b579f8d8bbe38",
+      "sheets": [
+        "Taxas vigentes",
+        "ANTIGO 2025 - nao usar"
+      ]
+    },
+    {
+      "embedded": true,
+      "name": "03_email_ponte_cambio_relatorio_out2026.eml::PonteCambio_Relatorio_TARVO_102026.xlsx",
+      "rows": 144,
+      "sha256": "382a57228e442a9acb7be5b75547cdf8e7fbea803aa30ad3c03b9be8964fc930"
+    },
+    {
+      "name": "03_email_ponte_cambio_relatorio_out2026.eml",
+      "path": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\Tarvo_Data_Pack_out2026\\03_email_ponte_cambio_relatorio_out2026.eml",
+      "rows": 144,
+      "sha256": "d9f7257e6ea485e93a05a9238898e44dee605fd1b2530f7bc5d538afc78f6f2c"
+    },
+    {
+      "encoding": "cp1252",
+      "name": "04_plano_de_contas_fenix_erp.csv",
+      "path": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\Tarvo_Data_Pack_out2026\\04_plano_de_contas_fenix_erp.csv",
+      "rows": 52,
+      "sha256": "fb99c63b151c2a029c86475eb2551e4af7722a055dc24137244a2411e7876d72"
+    },
+    {
+      "encoding": "utf-8-sig",
+      "name": "05a_extrato_banco_aurora_cc4471_out2026.csv",
+      "path": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\Tarvo_Data_Pack_out2026\\05a_extrato_banco_aurora_cc4471_out2026.csv",
+      "rows": 87,
+      "sha256": "4ba31badd6c7f800345209936f1402f8f51a2fb322c1bb180b726870b0d5dbd2"
+    },
+    {
+      "encoding": "cp1252",
+      "name": "05b_extrato_banco_meridiano_cc90233_out2026.ofx",
+      "path": "C:\\Users\\Leonardo\\HACKATOn\\Hackathon-Barte\\Tarvo_Data_Pack_out2026\\05b_extrato_banco_meridiano_cc90233_out2026.ofx",
+      "rows": 102,
+      "sha256": "f282f8191c9ad1c0a3cb8807bdf17529ffd52f84b78f58dca7f25ee1d7d3c793"
+    }
+  ]
+}
