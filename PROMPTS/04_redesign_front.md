@@ -44,3 +44,10 @@ Depois: "Faça perguntas sobre as mudanças do front e confirmações que você 
 - Botão **Rodar fechamento** (B3): painel curto com data pack, envio de arquivos com SHA-256 ou pasta no servidor; trata 409.
 - Gráficos seguem a skill de dataviz: paleta validada (`#2a78d6`/`#eb6834` séries; vermelho/âmbar/verde de estado com rótulo sempre visível), barras ≤ 24px, rótulo na ponta, tooltip por marca.
 - Verificação no navegador (porta 8777, banco separado): números do case conferem (checkout R$ 207.039,73; remessa R$ 39.543,45; divergências R$ 22.173,57; notas R$ 246.588,68; 304 pendências); painéis e rastro abrem; sem erros no console. Corrigido rótulo da maior barra que vazava do cartão e o foco que rolava o painel.
+
+### Fase 2 — Notas e bancos, Cadastros e Comunicações
+
+- **Notas e bancos** (uma tela, seletor `Notas e cobranças | Bancos`): faixa com notas propostas, cobranças por etapa e bancos; cards por tomador com etapas Proposta → Rascunho → Aprovada → Enviada e ação principal conforme a etapa; editor de cobrança em painel (aprovação vinculada ao texto exato, envio simulado); bancos com "Precisa de você", entradas × saídas por dia, "para onde foi cada lançamento" por conta Fênix e lista agrupada com reclassificação inline (só contas analíticas, justificativa obrigatória → `/api/decisions`).
+- **Cadastros**: lista de lojistas + ficha; nome, EC e situação editáveis direto na ficha com uma justificativa só; identidade candidata confirmada na própria ficha; taxas como linha do tempo de vigências por produto (vigência da competência em destaque, lacunas hachuradas, sobreposições marcadas) com editor inline; contatos de cobrança na ficha; abas de contatos, plano de contas (só leitura) e prazo. Parâmetros de cálculo apontam para o construtor.
+- **Comunicações**: rascunhos e envios simulados, avisos internos e quem recebe; o e-mail do relatório abre direto no editor.
+- Verificação no navegador: ficha da Casa do Estudante mostra 0% a partir de 01/09/2026 em destaque; rascunho de cobrança da Ponte criado e aberto no editor (banco de verificação); valores negativos não quebram mais linha; toast passou para o topo.

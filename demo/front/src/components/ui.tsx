@@ -40,7 +40,7 @@ export function SeverityBadge({ severity }: { severity: string }) {
 
 export function Money({ value, className = '' }: { value: string | number | null | undefined; className?: string }) {
   const negative = Number(value) < 0;
-  return <span className={`num ${negative ? 'neg' : ''} ${className}`}>{money(value)}</span>;
+  return <span className={`num nowrap ${negative ? 'neg' : ''} ${className}`}>{money(value)}</span>;
 }
 
 export const Percent = ({ value }: { value: string | number | null | undefined }) => <span className="num">{percent(value)}</span>;
