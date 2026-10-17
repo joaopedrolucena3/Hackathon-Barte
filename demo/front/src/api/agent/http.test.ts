@@ -170,6 +170,13 @@ describe('real HTTP contract', () => {
     expect(decided.decision).toMatchObject({ amount: '1.01', entry_id: 'entry-1' });
   });
 
+  it('sends a merchant batch exclusion as one request', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(response({ decided: 2 }));
+    vi.stubGlobal('fetch', fetcher);
+    await expect(httpAgent.decideMany('run-1', ['x', 'y'], { action: 'exclude', note: 'Sem contrato vigente' })).resolves.toEqual({ decided: 2 });
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ ids: ['x', 'y'], acao: 'excluir', justificativa: 'Sem contrato vigente' });
+  });
+
   it('surfaces the real API error and blocks downloading unapproved files', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ error: { code: 'EXPORT_NOT_APPROVED', message: 'Aprovação necessária', details: [] } }, 409)));
     await expect(httpAgent.downloadExport('run-1', 'lancamentos_fenix.csv')).rejects.toMatchObject({ name: 'ApiError', message: 'Aprovação necessária', status: 409 });
