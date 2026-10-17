@@ -126,6 +126,7 @@ class PipelineService:
         ''')
         self.threads = {}
         self.stopping = False
+        self._row_cache = {}
         with self.lock, self.db:
             definition = registry.default_definition()
             if not self.db.execute('SELECT 1 FROM wf_pipelines WHERE pipeline_id=?', (definition['id'],)).fetchone():
@@ -602,6 +603,38 @@ class PipelineService:
             try: response = dataset_io.preview(meta['path'], query, input_rows=input_rows)
             except (ValueError, TypeError, KeyError) as exc: raise ServiceError(422, 'INVALID_PREVIEW_QUERY', str(exc)) from exc
             return {**response, 'dataset': meta['name'], 'datasets': [m['name'] for m in step['outputs']], 'step_id': step_id, 'sha256': meta['sha256']}
+
+    def _rows(self, meta, verify=True):
+        """Immutable outputs are cached by content hash; the file hash is checked on first read and when asked."""
+        rows = self._row_cache.get(meta['sha256'])
+        if (verify or rows is None) and _sha(meta['path']) != meta['sha256']:
+            raise ServiceError(409, 'DATASET_CHANGED', 'Saída imutável alterada.')
+        if rows is None:
+            rows = dataset_io.read_dataset(meta['path'])
+            self._row_cache[meta['sha256']] = rows
+            while len(self._row_cache) > 64: self._row_cache.pop(next(iter(self._row_cache)))
+        return rows
+
+    def step_rows(self, ident, step_id, dataset=None):
+        """Read-only view of one step output for the data desk. Rows are shared: callers must not mutate them."""
+        with self.lock:
+            run = self._run(ident)
+            index = next((i for i, s in enumerate(run['steps']) if s['id'] == step_id), None)
+            if index is None: raise ServiceError(404, 'STEP_NOT_FOUND', 'Passo não encontrado.')
+            step = run['steps'][index]
+            if not step['outputs']: raise ServiceError(409, 'DATASET_NOT_READY', 'Este passo ainda não produziu uma tabela.')
+            meta = next((m for m in step['outputs'] if m['name'] == dataset), None) if dataset else step['outputs'][0]
+            if meta is None: raise ServiceError(404, 'DATASET_NOT_FOUND', 'Dataset não pertence ao passo solicitado.')
+            rows = self._rows(meta)
+            titles = {c['type']: c['title'] for c in self.catalog()}
+            steps = [{'id': s['id'], 'number': i + 1, 'type': s['type'], 'title': titles.get(s['type'], s['type']), 'metrics': s.get('metrics', {}),
+                      'datasets': [m['name'] for m in s.get('outputs', [])]} for i, s in enumerate(run['steps'])]
+            produced = {m['name']: m for s in run['steps'] for m in s.get('outputs', [])}
+
+        def rows_of(name):
+            with self.lock: return self._rows(produced[name], verify=False)
+        return {'run_id': ident, 'step': steps[index], 'meta': meta, 'datasets': [{'name': m['name'], 'rows': m['rows']} for m in step['outputs']],
+                'rows': rows, 'steps': steps, 'rows_of': rows_of}
 
     def exceptions(self, ident, query=None):
         with self.lock:

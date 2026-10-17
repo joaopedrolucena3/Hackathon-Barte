@@ -4,7 +4,9 @@ import { ensureActor } from '../../../lib/actor';
 import { downloadText, sha256 } from '../../../lib/storage';
 import { core, downloads } from '../../core';
 import { ApiError } from '../../http';
-import type { AgentApi, InputFile, ParamValue, PipelineStep, PipelineVersion, PreviewPage } from '../contract';
+import type {
+  AgentApi, ColumnSchema, DataColumn, DataKind, DataValue, InputFile, ParamValue, PipelineStep, PipelineVersion, PreviewPage, StepTable, ViewExportInput,
+} from '../contract';
 import { buildAudit, compare } from './audit';
 import { CATALOG, PIPELINE_ID, catalogByType, defaultSteps, stepTitle, validateSteps } from './catalog';
 import { getChecklist, updateTask } from './checklist';
@@ -101,6 +103,33 @@ async function preview(runId: string, stepId: string, query: Parameters<AgentApi
   };
 }
 
+const KINDS: Partial<Record<ColumnSchema['type'], DataKind>> = { money: 'money', percent: 'percent', pp: 'decimal', number: 'decimal', date: 'date' };
+
+/** Demo data desk: the whole mock output, without cross-step invariants (those come from the real backend). */
+async function stepTable(runId: string, stepId: string, dataset?: string): Promise<StepTable> {
+  const page = await preview(runId, stepId, { page: 1, page_size: 1_000_000, dataset });
+  if (page.state !== 'ready') throw new ApiError(page.message || 'Este passo ainda não produziu uma tabela.', 409);
+  const columns: DataColumn[] = [
+    ...page.schema.map(column => ({ name: column.key, label: column.label, kind: KINDS[column.type] || 'text', description: '', hidden: false })),
+    { name: '__exception_ids', label: 'Exceções', kind: 'json', description: '', hidden: true },
+  ];
+  const rows = page.rows.map(row => columns.map(column => column.name === '__exception_ids' ? (row._exception ? [row._exception.id] : []) : (row[column.name] as DataValue) ?? null));
+  const run = requireRun(runId);
+  return {
+    run_id: runId, step_id: page.step_id, step_number: run.steps.findIndex(step => step.id === page.step_id) + 1, dataset: page.dataset || stepId,
+    datasets: (page.datasets || []).map(name => ({ name, rows: 0 })), sha256: '', row_count: rows.length, columns, rows, invariants: [],
+    totals: Object.entries(page.totals.all).map(([column, value]) => ({ column, label: columns.find(item => item.name === column)?.label || column, value })),
+  };
+}
+
+async function exportView(runId: string, stepId: string, input: ViewExportInput) {
+  const table = await stepTable(runId, stepId, input.dataset);
+  const indexes = input.columns.map(name => table.columns.findIndex(column => column.name === name));
+  const cell = (value: DataValue) => value === null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+  const lines = [['Linha no dataset', ...indexes.map(index => table.columns[index].label)], ...input.rids.map(rid => [String(rid + 1), ...indexes.map(index => cell(table.rows[rid][index]))])];
+  downloadText(`${input.dataset}.csv`, '﻿' + lines.map(line => line.map(value => /[;"\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
+}
+
 async function hashFile(file: File): Promise<InputFile> {
   const buffer = await file.arrayBuffer();
   const text = /\.(csv|ofx)$/i.test(file.name) ? new TextDecoder('latin1').decode(buffer) : '';
@@ -140,6 +169,8 @@ export const mockAgent: AgentApi = {
   getRunAccounts: async () => (await core.state()).accounts,
   subscribeRun: (id, onEvent) => { boot(); return subscribe(id, onEvent); },
   getPreview: preview,
+  getStepTable: stepTable,
+  exportView,
 
   listExceptions: async runId => listExceptions(requireRun(runId)),
   getApprovalSummary: async runId => approvalSummary(requireRun(runId)),

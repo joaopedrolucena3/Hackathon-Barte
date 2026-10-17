@@ -1,14 +1,18 @@
-// Run view: steps on the left (B1/B4), live preview in the center (C8), details on the right.
+// Run view as a data desk: steps on the left (B1/B4) with the run summary, the step's table as a spreadsheet
+// in the center (C8) with the query chat below, step and exception details in a side sheet.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Run, StepRun } from '../../api/agent';
-import { DataPreview } from '../../components/DataPreview';
 import { ExceptionDetail } from '../../components/ExceptionDetail';
 import { Icon } from '../../components/Icon';
+import { Sheet } from '../../components/Overlay';
 import { StepList } from '../../components/StepList';
 import { Callout, Empty, HashChip, StatusBadge } from '../../components/ui';
 import { count, dateTimeBR, duration, plural, readable } from '../../lib/format';
 import { useCatalog, useExceptions, useRunEvents } from '../../state/queries';
+import { ChatSlot } from '../../workbench/ChatSlot';
+import { RunSummaryCard } from '../../workbench/RunSummaryCard';
+import { StepWorkspace } from '../../workbench/StepWorkspace';
 
 function StepDetail({ run, step, onException }: { run: Run; step: StepRun; onException: (id: string) => void }) {
   const { data: catalog } = useCatalog();
@@ -20,8 +24,7 @@ function StepDetail({ run, step, onException }: { run: Run; step: StepRun; onExc
     <div className="stack-lg">
       <div>
         <StatusBadge status={step.status} />
-        <h3 className="overlay-title" style={{ marginTop: 8 }}>{step.title}</h3>
-        {item && <p className="text-2" style={{ fontSize: 13, marginTop: 4 }}>{item.description}</p>}
+        {item && <p className="text-2" style={{ fontSize: 13, marginTop: 8 }}>{item.description}</p>}
       </div>
       {step.status === 'failed' && <Callout tone="critical" icon="alert"><strong>Falha:</strong> {step.error}</Callout>}
       <dl className="facts">
@@ -67,63 +70,70 @@ function StepDetail({ run, step, onException }: { run: Run; step: StepRun; onExc
   );
 }
 
+function GateView({ run, step }: { run: Run; step: StepRun }) {
+  return (
+    <div className="card-body stack-lg">
+      <div className="row" style={{ gap: 10 }}><strong style={{ fontSize: 14 }}>{step.title}</strong><StatusBadge status={step.status} /></div>
+      {step.status === 'awaiting_approval' || run.status === 'awaiting_approval' ? (
+        <Callout tone="gate" icon="pause">O agente parou antes do ERP. {plural(step.metrics.exceptions || 0, 'exceção aguarda', 'exceções aguardam')} decisão humana{step.metrics.blocking ? `, ${count(step.metrics.blocking)} bloqueantes` : ''}.</Callout>
+      ) : step.status === 'approved' ? <Callout tone="good" icon="check">Lote aprovado por {run.approval?.actor} em {dateTimeBR(run.approval?.at)}.{run.approval?.comment && ` “${run.approval.comment}”`}</Callout>
+        : step.status === 'rejected' ? <Callout tone="critical" icon="x">Reprovado por {run.approval?.actor}: “{run.approval?.comment}”.</Callout>
+          : <Empty icon="lock" title="O portão de aprovação ainda não foi alcançado" />}
+      {['awaiting_approval', 'approved', 'rejected'].includes(run.status) && <Link className="btn primary" style={{ alignSelf: 'flex-start' }} to={`/runs/${run.id}/revisao`}><Icon name="arrowRight" />Abrir a revisão</Link>}
+    </div>
+  );
+}
+
 export function StepsTab({ run }: { run: Run }) {
   const [params, setParams] = useSearchParams();
-  const [panel, setPanel] = useState(true);
+  const [details, setDetails] = useState(false);
   const [exceptionId, setExceptionId] = useState<string | null>(null);
   const manual = useRef(!!params.get('step'));
   const running = run.steps.find(step => step.status === 'running');
-  const fallback = running || run.steps.find(step => step.status === 'awaiting_approval' || step.status === 'failed') || [...run.steps].reverse().find(step => step.status !== 'pending') || run.steps[0];
+  const fallback = running || run.steps.find(step => step.status === 'awaiting_approval' || step.status === 'failed') || [...run.steps].reverse().find(step => step.status !== 'pending' && step.kind === 'calc') || run.steps[0];
   const selectedId = params.get('step') || fallback?.id;
   const step = run.steps.find(item => item.id === selectedId) || fallback;
   const ref = params.get('ref');
 
   useRunEvents(run.id, event => {
     // Follow the agent while the user has not picked a step.
-    if (event.type === 'step_started' && !manual.current) setParams(current => { current.set('step', event.step_id); current.delete('ref'); return current; }, { replace: true });
+    if (event.type === 'step_started' && !manual.current) setParams(current => { current.set('step', event.step_id); current.delete('ref'); current.delete('dataset'); return current; }, { replace: true });
   });
   useEffect(() => { setExceptionId(null); }, [step?.id]);
-  const select = (id: string) => { manual.current = true; setParams({ step: id }, { replace: true }); };
+  const select = (id: string) => {
+    manual.current = true;
+    setParams(current => { const next = new URLSearchParams({ step: id }); const volume = current.get('volume'); if (volume) next.set('volume', volume); return next; }, { replace: true });
+  };
   const { data: exceptions } = useExceptions(run.id, !!exceptionId);
   const exception = exceptions?.find(item => item.id === exceptionId);
-  const filters = useMemo(() => (ref && step && step.type !== 'classificar_bancos' ? [{ key: 'id', op: 'eq' as const, value: ref }] : undefined), [ref, step]);
+  const filters = useMemo(() => (ref ? [{ column: 'id', op: 'eq' as const, value: ref }] : undefined), [ref]);
 
   if (!step) return <Empty title="Este run não tem passos" />;
   return (
-    <div className={`run-layout ${panel ? '' : 'collapsed'} ${run.status === 'awaiting_approval' ? 'has-banner' : ''}`}>
-      <aside className="card run-steps">
-        <div className="run-col-head"><span>Passos</span><span className="muted num">{run.steps.length}</span></div>
-        <StepList steps={run.steps} selected={step.id} onSelect={select} onDetails={id => { select(id); setPanel(true); }} />
-      </aside>
-      <section className="card run-preview">
-        <div className="run-col-head">
-          <div className="row" style={{ gap: 10, minWidth: 0 }}>
-            <strong style={{ fontSize: 14 }}>{step.title}</strong>
-            <StatusBadge status={step.status} />
-          </div>
-          <button type="button" className="btn xs ghost" onClick={() => setPanel(!panel)} aria-expanded={panel}><Icon name="panel" />{panel ? 'Ocultar detalhe' : 'Mostrar detalhe'}</button>
+    <div className={`wb ${run.status === 'awaiting_approval' ? 'has-banner' : ''}`}>
+      <aside className="wb-side">
+        <div className="card wb-steps">
+          <div className="run-col-head"><span>Passos</span><span className="muted num">{run.steps.length}</span></div>
+          <StepList steps={run.steps} selected={step.id} onSelect={select} onDetails={id => { select(id); setDetails(true); }} />
         </div>
-        {step.kind === 'gate' ? (
-          <div className="card-body stack-lg">
-            {step.status === 'awaiting_approval' || run.status === 'awaiting_approval' ? (
-              <Callout tone="gate" icon="pause">O agente parou antes do ERP. {plural(step.metrics.exceptions || 0, 'exceção aguarda', 'exceções aguardam')} decisão humana{step.metrics.blocking ? `, ${count(step.metrics.blocking)} bloqueantes` : ''}.</Callout>
-            ) : step.status === 'approved' ? <Callout tone="good" icon="check">Lote aprovado por {run.approval?.actor} em {dateTimeBR(run.approval?.at)}.{run.approval?.comment && ` “${run.approval.comment}”`}</Callout>
-              : step.status === 'rejected' ? <Callout tone="critical" icon="x">Reprovado por {run.approval?.actor}: “{run.approval?.comment}”.</Callout>
-                : <Empty icon="lock" title="O portão de aprovação ainda não foi alcançado" />}
-            {['awaiting_approval', 'approved', 'rejected'].includes(run.status) && <Link className="btn primary" style={{ alignSelf: 'flex-start' }} to={`/runs/${run.id}/revisao`}><Icon name="arrowRight" />Abrir a revisão</Link>}
-          </div>
-        ) : (
-          <DataPreview runId={run.id} stepId={step.id} initialFilters={filters} onException={id => { setExceptionId(id); setPanel(true); }} />
-        )}
+        <RunSummaryCard run={run} />
+      </aside>
+      <section className="card wb-card">
+        {step.kind === 'gate' ? <GateView run={run} step={step} />
+          : <StepWorkspace run={run} step={step} initialFilters={filters} onException={setExceptionId} onDetails={() => setDetails(true)} chat={<ChatSlot />} />}
       </section>
-      {panel && (
-        <aside className="card run-detail">
-          <div className="card-body">
-            {exception ? <ExceptionDetail exception={exception} run={run} editable={run.status === 'awaiting_approval' && !run.draft} onClose={() => setExceptionId(null)} />
-              : <StepDetail run={run} step={step} onException={id => setExceptionId(id)} />}
-          </div>
-        </aside>
-      )}
+      {exception ? (
+        <Sheet eyebrow="Exceção" title={readable(exception.kind)} sub={`${exception.merchant} · ${exception.ref_origem}`} onClose={() => setExceptionId(null)}
+          footer={run.status === 'awaiting_approval' && !run.draft
+            ? <Link className="btn primary" to={`/runs/${run.id}/revisao?passo=${exception.step_type}`}><Icon name="arrowRight" />Decidir na revisão</Link> : undefined}>
+          {/* The data desk is read-only: decisions happen in the Revisão tab. */}
+          <ExceptionDetail exception={exception} run={run} editable={false} />
+        </Sheet>
+      ) : details ? (
+        <Sheet eyebrow="Detalhes do passo" title={step.title} onClose={() => setDetails(false)}>
+          <StepDetail run={run} step={step} onException={id => { setDetails(false); setExceptionId(id); }} />
+        </Sheet>
+      ) : null}
     </div>
   );
 }

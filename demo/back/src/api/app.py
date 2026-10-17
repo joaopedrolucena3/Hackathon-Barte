@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
 import hashlib
 import os
 import json
@@ -24,6 +25,7 @@ from ..store import ConflictError, ROOT, Store
 from ..engine import calculate
 from .insights import build_insights
 from ..pipeline.service import PipelineService, ServiceError
+from ..chat import semantic, views as desk
 from ..mail.auth import AuthManager, AuthError
 from ..mail.service import MailService
 from .mail import mail_router
@@ -63,6 +65,15 @@ class ApprovalRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     decisao: Literal["aprovar", "reprovar"]
     comentario: str = Field(min_length=1, max_length=10000)
+
+
+class ViewExportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    dataset: str = Field(min_length=1, max_length=120)
+    rids: list[int] = Field(max_length=100_000)
+    columns: list[str] = Field(min_length=1, max_length=400)
+    formato: Literal["xlsx", "csv"]
+    descricao: str = Field(default="", max_length=2000)
 
 
 class ChecklistRequest(BaseModel):
@@ -305,6 +316,30 @@ def create_app(db_path=None, source_dir=None, runs_dir=None, *, legacy_store=Non
     @app.get("/api/runs/{run_id}/steps/{step_id}/preview")
     def preview(request: Request, run_id: str, step_id: str):
         return flow.preview(run_id, step_id, dict(request.query_params))
+
+    @app.get("/api/runs/{run_id}/steps/{step_id}/data")
+    def step_data(request: Request, run_id: str, step_id: str, dataset: str | None = None):
+        view = flow.step_rows(run_id, step_id, dataset)
+        payload = {"run_id": run_id, "step_id": step_id, "step_number": view["step"]["number"],
+                   "datasets": [{**item, "title": semantic.title(item["name"])} for item in view["datasets"]],
+                   **desk.table(view["meta"], view["rows"], view["steps"], view["rows_of"])}
+        body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
+        if len(body) > 64 * 1024 and "gzip" in request.headers.get("accept-encoding", ""):
+            return Response(gzip.compress(body, 5), media_type="application/json", headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
+        return Response(body, media_type="application/json")
+
+    @app.post("/api/runs/{run_id}/steps/{step_id}/export")
+    def export_view(run_id: str, step_id: str, body: ViewExportRequest):
+        view = flow.step_rows(run_id, step_id, body.dataset)
+        columns = {column["name"]: column for column in semantic.describe(body.dataset, view["meta"].get("schema", []))}
+        unknown = [name for name in body.columns if name not in columns]
+        if unknown: raise ServiceError(422, "UNKNOWN_COLUMN", "Coluna desconhecida na tabela do passo.", unknown)
+        rows = view["rows"]
+        if any(rid < 0 or rid >= len(rows) for rid in body.rids): raise ServiceError(422, "INVALID_ROW", "Linha fora da tabela do passo.")
+        about = {"run_id": run_id, "step_id": step_id, "step_number": view["step"]["number"], "step_title": view["step"]["title"],
+                 "dataset": body.dataset, "sha256": view["meta"]["sha256"], "row_count": len(rows), "descricao": body.descricao}
+        filename, media, content = desk.export(body.formato, [columns[name] for name in body.columns], [(rid, rows[rid]) for rid in body.rids], about)
+        return Response(content, media_type=media, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     @app.get("/api/runs/{run_id}/exceptions")
     def exceptions(request: Request, run_id: str):

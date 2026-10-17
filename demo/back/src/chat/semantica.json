@@ -1,0 +1,1037 @@
+{
+  "versao": 1,
+  "status": "v0 redigida pelo time técnico a partir de engine.py, pipeline/steps.py, docs/ENGINE_NOTES.md, docs/FONTES_SLACK.md e HIPOTESES.md; aguarda revisão do financeiro.",
+  "contexto": "A Tarvo é uma subadquirente de empresas de intercâmbio e turismo. A adquirente Orbe processa as vendas no cartão e no Pix dos lojistas e informa, por transação, a taxa que aplicou. A Tarvo fatura de cada lojista uma comissão de checkout pela taxa contratada (MDR e antecipação), e da Ponte Câmbio uma participação de 50% no spread realizado das remessas. O fechamento mensal confere taxas, classifica os extratos bancários, gera lançamentos em partidas dobradas e pendências para decisão humana. Valores monetários estão em reais; taxas estão em pontos percentuais (2.59 significa 2,59%).",
+  "tipos": {
+    "money": "DECIMAL(18,2)",
+    "percent": "DECIMAL(18,6)",
+    "decimal": "DECIMAL(18,6)",
+    "number": "DECIMAL(18,4)",
+    "date": "DATE",
+    "integer": "BIGINT",
+    "boolean": "BOOLEAN",
+    "text": "VARCHAR",
+    "json": "JSON"
+  },
+  "tipos_por_coluna": {
+    "client_rate": "decimal",
+    "ptax_rate": "decimal",
+    "confianca": "decimal",
+    "contract_start": "date",
+    "contract_end": "date",
+    "installments": "integer",
+    "physical_row": "integer",
+    "source_row": "integer",
+    "quantidade_origens": "integer",
+    "rows": "integer",
+    "rows_read": "integer",
+    "rows_discarded": "integer",
+    "size": "integer"
+  },
+  "ocultas": [
+    "source_fingerprint"
+  ],
+  "ordem_colunas": [
+    "id",
+    "id_saida",
+    "entry_id",
+    "code",
+    "bank",
+    "banco",
+    "date",
+    "data",
+    "contracted_date",
+    "settlement_date",
+    "ec",
+    "cnpj",
+    "canonical_name",
+    "lojista",
+    "name",
+    "tomador",
+    "tomador_cnpj",
+    "type",
+    "tipo",
+    "severity",
+    "event_type",
+    "linha_negocio",
+    "natureza",
+    "conta_codigo",
+    "conta_descricao",
+    "modality",
+    "faixa_parcelas",
+    "product",
+    "produto",
+    "installments",
+    "brand",
+    "currency",
+    "foreign_amount",
+    "gross",
+    "gross_brl",
+    "amount",
+    "valor",
+    "debito",
+    "credito",
+    "applied_rate_pct",
+    "taxa_aplicada_pct",
+    "taxa_contratada_pct",
+    "rate_pct",
+    "diferenca_pp",
+    "reported_fee",
+    "comissao_brl",
+    "impacto_rs",
+    "diferenca_brl",
+    "valor_brl",
+    "spread_brl",
+    "estimated_spread_brl",
+    "iof_brl",
+    "net",
+    "balance",
+    "opening",
+    "movement_brl",
+    "closing",
+    "difference_brl",
+    "status",
+    "description",
+    "descricao",
+    "historico",
+    "motivo",
+    "discriminacao",
+    "calculated",
+    "counted",
+    "match_confirmed",
+    "original_id",
+    "original_date",
+    "link_status",
+    "original_present"
+  ],
+  "rotulos": {
+    "id": "ID",
+    "date": "Data",
+    "ec": "EC",
+    "name": "Nome",
+    "type": "Tipo",
+    "modality": "Modalidade",
+    "installments": "Parcelas",
+    "brand": "Bandeira",
+    "gross": "Bruto",
+    "applied_rate_pct": "Taxa aplicada (%)",
+    "reported_fee": "Taxa cobrada",
+    "net": "Líquido",
+    "original_id": "Transação original",
+    "original_date": "Data original",
+    "source_file": "Arquivo",
+    "source_ref": "Ref. na fonte",
+    "physical_row": "Linha na fonte",
+    "__exception_ids": "Exceções",
+    "faixa_parcelas": "Produto",
+    "normalization_valid": "Válida",
+    "canonical_name": "Lojista",
+    "cnpj": "CNPJ",
+    "match_confirmed": "Vínculo confirmado",
+    "match_method": "Vínculo por",
+    "merchant_source_ref": "Ref. cadastro",
+    "candidate_cnpjs": "CNPJs candidatos",
+    "calculated": "Calculada",
+    "comissao_brl": "Comissão",
+    "contract_id": "Contrato",
+    "contract_start": "Início do contrato",
+    "contract_end": "Fim do contrato",
+    "product": "Produto contratual",
+    "rule": "Regra",
+    "formula": "Fórmula",
+    "taxa_contratada_pct": "Taxa contratada (%)",
+    "diferenca_pp": "Diferença (p.p.)",
+    "impacto_rs": "Impacto",
+    "original_present": "Original no arquivo",
+    "link_status": "Vínculo do estorno",
+    "bank": "Banco",
+    "amount": "Valor",
+    "balance": "Saldo",
+    "description": "Histórico",
+    "ref_origem": "Ref. origem",
+    "code": "Conta",
+    "nature": "Natureza",
+    "postable": "Analítica",
+    "client_rate": "Cotação cliente",
+    "ptax_rate": "PTAX",
+    "compliance": "Compliance",
+    "contracted_date": "Contratação",
+    "settlement_date": "Liquidação",
+    "currency": "Moeda",
+    "estimated_spread_brl": "Spread estimado",
+    "foreign_amount": "Valor em ME",
+    "gross_brl": "Valor (R$)",
+    "iof_brl": "IOF",
+    "spread_brl": "Spread realizado",
+    "observation": "Observação",
+    "compliance_aceito": "Compliance aceito",
+    "counted": "Conta na comissão",
+    "duplicated_id": "Duplicada",
+    "opening": "Saldo inicial",
+    "closing": "Saldo final",
+    "opening_ref": "Ref. saldo inicial",
+    "closing_ref": "Ref. saldo final",
+    "opening_explicit": "Saldo inicial explícito",
+    "banco": "Banco",
+    "confianca": "Confiança",
+    "conta_bancaria": "Conta do banco",
+    "conta_codigo": "Conta",
+    "conta_descricao": "Descrição da conta",
+    "contrapartida_sentido": "Sentido",
+    "data": "Data",
+    "descricao": "Histórico",
+    "id_saida": "ID da saída",
+    "metodo": "Método",
+    "regra": "Regra",
+    "valor": "Valor",
+    "movement_brl": "Movimentos",
+    "difference_brl": "Diferença",
+    "opening_inferred_brl": "Saldo inicial inferido",
+    "status": "Situação",
+    "entry_id": "Partida",
+    "natureza": "D/C",
+    "debito": "Débito",
+    "credito": "Crédito",
+    "historico": "Histórico",
+    "arquivo_origem": "Arquivo de origem",
+    "event_type": "Evento",
+    "adjustable_account": "Conta ajustável",
+    "linha_negocio": "Linha de negócio",
+    "lojista": "Lojista",
+    "quantidade_origens": "Origens",
+    "diferenca_brl": "Diferença",
+    "produto": "Produto",
+    "taxa_aplicada_pct": "Taxa aplicada (%)",
+    "vigencia_inicio": "Vigência (início)",
+    "vigencia_fim": "Vigência (fim)",
+    "discriminacao": "Discriminação",
+    "tomador": "Tomador",
+    "tomador_cnpj": "CNPJ do tomador",
+    "valor_brl": "Valor",
+    "divergence_id": "Divergência",
+    "evidence": "Evidências",
+    "invoice_id": "Nota fiscal",
+    "motivo": "Motivo",
+    "quem_decide": "Quem decide",
+    "severity": "Severidade",
+    "source_fingerprint": "Hash da evidência",
+    "suggestion": "Sugestão",
+    "tipo": "Tipo",
+    "source_row": "Linha na fonte",
+    "contract": "Contrato (detalhe)",
+    "entrada": "Entrada",
+    "ledger_hash": "Hash do lote",
+    "period": "Competência",
+    "requires_human_approval": "Exige aprovação",
+    "path": "Caminho",
+    "sha256": "SHA-256",
+    "rows": "Linhas",
+    "rows_read": "Linhas lidas",
+    "rows_discarded": "Descartadas",
+    "embedded": "Anexo",
+    "encoding": "Codificação",
+    "sheets": "Abas",
+    "message": "Mensagem",
+    "size": "Tamanho",
+    "start": "Início",
+    "end": "Fim",
+    "rate_pct": "Taxa (%)",
+    "active": "Ativo",
+    "candidate": "Candidato",
+    "identity_rule": "Regra de identidade"
+  },
+  "colunas": {
+    "id": "Identificador da linha na fonte (transação Orbe, operação Ponte, movimento bancário ou lançamento).",
+    "date": "Data do movimento.",
+    "ec": "Código de estabelecimento (EC) do lojista na Orbe. É a identidade do lojista; nomes variam.",
+    "name": "Nome do lojista como veio na fonte (pode estar truncado ou diferente do cadastro).",
+    "type": "Tipo de lançamento Orbe: VENDA, ESTORNO, ANTECIPACAO ou REVERSAO ANTECIPACAO.",
+    "modality": "Modalidade: CREDITO A VISTA, CREDITO PARCELADO, DEBITO ou PIX. Vazia em antecipações e reversões.",
+    "installments": "Quantidade de parcelas da venda.",
+    "brand": "Bandeira do cartão (VISA, MASTERCARD, ELO, AMEX, HIPERCARD). Vazia em Pix, antecipações e reversões.",
+    "gross": "Valor bruto da transação. Negativo em estornos e reversões.",
+    "applied_rate_pct": "Taxa que a fonte aplicou, em pontos percentuais (Orbe: MDR ou antecipação aplicada; Ponte: spread aplicado).",
+    "reported_fee": "Taxa em reais que a Orbe cobrou e informou (truncada pela Orbe). Não é a comissão da Tarvo.",
+    "net": "Valor líquido informado pela Orbe. Por linha, bruto − taxa cobrada = líquido.",
+    "original_id": "Transação original referenciada por um estorno ou reversão.",
+    "original_date": "Data da venda ou antecipação original; define a taxa contratada de estornos e reversões.",
+    "source_file": "Arquivo de origem da linha.",
+    "source_ref": "Referência da linha dentro do arquivo de origem.",
+    "physical_row": "Número da linha física no arquivo de origem.",
+    "__exception_ids": "Lista de exceções (pendências) que citam esta linha. Vazia quando não há divergência.",
+    "faixa_parcelas": "Produto contratual derivado: DEBITO, PIX, CREDITO_A_VISTA, CREDITO_2_6, CREDITO_7_12 ou ANTECIPACAO.",
+    "normalization_valid": "Se a linha passou na validação de campos, datas e valores.",
+    "canonical_name": "Nome do lojista no cadastro da Tarvo.",
+    "cnpj": "CNPJ do lojista (14 dígitos).",
+    "match_confirmed": "Se o vínculo com o cadastro está confirmado (EC confirmado e lojista ativo, não candidato).",
+    "match_method": "Como o lojista foi vinculado: EC ou CNPJ.",
+    "merchant_source_ref": "Linha do cadastro usada no vínculo.",
+    "candidate_cnpjs": "CNPJs sugeridos pelo nome, sem autorizar vínculo ou faturamento.",
+    "calculated": "Se a comissão da linha foi calculada (há contrato vigente e a linha pertence à competência).",
+    "comissao_brl": "Comissão da Tarvo calculada pela taxa contratada: ROUND_HALF_UP(bruto × taxa contratada / 100, 2), por linha, com sinal. Em remessas: 50% do spread realizado positivo.",
+    "contract_id": "Contrato (linha da tabela de taxas) aplicado.",
+    "contract_start": "Início da vigência do contrato aplicado.",
+    "contract_end": "Fim da vigência do contrato aplicado (vazio = sem fim).",
+    "product": "Produto contratual do cálculo (DEBITO, PIX, CREDITO_A_VISTA, CREDITO_2_6, CREDITO_7_12, ANTECIPACAO, REMESSA).",
+    "rule": "Regra ou fonte que justifica o contrato ou o vínculo.",
+    "formula": "Fórmula usada no cálculo da comissão.",
+    "taxa_contratada_pct": "Taxa contratada vigente na data de referência, em pontos percentuais.",
+    "diferenca_pp": "Taxa aplicada − taxa contratada, em pontos percentuais. Preenchida só em linhas com divergência.",
+    "impacto_rs": "Valor da divergência de taxa: ROUND_HALF_UP(bruto × (aplicada − contratada) / 100, 2). Preenchido só em vendas e antecipações divergentes.",
+    "original_present": "Se a transação original do estorno ou da reversão está no arquivo do mês.",
+    "link_status": "Situação do vínculo do estorno ou reversão: ORIGINAL_PRESENTE, HISTORICO_DATA_ORIGINAL (venda de mês anterior, calculada pela data original) ou PENDENTE.",
+    "bank": "Banco: AURORA (conta principal) ou MERIDIANO (conta das remessas).",
+    "amount": "Valor do movimento no extrato, com sinal (positivo = entrada).",
+    "balance": "Saldo informado no extrato após o movimento (quando a fonte informa).",
+    "description": "Histórico do movimento no extrato.",
+    "ref_origem": "Referência da linha de origem (transação, operação ou linha do extrato).",
+    "code": "Código da conta no plano de contas Fênix.",
+    "nature": "Natureza da conta: D (devedora) ou C (credora).",
+    "postable": "Se a conta é analítica e aceita lançamento.",
+    "client_rate": "Cotação cobrada do cliente na remessa.",
+    "ptax_rate": "Cotação PTAX de referência.",
+    "compliance": "Status de compliance da remessa: APROVADO ou APROVADO C/ RESSALVA (ambos aceitos).",
+    "contracted_date": "Data de contratação do câmbio; define a competência da remessa.",
+    "settlement_date": "Data de liquidação da remessa.",
+    "currency": "Moeda estrangeira da remessa.",
+    "estimated_spread_brl": "Spread estimado em D-1 (não substitui o realizado).",
+    "foreign_amount": "Valor em moeda estrangeira.",
+    "gross_brl": "Valor em reais da remessa.",
+    "iof_brl": "IOF da remessa.",
+    "spread_brl": "Spread realizado da remessa, em reais. Pode ser negativo (trava vencida).",
+    "observation": "Observação da Ponte sobre a operação.",
+    "compliance_aceito": "Se o status de compliance permite comissão.",
+    "counted": "Se a operação conta na comissão (calculada e não duplicada).",
+    "duplicated_id": "Se é repetição de um número de operação já visto (conta uma vez).",
+    "opening": "Saldo inicial informado.",
+    "closing": "Saldo final informado.",
+    "opening_ref": "Referência do saldo inicial na fonte.",
+    "closing_ref": "Referência do saldo final na fonte.",
+    "opening_explicit": "Se o saldo inicial veio explícito na fonte.",
+    "banco": "Banco do movimento classificado.",
+    "confianca": "Confiança da classificação (1.0 = regra exata).",
+    "conta_bancaria": "Conta contábil do próprio banco.",
+    "conta_codigo": "Conta contábil da contrapartida (em lançamentos: conta da partida).",
+    "conta_descricao": "Nome da conta de contrapartida.",
+    "contrapartida_sentido": "Sentido da contrapartida: D ou C.",
+    "data": "Data do movimento ou do lançamento.",
+    "descricao": "Histórico do movimento bancário.",
+    "id_saida": "Identificador da saída gerada (BANCO-, COM-, DIV-, NF-, PEND-).",
+    "metodo": "Método da classificação (REGRA = regra explícita).",
+    "regra": "Regra aplicada.",
+    "valor": "Valor da linha (em bancos_classificados, com sinal do extrato; em lançamentos, valor positivo da partida; em rastro, contribuição da origem).",
+    "movement_brl": "Soma dos movimentos do banco no mês.",
+    "difference_brl": "Saldo final − saldo inicial − movimentos. Zero quando o extrato fecha.",
+    "opening_inferred_brl": "Saldo inicial inferido (fechamento aritmético, não confirmado pela fonte).",
+    "status": "Situação da conferência de saldo: CONFERIDO, DIVERGENTE ou ABERTURA_NAO_FORNECIDA.",
+    "entry_id": "Partida contábil (cada partida tem uma linha D e uma linha C).",
+    "natureza": "Lado da partida: D (débito) ou C (crédito).",
+    "debito": "Valor a débito da linha.",
+    "credito": "Valor a crédito da linha.",
+    "historico": "Histórico do lançamento.",
+    "arquivo_origem": "Arquivo da origem do lançamento ou do rastro.",
+    "event_type": "Evento contábil: MDR, ANTECIPACAO, REMESSA ou BANCO.",
+    "adjustable_account": "Se a conta desta linha pode ser trocada em ajuste humano.",
+    "linha_negocio": "Linha de negócio: CHECKOUT (comissão sobre vendas Orbe) ou REMESSA (participação no spread da Ponte).",
+    "lojista": "Nome do lojista no cadastro.",
+    "quantidade_origens": "Quantas linhas de origem compõem a saída.",
+    "diferenca_brl": "Valor da divergência, com sinal (positivo = cobrado acima do contrato).",
+    "produto": "Produto contratual.",
+    "taxa_aplicada_pct": "Taxa aplicada pela fonte, em pontos percentuais.",
+    "vigencia_inicio": "Início da vigência do contrato.",
+    "vigencia_fim": "Fim da vigência do contrato.",
+    "discriminacao": "Texto da nota fiscal.",
+    "tomador": "Tomador da nota fiscal.",
+    "tomador_cnpj": "CNPJ do tomador.",
+    "valor_brl": "Valor em reais (nota fiscal ou valor exposto da pendência).",
+    "divergence_id": "Divergência associada à pendência.",
+    "evidence": "Linhas de evidência da pendência (arquivo, linha, referência).",
+    "invoice_id": "Nota fiscal associada à pendência.",
+    "motivo": "Motivo da pendência ou da retenção.",
+    "quem_decide": "Área responsável pela decisão.",
+    "severity": "Severidade da pendência: bloqueante, atencao ou informativo.",
+    "source_fingerprint": "Hash das evidências; uma mudança invalida decisões anteriores.",
+    "suggestion": "Encaminhamento sugerido.",
+    "tipo": "Tipo da pendência (ex.: DIVERGENCIA_TAXA, CADASTRO_NAO_CONFIRMADO, SPREAD_NEGATIVO, DUPLICIDADE).",
+    "source_row": "Linha física da origem.",
+    "contract": "Contrato usado no cálculo (objeto).",
+    "entrada": "Linha de entrada normalizada usada no cálculo (objeto).",
+    "ledger_hash": "Hash do lote de lançamentos submetido à aprovação.",
+    "period": "Competência (AAAA-MM).",
+    "requires_human_approval": "Se o lote exige aprovação humana.",
+    "path": "Arquivo exportado.",
+    "sha256": "Hash SHA-256 do arquivo.",
+    "rows_read": "Linhas lidas.",
+    "rows_discarded": "Linhas descartadas na importação.",
+    "embedded": "Se o arquivo veio anexado dentro de outro (anexo do e-mail).",
+    "encoding": "Codificação do arquivo.",
+    "sheets": "Abas da planilha.",
+    "message": "Mensagem do aviso de importação."
+  },
+  "datasets": {
+    "raw_orbe": {
+      "titulo": "Relatório Orbe",
+      "grao": "uma linha por transação do relatório da Orbe",
+      "descricao": "Relatório da adquirente como importado: vendas, estornos, antecipações e reversões, com a taxa aplicada pela Orbe.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "gross",
+        "reported_fee",
+        "net"
+      ]
+    },
+    "raw_rates": {
+      "titulo": "Taxas contratadas",
+      "grao": "uma linha por contrato (lojista × produto × vigência)",
+      "descricao": "Tabela de taxas contratadas.",
+      "chaves": [
+        "id"
+      ],
+      "colunas": {
+        "id": "Identificador do contrato.",
+        "start": "Início da vigência.",
+        "end": "Fim da vigência (vazio = sem fim).",
+        "rate_pct": "Taxa contratada em pontos percentuais."
+      },
+      "rotulos": {
+        "id": "Contrato"
+      }
+    },
+    "raw_merchants": {
+      "titulo": "Cadastro de lojistas",
+      "grao": "uma linha por lojista do cadastro",
+      "descricao": "Cadastro de lojistas (CNPJ, EC, ativo, candidato).",
+      "chaves": [
+        "cnpj"
+      ],
+      "colunas": {
+        "name": "Nome do lojista no cadastro.",
+        "active": "Se o lojista está ativo.",
+        "candidate": "Se é apenas candidato (não autoriza faturamento).",
+        "identity_rule": "Fonte da identidade."
+      },
+      "rotulos": {
+        "name": "Lojista (cadastro)"
+      }
+    },
+    "raw_bank": {
+      "titulo": "Extratos bancários",
+      "grao": "uma linha por movimento de extrato",
+      "descricao": "Extratos Aurora (CSV) e Meridiano (OFX) como importados.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "amount"
+      ],
+      "colunas": {
+        "id": "Identificador do movimento (banco + linha)."
+      }
+    },
+    "accounts": {
+      "titulo": "Plano de contas",
+      "grao": "uma linha por conta do plano de contas",
+      "descricao": "Plano de contas do ERP Fênix.",
+      "chaves": [
+        "code"
+      ],
+      "colunas": {
+        "name": "Nome da conta."
+      },
+      "rotulos": {
+        "name": "Nome da conta"
+      }
+    },
+    "sources": {
+      "titulo": "Arquivos lidos",
+      "grao": "uma linha por arquivo importado",
+      "descricao": "Arquivos de entrada com hash, linhas lidas e descartadas.",
+      "chaves": [
+        "name"
+      ],
+      "colunas": {
+        "name": "Nome do arquivo.",
+        "rows": "Linhas lidas do arquivo.",
+        "size": "Tamanho em bytes."
+      },
+      "rotulos": {
+        "name": "Arquivo"
+      }
+    },
+    "raw_remittances": {
+      "titulo": "Remessas da Ponte",
+      "grao": "uma linha por operação de câmbio do relatório da Ponte",
+      "descricao": "Remessas do anexo do e-mail da Ponte Câmbio.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "gross_brl",
+        "spread_brl",
+        "iof_brl"
+      ],
+      "colunas": {
+        "id": "Número da operação (pode repetir em duplicatas).",
+        "name": "Nome do lojista como veio da Ponte (truncado)."
+      },
+      "rotulos": {
+        "name": "Lojista (Ponte)"
+      }
+    },
+    "import_warnings": {
+      "titulo": "Avisos de importação",
+      "grao": "uma linha por aviso de importação",
+      "descricao": "Avisos da importação (linhas inválidas, arquivos ausentes).",
+      "chaves": [],
+      "colunas": {
+        "type": "Tipo do aviso."
+      }
+    },
+    "bank_balances": {
+      "titulo": "Saldos dos extratos",
+      "grao": "uma linha por banco",
+      "descricao": "Saldos inicial e final informados pelos extratos.",
+      "chaves": [
+        "bank"
+      ]
+    },
+    "orbe_normalizado": {
+      "titulo": "Transações normalizadas",
+      "grao": "uma linha por transação Orbe",
+      "descricao": "Transações validadas, com valores exatos e faixa de parcelas.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "gross",
+        "reported_fee",
+        "net"
+      ]
+    },
+    "orbe_resolvido": {
+      "titulo": "Transações com lojista",
+      "grao": "uma linha por transação Orbe",
+      "descricao": "Transações vinculadas ao cadastro de lojistas por EC confirmado ou CNPJ exato.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "gross",
+        "reported_fee",
+        "net"
+      ]
+    },
+    "mdr_conferido": {
+      "titulo": "MDR conferido",
+      "grao": "uma linha por transação Orbe",
+      "descricao": "Vendas e antecipações da competência com comissão pela taxa contratada e divergência entre taxa aplicada e contratada.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "gross",
+        "reported_fee",
+        "net",
+        "comissao_brl",
+        "impacto_rs"
+      ]
+    },
+    "checkout_calculado": {
+      "titulo": "Comissão de checkout",
+      "grao": "uma linha por transação Orbe",
+      "descricao": "Comissão de checkout de todas as linhas, incluindo estornos e reversões calculados pela data original.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "gross",
+        "reported_fee",
+        "net",
+        "comissao_brl",
+        "impacto_rs"
+      ]
+    },
+    "bancos_classificados": {
+      "titulo": "Movimentos classificados",
+      "grao": "uma linha por movimento bancário",
+      "descricao": "Movimentos dos dois bancos com a contrapartida contábil classificada por regra.",
+      "chaves": [
+        "id_saida"
+      ],
+      "totais_controle": [
+        "valor"
+      ]
+    },
+    "saldos_conferidos": {
+      "titulo": "Conferência de saldos",
+      "grao": "uma linha por banco",
+      "descricao": "Conferência saldo inicial + movimentos = saldo final.",
+      "chaves": [
+        "bank"
+      ]
+    },
+    "cambio_calculado": {
+      "titulo": "Remessas calculadas",
+      "grao": "uma linha por operação de câmbio da competência",
+      "descricao": "Remessas com participação de 50% no spread realizado positivo; duplicatas contam uma vez.",
+      "chaves": [
+        "id",
+        "physical_row"
+      ],
+      "totais_controle": [
+        "gross_brl",
+        "spread_brl",
+        "comissao_brl"
+      ],
+      "colunas": {
+        "name": "Nome do lojista como veio da Ponte (truncado)."
+      },
+      "rotulos": {
+        "name": "Lojista (Ponte)"
+      }
+    },
+    "lancamentos": {
+      "titulo": "Lançamentos",
+      "grao": "uma linha por lado de partida (duas linhas por partida)",
+      "descricao": "Lote contábil em partidas dobradas para o ERP Fênix.",
+      "chaves": [
+        "id"
+      ],
+      "totais_controle": [
+        "debito",
+        "credito"
+      ],
+      "colunas": {
+        "id": "Identificador da linha do lançamento (entry_id + D/C)."
+      }
+    },
+    "comissoes": {
+      "titulo": "Comissões",
+      "grao": "uma linha por lojista × linha de negócio",
+      "descricao": "Comissão mensal consolidada.",
+      "chaves": [
+        "id_saida"
+      ],
+      "totais_controle": [
+        "comissao_brl"
+      ]
+    },
+    "divergencias": {
+      "titulo": "Divergências",
+      "grao": "uma linha por transação ou operação divergente",
+      "descricao": "Divergências entre taxa aplicada e contratada (checkout e remessa).",
+      "chaves": [
+        "id_saida"
+      ],
+      "totais_controle": [
+        "diferenca_brl"
+      ]
+    },
+    "notas": {
+      "titulo": "Notas fiscais",
+      "grao": "uma linha por nota fiscal a emitir",
+      "descricao": "Notas fiscais da competência (uma por lojista no checkout, uma para a Ponte na remessa). Comissão zero ou negativa não emite nota.",
+      "chaves": [
+        "id_saida"
+      ],
+      "totais_controle": [
+        "valor_brl"
+      ]
+    },
+    "pendencias": {
+      "titulo": "Pendências",
+      "grao": "uma linha por pendência",
+      "descricao": "Pendências para decisão humana, com evidência e severidade. Contagens são linhas de acompanhamento, não perdas independentes.",
+      "chaves": [
+        "id_saida"
+      ],
+      "totais_controle": [
+        "valor_brl"
+      ],
+      "colunas": {
+        "rule": "Fonte da regra da pendência."
+      }
+    },
+    "rastro": {
+      "titulo": "Rastro",
+      "grao": "uma linha por contribuição de origem a uma saída",
+      "descricao": "Rastro: soma por id_saida é exatamente o valor da saída.",
+      "chaves": [
+        "id_saida",
+        "ref_origem"
+      ]
+    },
+    "detalhes_calculo": {
+      "titulo": "Detalhes do cálculo",
+      "grao": "uma linha por contribuição de origem a uma saída",
+      "descricao": "Rastro detalhado com entrada normalizada, fórmula e contrato.",
+      "chaves": [
+        "id_saida",
+        "ref_origem"
+      ]
+    },
+    "aprovacao_pendente": {
+      "titulo": "Pedido de aprovação",
+      "grao": "uma linha",
+      "descricao": "Pedido de aprovação humana do lote.",
+      "chaves": []
+    },
+    "export_manifest": {
+      "titulo": "Arquivos exportados",
+      "grao": "uma linha por arquivo exportado",
+      "descricao": "Arquivos exportados para o ERP após aprovação.",
+      "chaves": [
+        "name"
+      ],
+      "colunas": {
+        "name": "Nome do arquivo exportado.",
+        "rows": "Linhas do arquivo.",
+        "size": "Tamanho em bytes."
+      },
+      "rotulos": {
+        "name": "Arquivo"
+      }
+    }
+  },
+  "glossario": [
+    {
+      "termo": "MDR",
+      "definicao": "Taxa de desconto cobrada do lojista por venda, em % do bruto, contratada por produto (débito, Pix, crédito à vista, 2 a 6x, 7 a 12x). A comissão de checkout da Tarvo é o MDR contratado, não a taxa que a Orbe aplicou.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "mdr_conferido.taxa_contratada_pct",
+        "mdr_conferido.comissao_brl",
+        "raw_rates.rate_pct"
+      ]
+    },
+    {
+      "termo": "Taxa aplicada",
+      "definicao": "Taxa que a Orbe efetivamente cobrou na transação.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "raw_orbe.applied_rate_pct",
+        "raw_orbe.reported_fee"
+      ]
+    },
+    {
+      "termo": "Divergência de taxa",
+      "definicao": "Diferença entre taxa aplicada e contratada: ROUND_HALF_UP(bruto × (aplicada − contratada) / 100, 2) por linha. O truncamento isolado da Orbe não é divergência.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "mdr_conferido.impacto_rs",
+        "divergencias.diferenca_brl"
+      ]
+    },
+    {
+      "termo": "Bruto, taxa cobrada e líquido",
+      "definicao": "Bruto é o valor da transação; taxa cobrada é o que a Orbe reteve; líquido = bruto − taxa cobrada, por linha.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "raw_orbe.gross",
+        "raw_orbe.reported_fee",
+        "raw_orbe.net"
+      ]
+    },
+    {
+      "termo": "Antecipação",
+      "definicao": "Adiantamento de recebíveis ao lojista, cobrado por taxa de antecipação contratada. Aparece como tipo ANTECIPACAO; a reversão (REVERSAO ANTECIPACAO) usa a data e a taxa da antecipação referenciada. Entra na mesma nota de checkout.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "raw_orbe.type",
+        "mdr_conferido.faixa_parcelas"
+      ]
+    },
+    {
+      "termo": "Estorno",
+      "definicao": "Devolução de uma venda. Abate no mês do estorno, com a taxa vigente na data da venda original, inclusive vendas de agosto ausentes do arquivo.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "raw_orbe.type",
+        "checkout_calculado.link_status",
+        "checkout_calculado.original_date"
+      ]
+    },
+    {
+      "termo": "Chargeback",
+      "definicao": "Contestação da compra pelo portador do cartão. O relatório da Orbe não separa chargeback de estorno: só existe o tipo ESTORNO. Perguntas sobre chargeback devem ser respondidas com estornos, dizendo isso explicitamente.",
+      "disponivel_nos_dados": false,
+      "onde": []
+    },
+    {
+      "termo": "Cancelamento",
+      "definicao": "Desfazimento da venda antes da liquidação. Não há tipo de cancelamento nos dados; o mais próximo é ESTORNO.",
+      "disponivel_nos_dados": false,
+      "onde": []
+    },
+    {
+      "termo": "D+N",
+      "definicao": "Prazo, em dias, entre a venda e a liquidação ao lojista. A Orbe não informa data de liquidação por transação; não é possível calcular D+N com estes dados. Remessas têm data de liquidação própria (settlement_date).",
+      "disponivel_nos_dados": false,
+      "onde": [
+        "raw_remittances.settlement_date"
+      ]
+    },
+    {
+      "termo": "Agenda de recebíveis",
+      "definicao": "Cronograma de parcelas a receber da adquirente. Não foi fornecida; os créditos da Orbe chegam como TED agregada no extrato Aurora, sem conciliação parcela a parcela.",
+      "disponivel_nos_dados": false,
+      "onde": []
+    },
+    {
+      "termo": "Repasse",
+      "definicao": "Pagamento ao lojista dos valores de suas vendas. Só aparece de forma agregada no extrato classificado (conta 2.1.01.001, repasses a lojistas a pagar), não por transação.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "bancos_classificados.conta_codigo",
+        "bancos_classificados.valor"
+      ]
+    },
+    {
+      "termo": "Remessa e spread",
+      "definicao": "Operação de câmbio intermediada pela Ponte. Spread realizado = ganho da cotação sobre a PTAX; a Tarvo recebe 50% do spread realizado positivo, arredondado por operação. Spread contratual padrão 1,5% (Mundo Aberto 1,2%). Negativos ficam fora da comissão e são contestados.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "cambio_calculado.spread_brl",
+        "cambio_calculado.comissao_brl"
+      ]
+    },
+    {
+      "termo": "Competência",
+      "definicao": "Mês do fechamento (AAAA-MM). Checkout usa a data do movimento; remessa usa a data de contratação.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "aprovacao_pendente.period"
+      ]
+    },
+    {
+      "termo": "EC",
+      "definicao": "Código de estabelecimento do lojista na Orbe; é a identidade do lojista.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "raw_orbe.ec"
+      ]
+    },
+    {
+      "termo": "Pendência e severidade",
+      "definicao": "Item que exige decisão humana. Severidade bloqueante impede aprovar; atencao vira alerta; informativo não bloqueia.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "pendencias.severity",
+        "pendencias.tipo"
+      ]
+    },
+    {
+      "termo": "Nota fiscal",
+      "definicao": "Uma NF mensal por lojista no checkout (MDR e antecipação, líquidos de estornos e reversões) e uma NF para a Ponte na remessa. Comissão zero ou negativa não emite NF.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "notas.valor_brl"
+      ]
+    },
+    {
+      "termo": "Partida dobrada",
+      "definicao": "Cada lançamento tem uma linha a débito e uma a crédito de mesmo valor, em contas analíticas do plano Fênix.",
+      "disponivel_nos_dados": true,
+      "onde": [
+        "lancamentos.entry_id",
+        "lancamentos.debito",
+        "lancamentos.credito"
+      ]
+    }
+  ],
+  "invariantes": [
+    {
+      "id": "bruto_preservado",
+      "titulo": "Bruto Orbe preservado entre passos",
+      "lados": [
+        {
+          "dataset": "raw_orbe",
+          "coluna": "gross"
+        },
+        {
+          "dataset": "orbe_normalizado",
+          "coluna": "gross"
+        },
+        {
+          "dataset": "orbe_resolvido",
+          "coluna": "gross"
+        },
+        {
+          "dataset": "mdr_conferido",
+          "coluna": "gross"
+        },
+        {
+          "dataset": "checkout_calculado",
+          "coluna": "gross"
+        }
+      ]
+    },
+    {
+      "id": "liquido_fecha",
+      "titulo": "Bruto − taxa cobrada = líquido (Orbe)",
+      "lados": [
+        {
+          "dataset": "raw_orbe",
+          "coluna": "gross",
+          "menos": "reported_fee"
+        },
+        {
+          "dataset": "raw_orbe",
+          "coluna": "net"
+        }
+      ]
+    },
+    {
+      "id": "comissao_checkout",
+      "titulo": "Comissão de checkout",
+      "lados": [
+        {
+          "dataset": "checkout_calculado",
+          "coluna": "comissao_brl",
+          "filtro": {
+            "calculated": true
+          }
+        },
+        {
+          "dataset": "comissoes",
+          "coluna": "comissao_brl",
+          "filtro": {
+            "linha_negocio": "CHECKOUT"
+          }
+        },
+        {
+          "metrica": "checkout_brl",
+          "passo_tipo": "vincular_estornos"
+        }
+      ]
+    },
+    {
+      "id": "comissao_remessa",
+      "titulo": "Comissão de remessa",
+      "lados": [
+        {
+          "dataset": "cambio_calculado",
+          "coluna": "comissao_brl",
+          "filtro": {
+            "counted": true
+          }
+        },
+        {
+          "dataset": "comissoes",
+          "coluna": "comissao_brl",
+          "filtro": {
+            "linha_negocio": "REMESSA"
+          }
+        },
+        {
+          "metrica": "remessa_brl",
+          "passo_tipo": "processar_cambio"
+        }
+      ]
+    },
+    {
+      "id": "lote_balanceado",
+      "titulo": "Lote balanceado (débito = crédito)",
+      "lados": [
+        {
+          "dataset": "lancamentos",
+          "coluna": "debito"
+        },
+        {
+          "dataset": "lancamentos",
+          "coluna": "credito"
+        }
+      ]
+    },
+    {
+      "id": "extrato_bancos",
+      "titulo": "Movimentos classificados = extrato",
+      "lados": [
+        {
+          "dataset": "raw_bank",
+          "coluna": "amount"
+        },
+        {
+          "dataset": "bancos_classificados",
+          "coluna": "valor"
+        }
+      ]
+    }
+  ],
+  "sugestoes": {
+    "por_passo": {
+      "ler_arquivos": [
+        "Quantas linhas vieram de cada arquivo?",
+        "Qual o bruto Orbe por tipo de lançamento?"
+      ],
+      "normalizar_orbe": [
+        "Qual o bruto por modalidade e faixa de parcelas?",
+        "Como o bruto evoluiu por dia?"
+      ],
+      "resolver_lojista": [
+        "Quais ECs não têm vínculo confirmado e quanto somam?",
+        "Quanto cada lojista vendeu no mês?"
+      ],
+      "conferir_mdr": [
+        "Quais lojistas concentram 80% do impacto de taxa?",
+        "Qual a divergência por bandeira?",
+        "Por que a Casa do Estudante tem divergência?"
+      ],
+      "vincular_estornos": [
+        "Quanto os estornos abatem da comissão por lojista?",
+        "Quais estornos são de vendas de agosto?"
+      ],
+      "conciliar_aurora": [
+        "Quanto entrou da Orbe por dia no Aurora?",
+        "Qual o total por conta de contrapartida?"
+      ],
+      "processar_cambio": [
+        "Quais operações têm spread negativo?",
+        "Qual a comissão de remessa por moeda?",
+        "Qual operação está duplicada?"
+      ],
+      "gerar_lancamentos": [
+        "O lote fecha por evento contábil?",
+        "Quais pendências bloqueiam a aprovação?",
+        "Qual lojista tem a maior comissão?"
+      ]
+    },
+    "por_coluna": {
+      "impacto_rs": [
+        "Quais lojistas concentram 80% do impacto?",
+        "Por que esta divergência?"
+      ],
+      "diferenca_brl": [
+        "Quais lojistas concentram 80% das divergências?"
+      ],
+      "brand": [
+        "Compare bruto, taxa e divergência por bandeira"
+      ],
+      "type": [
+        "Quanto os estornos representam do bruto?",
+        "Quais lojistas concentram 80% dos estornos?"
+      ],
+      "comissao_brl": [
+        "Ranking de comissão por lojista"
+      ],
+      "gross": [
+        "Evolução diária do bruto"
+      ],
+      "reported_fee": [
+        "Taxa cobrada × contratada por lojista"
+      ],
+      "spread_brl": [
+        "Spread por moeda",
+        "Quais operações têm spread negativo?"
+      ],
+      "valor": [
+        "Total por conta contábil"
+      ],
+      "severity": [
+        "Quantas pendências por severidade e área?"
+      ]
+    }
+  }
+}

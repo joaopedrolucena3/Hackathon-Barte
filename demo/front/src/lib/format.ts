@@ -4,9 +4,28 @@ type Num = string | number | null | undefined;
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const integer = new Intl.NumberFormat('pt-BR');
 const isBlank = (value: Num) => value === null || value === undefined || value === '';
+const DECIMAL = /^(-)?(\d+)(?:\.(\d*))?$/;
+
+/** pt-BR digits straight from the decimal text, never through a float. Rounds ROUND_HALF_UP like the backend. */
+function exactDigits(value: Num, min: number, max: number) {
+  const match = DECIMAL.exec(String(value).trim());
+  if (!match) return null;
+  const [, sign, whole, fraction = ''] = match;
+  let units = BigInt(whole + fraction.slice(0, max).padEnd(max, '0'));
+  if (fraction.length > max && fraction[max] >= '5') units += 1n;
+  const digits = units.toString().padStart(max + 1, '0');
+  const integerPart = max ? digits.slice(0, -max) : digits;
+  let decimals = max ? digits.slice(-max) : '';
+  while (decimals.length > min && decimals.endsWith('0')) decimals = decimals.slice(0, -1);
+  const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return { negative: !!sign && units !== 0n, text: decimals ? `${grouped},${decimals}` : grouped };
+}
 
 export function money(value: Num) {
-  return isBlank(value) || Number.isNaN(Number(value)) ? '—' : brl.format(Number(value));
+  if (isBlank(value)) return '—';
+  const exact = exactDigits(value, 2, 2);
+  if (exact) return `${exact.negative ? '-' : ''}R$ ${exact.text}`;
+  return Number.isNaN(Number(value)) ? '—' : brl.format(Number(value));
 }
 
 /** Short form for chart labels and tiles: R$ 207,0 mil · R$ 1,2 mi. */
@@ -25,6 +44,8 @@ export function count(value: Num) {
 
 export function decimal(value: Num, min = 2, max = 4) {
   if (isBlank(value)) return '—';
+  const exact = exactDigits(value, min, max);
+  if (exact) return `${exact.negative ? '-' : ''}${exact.text}`;
   return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: min, maximumFractionDigits: max });
 }
 
@@ -36,9 +57,10 @@ export function percent(value: Num, min = 2, max = 4) {
 /** Percentage-point difference with explicit sign: +0,10 p.p. */
 export function pp(value: Num) {
   if (isBlank(value)) return '—';
-  const n = Number(value);
-  const sign = n > 0 ? '+' : n < 0 ? '−' : '';
-  return `${sign}${decimal(Math.abs(n), 2, 4)} p.p.`;
+  const text = String(value).trim();
+  const magnitude = text.replace(/^-/, '');
+  const sign = !/[1-9]/.test(magnitude) ? '' : text.startsWith('-') ? '−' : '+';
+  return `${sign}${decimal(magnitude, 2, 4)} p.p.`;
 }
 
 export function dateBR(value: string | null | undefined) {
