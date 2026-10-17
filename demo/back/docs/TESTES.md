@@ -1,10 +1,14 @@
 # Verificação do fechamento Tarvo
 
-A suíte atual contém 149 testes, incluindo os 14 do mês novo sintético (outubro), e passa também no Windows. A contagem anterior era de 130 testes: 55 do fechamento original, 35 do pipeline versionado e 40 da integração Gmail. A execução completa em 17/10/2026 passou em 51,814 segundos. A verificação anterior ao Gmail tinha 90 testes e passou em 31,823 segundos. Os detalhes novos estão em [TESTES_EMAIL.md](TESTES_EMAIL.md). Usa `unittest` e arquivos temporários para as verificações de persistência. Os arquivos do data pack são somente lidos. Rode a partir da pasta `tarvo-mvp`:
+Este arquivo reúne critérios e registros históricos de testes; suas contagens não são o total da suíte atual nem prova de uma nova execução. Entre os registros anteriores há 149 testes, incluindo 14 do mês sintético de outubro, e uma referência de execução no Windows. A versão anterior tinha 130 testes (55 do fechamento, 35 do pipeline e 40 da integração Gmail), com registro de 51,814 segundos em 17/10/2026; antes do Gmail, 90 testes em 31,823 segundos. Outras revisões estão em [TESTES_EMAIL.md](TESTES_EMAIL.md). Preserve esses registros sem tratá-los como resultado do código presente.
+
+A suíte usa `unittest` e arquivos temporários para persistência; as fontes do case são somente lidas. Para obter o resultado da revisão atual, rode a partir de `demo/back/`:
 
 ```sh
 ./run.sh test
 ```
+
+Para conferir a entrega, execute `./entrega.sh --check saida` na raiz. O [README da raiz](../../../README.md) descreve a geração com banco novo e os resultados financeiros reproduzidos; validação de CSVs não substitui os testes de integração ou uma revisão no navegador.
 
 Os testes combinam exemplos pequenos calculados manualmente, regressões derivadas do data pack e testes de segurança do fluxo de trabalho. Não consideram a saída do próprio motor como gabarito.
 

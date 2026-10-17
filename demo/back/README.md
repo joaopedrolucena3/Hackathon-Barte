@@ -4,7 +4,7 @@ Plataforma local para apurar setembro de 2026 a partir dos arquivos originais da
 
 ## Rodar
 
-Pré-requisitos: Python 3.11 ou superior com venv, Node.js 18+ e npm; acesso ao PyPI e npm na primeira execução. O fechamento funciona sem chave de API. Para envio real, conecte o Gmail com uma senha de app na aba Comunicações → E-mail real. OAuth também está disponível.
+Use Python 3.13 com `venv`, Node.js e npm; acesso ao PyPI e npm na primeira execução. O ambiente conferido nesta revisão usa Python 3.13.7, Node.js 26.10.0 e npm 11.19.1. Os comandos desta seção partem de `demo/back/`. O fechamento funciona sem chave de API. Para envio real, conecte o Gmail com uma senha de app na aba Comunicações → E-mail real. OAuth também está disponível.
 
 ```sh
 ./run.sh
@@ -14,11 +14,22 @@ Abra http://127.0.0.1:8765. A interface React integrada está em `../front/`; o 
 
 ```sh
 ./run.sh test       # suíte automatizada, bancos temporários
-./run.sh export     # gera os seis CSVs oficiais e relatório em saida/
+./run.sh export     # exporta o cadastro local em demo/back/saida/; não é a entrega da raiz
 ./run.sh serve --port 8766 --db data/demo.sqlite3 --runs-dir data/demo-runs  # demonstração isolada
 ```
 
-Windows: crie o ambiente com `python -m venv .venv`, instale as dependências usando `.venv\Scripts\python -m pip install -r requirements.lock.txt`, compile o front com `cd ..\front && npm ci && npm run build`, volte para `back` e rode `.venv\Scripts\python -m src.app`.
+Windows: para os launchers shell, use ambiente compatível, como WSL. Para iniciar somente a aplicação manualmente, em `demo/back/`, crie o ambiente com `py -3.13 -m venv .venv`, instale as dependências usando `.venv\Scripts\python -m pip install -r requirements.lock.txt`, compile o front com `cd ..\front`, `npm ci` e `npm run build`, volte para `back` e rode `.venv\Scripts\python -m src.app`. Não confundir esta inicialização com a geração e validação do pacote oficial.
+
+## Entrega oficial reproduzível
+
+Na raiz do repositório, execute:
+
+```sh
+./entrega.sh --period 2026-09 --source-dir Tarvo_Data_Pack_set2026 --output-dir saida
+./entrega.sh --check saida
+```
+
+Sem argumentos, `entrega.sh` usa esses mesmos padrões. O comando prepara o ambiente Python, calcula em banco temporário novo, valida o pacote e publica os seis CSVs diretamente na `saida/` da raiz, junto a `manifesto.json` e `verificacao.json`. Identifica fontes e código por hashes e não usa decisões do banco local. A publicação preserva subpastas, oferece rollback e recupera interrupções. Um `--output-dir` diferente permite conferir outra geração sem substituir a principal; consulte o [README da raiz](../../README.md).
 
 ## E-mail real da demo
 
@@ -38,7 +49,7 @@ O envio real exige conectar a conta Gmail; funciona com senha de app ou OAuth. V
 
 ## Pipeline versionado e checklist
 
-Use **Pipeline** na navegação para escolher a competência, enviar os seis arquivos ou executar com as fontes locais. A lateral acompanha as etapas e a prévia lê os arquivos Parquet salvos. O construtor valida dependências e parâmetros antes de criar uma nova versão; a aprovação humana é obrigatória e não pode ser removida.
+Use **Pipeline** na navegação para escolher a competência, enviar o conjunto de fontes e eventuais complementos ou executar com as fontes locais. A lateral acompanha as etapas e a prévia lê os arquivos Parquet salvos. O construtor valida dependências e parâmetros antes de criar uma nova versão; a aprovação humana é obrigatória e não pode ser removida.
 
 Ao chegar à aprovação, trate as exceções bloqueantes. Decisões exigem responsável e justificativa. Ajustes são registros adicionais; as saídas calculadas continuam preservadas. Somente um lote aprovado produz o pacote de partidas dobradas para o ERP. O formato CSV é uma proposta documentada para o case; a importação real no Fênix não foi homologada nem executada.
 
@@ -46,11 +57,11 @@ O **Checklist** combina tarefas derivadas da execução com tarefas manuais. O b
 
 O banco de workflows usa o mesmo nome-base com sufixo `-workflow.sqlite3`. Os arquivos imutáveis de cada execução ficam em `saida/runs/<run_id>/`. Para demonstração isolada, defina tanto `--db` como `--runs-dir`. A consulta de execuções e a revisão não precisam de serviços externos.
 
-## Resultado inicial verificado
+## Resultado reproduzido em 17/10/2026
 
 Os valores são provisórios até o analista tratar as pendências ou aceitar as ressalvas. As 57 operações da Atlas não entram no faturamento sem contrato e identidade confirmados.
 
-Novos processamentos consolidam `CADASTRO_NAO_CONFIRMADO` em uma pendência por CNPJ e competência, com todas as operações e evidências vinculadas. A ressalva não autoriza faturamento. Veja [escopo, riscos e critérios de aceite](docs/CADASTRO_POR_EMPRESA.md). As contagens históricas abaixo antecedem esse agrupamento e outras revisões do motor.
+Uma geração com banco novo e os seis arquivos originais confirmou os controles abaixo. São resultados desta versão, não um gabarito aprovado pela organização. `CADASTRO_NAO_CONFIRMADO` está consolidado em uma pendência por CNPJ e competência, com todas as operações e evidências vinculadas. A ressalva não autoriza faturamento. Veja [escopo, riscos e critérios de aceite](docs/CADASTRO_POR_EMPRESA.md).
 
 | Controle | Resultado |
 |---|---:|
@@ -62,11 +73,12 @@ Novos processamentos consolidam `CADASTRO_NAO_CONFIRMADO` em uma pendência por 
 | Notas propostas (21) | R$ 246.588,68 |
 | Divergências de taxa (237), valor assinado | R$ 14.826,55 |
 | Exposição em divergências, soma dos valores absolutos | R$ 22.173,57 |
-| Pendências iniciais | 304 |
+| Pendências / bloqueantes | 295 / 10 |
+| Registros dos cinco CSVs de resultados / linhas de rastro | 772 / 5.226 |
 
-O pipeline adiciona uma exceção bloqueante para a validação do mapa contábil proposto: são 305 exceções, 58 bloqueantes. Seu lote contábil inicial contém 4.360 linhas, com R$ 23.474.915,80 em débitos e o mesmo valor em créditos; esse total de movimentação não representa receita.
+As pendências incluem uma ocorrência agrupada para as 57 operações da Atlas, nove origens históricas ausentes e 38 alertas de bandeira divergente. O pipeline versionado adiciona sua própria revisão do mapa contábil e deve ser conferido por execução; as antigas contagens de 305 exceções/58 bloqueantes pertencem ao histórico anterior. Débitos/créditos do lote contábil não representam receita e não se somam às comissões.
 
-A comissão da Casa do Estudante é −R$ 5,50: a isenção de setembro não é tratada como retroativa à venda de agosto estornada em setembro. Não se emite NF negativa. Por isso as notas superam a soma das comissões em R$ 5,50. A interpretação está em HIPOTESES.md e na interface. Não somar pendências, divergências e comissões: são visões diferentes das mesmas operações.
+A comissão da Casa do Estudante é −R$ 5,50: a isenção de setembro não é tratada como retroativa à venda de agosto estornada em setembro. Não se emite NF negativa. Por isso as notas superam a soma das comissões em R$ 5,50. A interpretação e a política pendente para origens históricas ausentes estão em [HIPOTESES.md](../../HIPOTESES.md) e na interface. Não somar pendências, divergências e comissões: são visões diferentes das mesmas operações.
 
 ## Fluxo do analista
 
@@ -83,7 +95,7 @@ O roteiro detalhado está em DEMO.md.
 - Dados sintéticos originais copiados sem alteração para `data/case/`; hashes registrados por importação.
 - Instruções oficiais em `docs/01_instrucoes_participantes.docx`.
 - 16 respostas do financeiro consultadas antes do código, com links em `docs/FONTES_SLACK.md`.
-- Hipóteses e conflitos em `HIPOTESES.md` e `docs/assumptions.json`.
+- Hipóteses e conflitos no [documento da entrega](../../HIPOTESES.md) e em `docs/assumptions.json`.
 - Controles independentes e funcionamento do motor em `docs/ENGINE_NOTES.md`; cobertura em `docs/TESTES.md`.
 
 Checkout usa taxa contratada por produto/data, com HALF_UP por linha, estornos pela data original e reversões vinculadas à antecipação. Remessa usa 50% do spread realizado elegível por operação, exclui negativos e conta duplicata idêntica uma vez. Notas de remessa têm Ponte como única tomadora. Banco classifica contrapartidas; recebimentos de provisões não viram receita novamente.
@@ -108,13 +120,15 @@ Avisos imediatos são processados quando surgem eventos ou se ativa um contato. 
 
 ## Outubro e reimportação
 
-No Fechamento, use Rodar fechamento e escolha a competência e a pasta local, ou envie os seis arquivos. Os arquivos devem manter o mesmo padrão de nomes e estrutura do case. Referências revisadas são preservadas; novas referências entram; alterações detectadas em uma taxa existente geram aviso para revisão. Cadastre vigências sem sobreposição na interface. O formato atual exige o conjunto de fontes correspondente; arquivos ausentes ou linhas inválidas geram pendência. Um mês sem movimentos também gera bloqueio.
+No Fechamento, use Rodar fechamento e escolha a competência e a pasta local, ou envie as fontes e complementos. A identificação usa a estrutura reconhecida dos arquivos, sem exigir exclusivamente os nomes originais. Referências recebidas são reconciliadas com o catálogo revisado: conteúdo idêntico acrescenta proveniência, identidades novas entram e conflitos ficam para revisão, sem substituir silenciosamente taxas já revisadas. Cadastre vigências sem sobreposição na interface. Fontes obrigatórias ausentes, linhas inválidas ou formatos não reconhecidos exigem revisão; um mês sem movimentos também gera bloqueio.
+
+O pack `Tarvo_Data_Pack_out2026/` é sintético e serve para exercitar a continuidade. Suas saídas não representam fechamento real de outubro. As subpastas de setembro/outubro em `saida/` da raiz preservam resultados históricos anteriores e não são regeneradas pelo comando oficial.
 
 O fechamento original arquiva importações e apresenta o lote ativo. A nova tela Pipeline permite selecionar execuções independentes por competência e mantém suas evidências, versões e saídas. A tela Checklist acompanha a execução mais recente do mês. Para isolamento completo, use um banco por demonstração ou cliente.
 
 ## Saídas
 
-`saida/` contém `comissoes_por_lojista.csv`, `divergencias_taxa.csv`, `notas_a_emitir.csv`, `lancamentos_classificados.csv`, `pendencias.csv` e `rastro.csv`. Delimitador `;`, decimal `.`, datas ISO e CNPJ 14 dígitos. Colunas extras documentam decisões e evidências. O pacote inclui relatório HTML imprimível; também há `verificacao.json` com totais, validação e hashes.
+O export da aplicação grava em `demo/back/saida/` e inclui os seis CSVs de conferência, relatório HTML e `verificacao.json`. O comando de entrega da raiz grava os seis CSVs oficiais em `saida/`, com `manifesto.json` e `verificacao.json`; esse é o pacote destinado à banca. Em ambos, o delimitador é `;`, o decimal é `.`, as datas são ISO e os CNPJs têm 14 dígitos. Colunas extras documentam decisões e evidências. Valores indisponíveis não devem ser interpretados como zero.
 
 ## Limitações conhecidas
 
@@ -125,4 +139,4 @@ O fechamento original arquiva importações e apresenta o lote ativo. A nova tel
 - Reversão parcial e mudança de formatos exigem regra adicional; não são inventadas pelo motor. Regras bancárias conhecidas são explícitas; novos históricos desconhecidos geram pendência.
 - Não há conciliação parcelada Orbe sem agenda de recebíveis nem confirmação do TED de outubro sem extrato, conforme esclarecimento do financeiro.
 - Histórico de preparação anterior a esta sessão deve ser complementado pelo time em PROMPTS; não é fabricado. A exportação desta sessão exclui raciocínio interno e instruções de sistema.
-- Não houve publicação do site, push de repositório ou envio formal à organização.
+- Os comandos locais não publicam o site/repositório nem enviam a entrega à organização. O time deve conferir a logística e o prazo descritos no [README da raiz](../../README.md).

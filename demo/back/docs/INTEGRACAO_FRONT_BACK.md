@@ -1,5 +1,7 @@
 # Verificação da integração front/back
 
+> Registro histórico da revisão descrita abaixo. Contagens de testes/exceções, política de catálogo e configuração de e-mail refletem aquela versão. Os guias atuais estão no [README da aplicação](../../README.md) e nas [hipóteses da entrega](../../../HIPOTESES.md); este registro não comprova uma nova execução dos testes.
+
 Verificação local em 17/10/2026, na branch `integration/front-back`. A base `backend` (`e863a32`) já contém o histórico de `frontend` (`45a27de`); a integração adapta os contratos e expõe as funcionalidades existentes na interface React. A publicação remota e a alteração de `main` não fazem parte desta verificação.
 
 ## Resultado

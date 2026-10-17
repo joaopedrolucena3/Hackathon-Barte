@@ -1,5 +1,7 @@
 # Sugestões de contestação com permissão — 17/10/2026
 
+> Registros históricos de verificações em branches e momentos distintos. Contagens, portas e estados de Gmail/runs valem para cada verificação descrita e não demonstram o estado atual. Nenhum resultado simulado comprova entrega real; veja o [guia atual de Gmail](GMAIL.md).
+
 Na branch `codex/email-real-demo`, a execução prepara sugestões por parceiro, competência e motivo. Nenhuma contestação é enviada pelo callback da run. O responsável salva a versão, revisa texto, remetente, destinatário e anexos, marca sua permissão e confirma o envio. Mudanças invalidam a autorização. As mensagens têm resumo curto e detalhamento nos anexos.
 
 - **256 testes do backend passaram** na suíte completa, em 674,155 segundos, incluindo as regressões de importação, processamento e gravação.

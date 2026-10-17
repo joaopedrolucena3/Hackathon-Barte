@@ -71,7 +71,9 @@ A diferença de R$ 0,57 entre 39.543,45 e metade arredondada do total de spread 
 
 Duplicata PC-0926-0162 em `Operações` linhas 76–77: spread 821,88, observação `reprocessada` na segunda. Negativos: PC-0926-0210 linha 96 (-687,52), 0326 linha 141 (-509,22), 0491 linha 205 (-292,28), 0545 linha 228 (-345,03). Seis operações contratadas 30/09 e liquidadas 01/10 somam spread 2.078,71 e permanecem no mês de contratação.
 
-304 pendências iniciais: 237 divergências, 57 Atlas, 4 spreads negativos, 1 duplicata, 1 comissão Casa negativa, 1 crédito não identificado, 1 devolução de repasse, 1 transferência em trânsito e 1 conferência do repasse da Ponte. A conferência expõe os R$ 39.543,45 faturados para comparação com o extrato futuro; não presume que a TED terá esse valor. Contagens são linhas de acompanhamento, não 304 perdas independentes.
+Na geração limpa conferida em 17/10/2026, o código atual produz 295 pendências: 237 divergências de taxa, 38 alertas de bandeira divergente, nove origens históricas ausentes, uma pendência agrupando as 57 operações da Atlas, quatro spreads negativos e uma ocorrência de cada tipo restante (duplicata, comissão Casa negativa, crédito não identificado, devolução de repasse, transferência em trânsito e conferência do repasse da Ponte). São dez bloqueantes: Atlas e as nove origens ausentes. Os cinco CSVs de resultados contêm 772 registros, ligados a 5.226 linhas de rastro, com somas exatas nesta reprodução.
+
+As 304 pendências/57 bloqueantes registradas em saídas e relatórios antigos pertencem à versão anterior, que não agrupava Atlas e ainda não emitia os 47 alertas de qualidade/origem acima. A conferência da Ponte continua expondo os R$ 39.543,45 faturados para comparação com extrato futuro; não presume que o TED terá esse valor. Contagens são itens de acompanhamento, não perdas independentes nem gabarito da organização. Use [o comando da entrega](../../../README.md) para reproduzir o estado atual.
 
 ## Verificação e limites
 

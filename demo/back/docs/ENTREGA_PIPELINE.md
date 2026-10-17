@@ -1,5 +1,7 @@
 # Entrega do pipeline
 
+> Registro histórico de uma entrega anterior do pipeline. As contagens, o ZIP e a execução citados abaixo pertencem àquela versão; não descrevem automaticamente o checkout ou bancos atuais. Para gerar e verificar o pacote oficial atual, consulte o [README da raiz](../../../README.md). As saídas históricas são preservadas.
+
 As funcionalidades A2, B1, B3, B4, B5, B6, C1 e C8 estão implementadas na aplicação local. Consulte README.md para iniciar e docs/API_PIPELINE.md para integrar. A suíte final contém 90 testes aprovados; o registro está em docs/resultado-testes-pipeline.txt.
 
 O arquivo tarvo-mvp-pipeline-entrega.zip contém código, fontes do case, documentação, registros de prompts e saídas de conferência. Exclui ambientes instalados, bancos locais e execuções de QA. Ao extrair em outra pasta, ./run.sh cria os bancos; use Pipeline > Nova execução para reproduzir setembro. O diretório original no computador mantém o histórico existente e a execução run-b9db179689a645d6b8cafb39b5eafbd3 aguardando revisão.

@@ -1,5 +1,7 @@
 # Verificação da interface
 
+> Evidência histórica da versão e do banco descritos abaixo. As contagens de 304 pendências pertencem ao comportamento anterior. Para reprodução atual, consulte o [README da raiz](../../../README.md); este documento não registra uma nova inspeção do navegador.
+
 Verificação manual realizada no navegador Chrome em 17/10/2026, com a aplicação local. As ações que gravam decisões foram realizadas no banco separado `data/qa.sqlite3`; o banco principal permanece com os dados importados, sem decisões humanas, contatos ou e-mails de demonstração.
 
 - Painel carregou os totais e as 304 pendências esperadas; rastro e exportações disponíveis.

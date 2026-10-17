@@ -3,3 +3,9 @@ Enunciado/
 
 # Local verification snapshots, databases and browser captures
 /evidence/
+
+# Transações locais de publicação; recuperadas pelo comando de entrega
+.*.entrega.lock
+.*.entrega-backup/
+.*.entrega-stage-*/
+.*.entrega-transaction.json
